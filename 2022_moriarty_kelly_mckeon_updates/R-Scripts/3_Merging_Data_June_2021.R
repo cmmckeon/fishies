@@ -19,6 +19,7 @@
 # better able to deal with larger data files.
 # convert all HH data frames to data tables
 
+gc()
 # cut each dataset to the start date used by Moriarty et al.2017 - RK 2021
 HH_EVHOE<-as.data.table(HH_EVHOE)
 table(HH_EVHOE$Year)
@@ -36,7 +37,7 @@ HH_NSIBTS <- HH_NSIBTS[HH_NSIBTS$Year >1982,]
 ## remove earlier years in Q 3/4
 
 x1 <- which(HH_NSIBTS$Year <1998 & HH_NSIBTS$Quarter %in% c(3,4))
-length(x1)
+length(x1) #3862 (Feb 2022)
 
 HH_NSIBTS <- HH_NSIBTS[-x1,]
 
@@ -60,7 +61,7 @@ table(HH_BTS_DE$Ship, HH_BTS_DE$Year)
 table(HH_BTS_DE$DoorSpread, HH_BTS_DE$Year)
 
 x2 <- which(HH_BTS$Year <2002 & HH_BTS$Country == "DE")
-length(x2)
+length(x2) #397
 
 HH_BTS <- HH_BTS[-x2,]
 
@@ -114,7 +115,7 @@ HL_NSIBTS <- HL_NSIBTS[HL_NSIBTS$Year >1982,]
 ## remove earlier years in Q 3/4
 
 x3 <- which(HL_NSIBTS$Year <1998 & HL_NSIBTS$Quarter %in% c(3,4))
-length(x3)
+length(x3) # 432320 (feb 2022)
 
 HL_NSIBTS[head(x3),]
 
@@ -137,7 +138,7 @@ HL_BTS<-as.data.table(HL_BTS)
 
 HL_BTS <- HL_BTS[HL_BTS$Year> 1986,]
 x4 <- which(HL_BTS$Year <2002 & HL_BTS$Country == "DE")
-length(x4)
+length(x4) # 32805 (feb 2022)
 HL_BTS <- HL_BTS[-x4,]
 
 HL_PT<-as.data.table(HL_PT)
@@ -169,7 +170,7 @@ rm(HH_EVHOE,HH_FRCGFS,HH_IGFS,HH_NSIBTS,HH_ROCK,HH_SWC,
    HH_NIGFS,HH_BTS,HH_PT,HH_SP_ARSA, HH_SP_NORTH, HH_SP_PORC,
    HL_EVHOE,HL_FRCGFS,HL_IGFS,HL_NSIBTS,HL_ROCK,HL_SWC,
    HL_NIGFS,HL_BTS,HL_PT, HL_SP_NORTH, HL_SP_PORC, HL_SP_ARSA)
-
+gc()
 
 # Add unique Hauls ID fields to each of the datasets to allow combination and changing
 # This takes the structure Survey/YEAR/Quarter/Ship/HaulNo/Gear
@@ -284,7 +285,50 @@ summary(HH)
 
 summary(HL)
 
+## God is a DJ; love is a graph
+par(mfrow = c(3,3))
+
+
+HHx <- as.data.frame(HH)
+## Numeric variables
+for (i in names(Filter(is.numeric, HHx))) {
+  hist(HHx[,i],
+       breaks = 3000,
+       main = paste(i),
+       xlab = paste(i))
+}
+
+HLx <- as.data.frame(HL)
+## Numeric variables
+for (i in names(Filter(is.numeric, HLx))) {
+  hist(HLx[,i],
+       breaks = 3000,
+       main = paste(i),
+       xlab = paste(i))
+}
+
 # if all is good- move on, if not rerun numeric col stuff again after applying the
 # NA replace_function as this might mess with the structure.
 
 ### all -9's are gone! Hooray! but some odd 0's in the  measures.. deal with in later scripts..
+
+# ## Ruth's function for removing rows where all values are NA. CM
+# rem_na_df <- function(dat_fr = mydata) {
+#   
+#   # Create function which counts the number of NA's in each row. 
+#   countNAs <- function(x) {length(which(is.na(x)))}
+#   numNAs <- apply(dat_fr,1,countNAs)
+#   # apply this function to each row (2nd argument = 1) in the dataset using apply, 
+#   # and store this in a new vector called numNAs 
+#   
+#   nrow(dat_fr[numNAs == ncol(dat_fr),])
+#   
+#   #  Delete all blank rows by Deleting rows where all cells are NA's 
+#   #  These will be rows where numNAs is equal to the number col of the dataframe
+#   dat_fr <- dat_fr[numNAs != ncol(dat_fr),]
+#   
+# }
+# 
+# HH <- rem_na_df(HH)
+# HL <- rem_na_df(HL)
+

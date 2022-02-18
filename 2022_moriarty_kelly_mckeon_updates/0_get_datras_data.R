@@ -21,7 +21,11 @@
 # BTS 7a is now included in BTS survey data folder. 
 
 
-
+## Note on running the whole script through in one go - 
+## because you are creating such heavy traffic along the web connection to the DATRAS website (vague pedestrian understanding), you get connection errors
+## i.e. Error in download.file(url, destfile = tmp, quiet = TRUE, method = "curl") : 'curl' call had nonzero exit status
+## using gc() helps
+## but also if you shift to another connection i.e. hotspot off your phone; problem solved.
 
 #install.packages("icesDatras")
 library(icesDatras)
@@ -158,34 +162,41 @@ write.csv(HH_BTS, "Raw_Data/DATRAS/BTS/HH_data_BTS.csv", row.names = FALSE )
 
 HH_NSIBTS <- getDATRAS(record = "HH", survey = "NS-IBTS",
                        years = 1965:2021, quarters = c(1,2,3,4))
+gc()
 
 HL_NSIBTS_80 <- getDATRAS(record = "HL", survey = "NS-IBTS",
                        years = 1965:1980, quarters = c(1,2,3,4))
 
-
+gc()
 HL_NSIBTS_90 <- getDATRAS(record = "HL", survey = "NS-IBTS",
                           years = 1981:1990, quarters = c(1,2,3,4))
 
-
+gc()
 HL_NSIBTS_00 <- getDATRAS(record = "HL", survey = "NS-IBTS",
                           years = 1991:2000, quarters = c(1,2,3,4))
 
+gc()
+Sys.sleep(60)
 
 HL_NSIBTS_10 <- getDATRAS(record = "HL", survey = "NS-IBTS",
                           years = 2001:2010, quarters = c(1,2,3,4))
-
+gc()
 HL_NSIBTS_21 <- getDATRAS(record = "HL", survey = "NS-IBTS",
                           years = 2011:2021, quarters = c(1,2,3,4))
+gc()
+Sys.sleep(60)
+
 
 HL_NSIBTS <- rbind(HL_NSIBTS_00,HL_NSIBTS_10,
                    HL_NSIBTS_21, HL_NSIBTS_80,
                    HL_NSIBTS_90)
-beep(sound = 1, expr = NULL)
+
 
 head(HL_NSIBTS)
 write.csv(HH_NSIBTS, "Raw_Data/DATRAS/NS-IBTS/HH_NSIBTS.csv")
 
 write.csv(HL_NSIBTS, "Raw_Data/DATRAS/NS-IBTS/HL_NSIBTS.csv")
+gc()
 
 ### other beam trawls included in the Datras WGBeam product for possible inclusion. 
 
@@ -200,6 +211,9 @@ HLSNS <- getDATRAS(record = "HL", survey = "SNS",
 write.csv(HH_SNS, "Raw_Data/DATRAS/Beam_oth/HH_SNS.csv")
 write.csv(HLSNS, "Raw_Data/DATRAS/Beam_oth/HL_SNS.csv")
 
+gc()
+Sys.sleep(60)
+
 # BTS area VIII - France
 
 HH_BT8 <- getDATRAS(record = "HH", survey = "BTS-VIII",
@@ -211,6 +225,8 @@ HL_BT8<- getDATRAS(record = "HL", survey = "BTS-VIII",
 write.csv(HH_BT8, "Raw_Data/DATRAS/Beam_oth/HH_BTS8.csv")
 write.csv(HL_BT8, "Raw_Data/DATRAS/Beam_oth/HL_BTS8.csv")
 
+gc()
+Sys.sleep(60)
 
 # DYFS - Inshore Beam Trawl (young fish survey)
 
@@ -237,6 +253,9 @@ HL_SPP<- getDATRAS(record = "HL", survey = "SP-PORC",
 write.csv(HH_SPP, "Raw_Data/DATRAS/Spain/HH_SP_PORC.csv")
 write.csv(HL_SPP, "Raw_Data/DATRAS/Spain/HL_SP_PORC.csv")
 
+gc()
+Sys.sleep(60)
+
 # Spanish North Coast
 
 HH_SPN <- getDATRAS(record = "HH", survey = "SP-NORTH",
@@ -248,6 +267,9 @@ HL_SPN<- getDATRAS(record = "HL", survey = "SP-NORTH",
 write.csv(HH_SPN, "Raw_Data/DATRAS/Spain/HH_SP_NORTH.csv")
 write.csv(HL_SPN, "Raw_Data/DATRAS/Spain/HL_SP_NORTH.csv")
 
+gc()
+Sys.sleep(60)
+
 # Spanish Gulf of Cadiz
 
 HH_SPA <- getDATRAS(record = "HH", survey = "SP-ARSA",
@@ -258,3 +280,6 @@ HL_SPA<- getDATRAS(record = "HL", survey = "SP-ARSA",
 
 write.csv(HH_SPA, "Raw_Data/DATRAS/Spain/HH_SP_ARSA.csv")
 write.csv(HL_SPA, "Raw_Data/DATRAS/Spain/HL_SP_ARSA.csv")
+
+gc()
+beep(sound = 1, expr = NULL)

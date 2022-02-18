@@ -1,7 +1,7 @@
 ###################
 # Version Control #
 ###################
-# R version 3.2.2 (2015-08-14): Fire Safety 
+# R version 3.6.3 (2015-08-14): Fire Safety 
 # platform       x86_64-w64-mingw32 (64-bit)
 ###############
 # Script Info #
@@ -43,54 +43,54 @@ setSeed <- set.seed(627)
 # Read in haul header data
 
 ## scottish files are now split into two on Datras (RK)
-HH_SWC1<-read.csv("./Raw_Data/DATRAS_08_06_2021/SWC-IBTS/HH_data_SWC_IBTS1_09_06_2021.csv")
-HH_SWC2<-read.csv("./Raw_Data/DATRAS_08_06_2021/SWC-IBTS/HH_data_SWC_IBTS2_09_06_2021.csv")
+HH_SWC1<-read.csv("./Raw_Data/DATRAS/SWC-IBTS/HH_data_SWC_IBTS1.csv")
+HH_SWC2<-read.csv("./Raw_Data/DATRAS/SWC-IBTS/HH_data_SWC_IBTS2.csv")
 HH_SWC <- rbind(HH_SWC1,HH_SWC2)
 rm(HH_SWC1)
 rm(HH_SWC2)
 ## Rockall (Scottish)
-HH_ROCK1 <-read.csv("Raw_Data/DATRAS_08_06_2021/ROCKALL/HH_data_ROC1_09_06_2021.csv")
-HH_ROCK2 <-read.csv("Raw_Data/DATRAS_08_06_2021/ROCKALL/HH_data_ROC2_09_06_2021.csv")
+HH_ROCK1 <-read.csv("Raw_Data/DATRAS/ROCKALL/HH_data_ROC1.csv")
+HH_ROCK2 <-read.csv("Raw_Data/DATRAS/ROCKALL/HH_data_ROC2.csv")
 HH_ROCK <- rbind(HH_ROCK1, HH_ROCK2)
 rm(HH_ROCK1, HH_ROCK2)
 
 ## Portugal 
-HH_PT<-read.csv("Raw_Data/DATRAS_08_06_2021/PT-IBTS/HH_data_PTIBTS_09_06_2021.csv")
+HH_PT<-read.csv("Raw_Data/DATRAS/PT-IBTS/HH_data_PTIBTS.csv")
 
 ## Irish Sea (NI)
-HH_NIGFS<-read.csv("Raw_Data/DATRAS_08_06_2021/NIGFS/HH_data_NIGFS_08_06_2021.csv")
+HH_NIGFS<-read.csv("Raw_Data/DATRAS/NIGFS/HH_data_NIGFS.csv")
 
 ## Irish Ground Fish
-HH_IGFS<-read.csv("Raw_Data/DATRAS_08_06_2021/IE-IGFS/HH_data_IEIGFS_09_06_2021.csv")
+HH_IGFS<-read.csv("Raw_Data/DATRAS/IE-IGFS/HH_data_IEIGFS.csv")
 
 
 ## France - Channel Groundfish
-HH_FRCGFS<-read.csv("Raw_Data/DATRAS_08_06_2021/FR-CGFS/HH_data_FRCGFS_08_06_2021.csv")
+HH_FRCGFS<-read.csv("Raw_Data/DATRAS/FR-CGFS/HH_data_FRCGFS.csv")
 
 ## France EVHOE
-HH_EVHOE<-read.csv("Raw_Data/DATRAS_08_06_2021/EVHOE/HH_data_EVHOE_08_06_2021.csv")
+HH_EVHOE<-read.csv("Raw_Data/DATRAS/EVHOE/HH_data_EVHOE.csv")
 
 ## Beam trawl
-HH_BTS<-read.csv("Raw_Data/DATRAS_08_06_2021/BTS/HH_data_BTS_09_06_2021.csv")
+HH_BTS<-read.csv("Raw_Data/DATRAS/BTS/HH_data_BTS.csv")
 
 ## HH_BTS7a<-read.csv("./Raw_Data/DATRAS_30-03-2017/BTS-VIIa/Exchange Data_2017-03-30 15_45_09.csv") 
 ## this is now incuded in the above BTS file I think RK
 
 ## North Sea 
-HH_NSIBTS<-read.csv("Raw_Data/DATRAS_08_06_2021/NS-IBTS/HH_NSIBTS_09_06_2021.csv",row.names = "X")
+HH_NSIBTS<-read.csv("Raw_Data/DATRAS/NS-IBTS/HH_NSIBTS.csv",row.names = "X")
 
 ## Spain
 
-HH_SP_PORC<-read.csv("Raw_Data/DATRAS_08_06_2021/SPAIN/HH_data_SP_PORC_09_06_2021.csv")
-HH_SP_ARSA<-read.csv("Raw_Data/DATRAS_08_06_2021/SPAIN/HH_SP_ARSA_09_06_2021.csv", row.names = "X")
-HH_SP_NORTH<-read.csv("Raw_Data/DATRAS_08_06_2021/SPAIN/HH_SP_NORTH_09_06_2021.csv", row.names = "X")
+HH_SP_PORC<-read.csv("Raw_Data/DATRAS/SPAIN/HH_data_SP_PORC.csv")
+HH_SP_ARSA<-read.csv("Raw_Data/DATRAS/SPAIN/HH_SP_ARSA.csv", row.names = "X")
+HH_SP_NORTH<-read.csv("Raw_Data/DATRAS/SPAIN/HH_SP_NORTH.csv", row.names = "X")
 
 names(HH_NSIBTS)
 
 # Read biological data (Datras HL files)
 
-HL_SWC1<-read.csv("Raw_Data/DATRAS_08_06_2021/SWC-IBTS/HL_data_SWC_IBTS1_09_06_2021.csv")
-HL_SWC2<-read.csv("Raw_Data/DATRAS_08_06_2021/SWC-IBTS/HL_data_SWC_IBTS2_09_06_2021.csv")
+HL_SWC1<-read.csv("Raw_Data/DATRAS/SWC-IBTS/HL_data_SWC_IBTS1.csv")
+HL_SWC2<-read.csv("Raw_Data/DATRAS/SWC-IBTS/HL_data_SWC_IBTS2.csv")
 
 setdiff(names(HL_SWC1), names(HL_SWC2))
 setdiff(names(HL_SWC2), names(HL_SWC1))
@@ -110,20 +110,22 @@ HL_SWC <- rbind(HL_SWC1, HL_SWC2)
 rm(HL_SWC1, HL_SWC2)
 
 
-HL_ROCK1<-read.csv("Raw_Data/DATRAS_08_06_2021/ROCKALL/HL_data_ROC1_09_06_2021.csv")
-HL_ROCK2<-read.csv("Raw_Data/DATRAS_08_06_2021/ROCKALL/HL_data_ROC2_09_06_2021.csv")
+HL_ROCK1<-read.csv("Raw_Data/DATRAS/ROCKALL/HL_data_ROC1.csv")
+HL_ROCK2<-read.csv("Raw_Data/DATRAS/ROCKALL/HL_data_ROC2.csv")
 HL_ROCK <- rbind(HL_ROCK1,HL_ROCK2)
 rm(HL_ROCK1,HL_ROCK2)
 
+gc()
+
 ###  
-HL_PT<-read.csv("Raw_Data/DATRAS_08_06_2021/PT-IBTS/HL_data_PTIBTS_09_06_2021.csv")
-HL_NIGFS<-read.csv("Raw_Data/DATRAS_08_06_2021/NIGFS/HL_data_NIGFS_08_06_2021.csv")
-HL_IGFS<-read.csv("Raw_Data/DATRAS_08_06_2021/IE-IGFS/HL_data_IEIGFS_09_06_2021.csv")
-HL_EVHOE<-read.csv("Raw_Data/DATRAS_08_06_2021/EVHOE/HL_data_EVHOE_08_06_2021.csv")
-HL_BTS<-read.csv("Raw_Data/DATRAS_08_06_2021/BTS/HL_data_BTS_09_06_2021.csv")
-HL_FRCGFS<-read.csv("Raw_Data/DATRAS_08_06_2021/FR-CGFS/HL_data_FRCGRS_08_06_2021.csv")
+HL_PT<-read.csv("Raw_Data/DATRAS/PT-IBTS/HL_data_PTIBTS.csv")
+HL_NIGFS<-read.csv("Raw_Data/DATRAS/NIGFS/HL_data_NIGFS.csv")
+HL_IGFS<-read.csv("Raw_Data/DATRAS/IE-IGFS/HL_data_IEIGFS.csv")
+HL_EVHOE<-read.csv("Raw_Data/DATRAS/EVHOE/HL_data_EVHOE.csv")
+HL_BTS<-read.csv("Raw_Data/DATRAS/BTS/HL_data_BTS.csv")
+HL_FRCGFS<-read.csv("Raw_Data/DATRAS/FR-CGFS/HL_data_FRCGRS.csv")
 #HL_BTS7a<-read.csv("./Raw_Data/DATRAS_30-03-2017/BTS-VIIa/Exchange Data_2017-03-30 15_44_22.csv")
-HL_NSIBTS<-read.csv("Raw_Data/DATRAS_08_06_2021/NS-IBTS/HL_NSIBTS_09_06_2021.csv", row.names = "X")
+HL_NSIBTS<-read.csv("Raw_Data/DATRAS/NS-IBTS/HL_NSIBTS.csv", row.names = "X")
 
 ###############################
 # Add national submitted data##
@@ -141,14 +143,14 @@ NS_DEN_sp_1986<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1986_GOV.CSV", header
 # Northern Irish Data #
 #######################
 # Northern Ireland early data not available on Datras
-NI_extra<-read.csv("./Raw_Data/National Submissions/Datras_MSFD_NI/Datras_MSFD1.csv", header=F)
-
+#NI_extra<-read.csv("./Raw_Data/National Submissions/Datras_MSFD_NI/Datras_MSFD1.csv", header=F) ## not present in the folder. CM
+NI_extra<-read.csv("./Raw_Data/National Submissions/Datras_MSFD_NI/Datras_MSFD3.txt", header=F)
 
 ### Spain
 
-HL_SP_PORC <- read.csv("Raw_Data/DATRAS_08_06_2021/SPAIN/HL_data_SP_PORC_09_06_2021.csv")
-HL_SP_ARSA  <- read.csv("Raw_Data/DATRAS_08_06_2021/SPAIN/HL_SP_ARSA_09_06_2021.csv", row.names = "X")
-HL_SP_NORTH  <- read.csv("Raw_Data/DATRAS_08_06_2021/SPAIN/HL_SP_NORTH_09_06_2021.csv", row.names = "X")
+HL_SP_PORC <- read.csv("Raw_Data/DATRAS/SPAIN/HL_data_SP_PORC.csv")
+HL_SP_ARSA  <- read.csv("Raw_Data/DATRAS/SPAIN/HL_SP_ARSA.csv", row.names = "X")
+HL_SP_NORTH  <- read.csv("Raw_Data/DATRAS/SPAIN/HL_SP_NORTH.csv", row.names = "X")
 
 ### reformat SP PORC cols to match others.. .
 names(HL_SP_PORC)
@@ -162,3 +164,10 @@ HL_SP_PORC$Valid_Aphia <- HL_SP_PORC$ValidAphiaID  ## move and rename Aphia Id c
 HL_SP_PORC <- HL_SP_PORC[,-28] ## remove old apha ID column which is now moved. 
 
 which(names(HL_SP_PORC) != names(HL_SWC)) ### now match and can be rbound
+
+## also do for HL_BTS
+HL_BTS <- HL_BTS[,-29]
+
+HL_BTS$Valid_Aphia <- HL_BTS$ValidAphiaID  ## move and rename Aphia Id col to match SWC2
+
+HL_BTS <- HL_BTS[,-28] ## remove old apha ID column which is now moved.

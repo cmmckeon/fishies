@@ -104,10 +104,11 @@ HH1<-rbind(HH, NI_HH,  fill=TRUE)
 unique(HH1$Ship)
 
 ### Co is the corystes vessel code should be 
+HH1$Ship <- as.character(HH1$Ship) ## making sure we don't generate NAs with unknown factor levels. CM
 HH1$Ship[HH1$Ship == "CO"] <- "74RY" 
 HH1$Ship[HH1$Ship == "7.4e+10"] <- "74E9"
 HH1$Ship[HH1$Ship == "LF"] <- "74LG"
-
+HH1$Ship <- factor(HH1$Ship)
 
 HH1$UniqueID<-paste(HH1$Survey,HH1$Year,HH1$Quarter,HH1$Ship, 
                     HH1$HaulNo, HH1$Gear, sep="/")
@@ -124,9 +125,11 @@ HL1<-rbind(HL,NI_HL, fill=TRUE)
 table(HL1$Ship)
 
 ### Co is the corystes vessel code should be 
+HL1$Ship <- as.character(HHL$Ship) ## making sure we don't generate NAs with unknown factor levels. CM
 HL1$Ship[HL1$Ship == "CO"] <- "74RY" 
 HL1$Ship[HL1$Ship == "7.4e+10"] <- "74E9"
 HL1$Ship[HL1$Ship == "LF"] <- "74LG"
+HL1$Ship <- factor(HHL$Ship)
 
 HL1$UniqueID<-paste(HL1$Survey,HL1$Year,HL1$Quarter,HL1$Ship, 
                    HL1$HaulNo, HL1$Gear, sep="/")
