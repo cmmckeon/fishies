@@ -16,11 +16,13 @@
 # REVIEWED BY: Nicola Walker (Cefas) Jonas Hentati Sundberg (SLU)
 # Edits - Ruth Kelly (AFBI)- R version 4.0.4 (2021-02-15) -- "Lost Library Book"
 
+# load("./script5_output.rda")
+
 ##########################
 # Load Data Frame Again  #
 ##########################
-HH<-read.csv("Data_QA_Process_V4_2021/Diagnostics/Diagnostic_data/Working_HH_file.csv", row.names = "X")
-HL<-read.csv("Data_QA_Process_V4_2021/Diagnostics/Diagnostic_data/Working_HL_file.csv", row.names = "X")
+HH<-read.csv("Diagnostic_data/Working_HH_file.csv", row.names = "X")
+HL<-read.csv("Diagnostic_data/Working_HL_file.csv", row.names = "X")
 
 # rm(HL3, hauls) - if present from preivous script - RK
 

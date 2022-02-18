@@ -22,6 +22,8 @@
 # The first step in the correction procedure is to add in any missing data
 # these are the datasets that were stored loaded up during script 2_Loading_data
 
+# load("./script3_output.rda")
+
 # Correction 1: Northern Ireland Data 1992 - 2007
 # this data is not currently available on DATRAS
 head(NI_extra)
@@ -125,11 +127,11 @@ HL1<-rbind(HL,NI_HL, fill=TRUE)
 table(HL1$Ship)
 
 ### Co is the corystes vessel code should be 
-HL1$Ship <- as.character(HHL$Ship) ## making sure we don't generate NAs with unknown factor levels. CM
+HL1$Ship <- as.character(HL1$Ship) ## making sure we don't generate NAs with unknown factor levels. CM
 HL1$Ship[HL1$Ship == "CO"] <- "74RY" 
 HL1$Ship[HL1$Ship == "7.4e+10"] <- "74E9"
 HL1$Ship[HL1$Ship == "LF"] <- "74LG"
-HL1$Ship <- factor(HHL$Ship)
+HL1$Ship <- factor(HL1$Ship)
 
 HL1$UniqueID<-paste(HL1$Survey,HL1$Year,HL1$Quarter,HL1$Ship, 
                    HL1$HaulNo, HL1$Gear, sep="/")
@@ -997,5 +999,6 @@ HL2<-subset(HL2, !SpecVal=="0", )
 ##############################################
 # Some extra things I've come across that needs fixing
 
-
+save(list=ls(all=T), file = "./script4_output.rda")
+#load("./script4_output.rda")
 

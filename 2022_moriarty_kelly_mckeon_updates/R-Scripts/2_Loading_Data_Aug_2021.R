@@ -13,6 +13,13 @@
 # Editted for 2021 rerun by Ruth Kelly (AFBI) - R version 4.0.4 (2021-02-15) -- "Lost Library Book"
 #############
 # Load data #
+
+# load("./script1_output.rda")
+# load("./script2_output.rda")
+
+## OR
+
+
 #############
 # If FALSE, mostly suppress CI computation
 need.CI <- FALSE
@@ -135,10 +142,10 @@ HL_NSIBTS<-read.csv("Raw_Data/DATRAS/NS-IBTS/HL_NSIBTS.csv", row.names = "X")
 ##############
 # Add corrections of data from National Data providers
 # Denmark earliest years of survey were missing species
-NS_DEN_sp_1983<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1983_GOV.CSV", header=F)
-NS_DEN_sp_1984<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1984_GOV.CSV", header=F)
-NS_DEN_sp_1985<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1985_GOV.CSV", header=F)
-NS_DEN_sp_1986<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1986_GOV.CSV", header=F)
+NS_DEN_sp_1983<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1983_GOV.CSV", header=F, stringsAsFactors = FALSE)
+NS_DEN_sp_1984<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1984_GOV.CSV", header=F, stringsAsFactors = FALSE)
+NS_DEN_sp_1985<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1985_GOV.CSV", header=F, stringsAsFactors = FALSE)
+NS_DEN_sp_1986<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1986_GOV.CSV", header=F, stringsAsFactors = FALSE)
 #######################
 # Northern Irish Data #
 #######################
@@ -171,3 +178,6 @@ HL_BTS <- HL_BTS[,-29]
 HL_BTS$Valid_Aphia <- HL_BTS$ValidAphiaID  ## move and rename Aphia Id col to match SWC2
 
 HL_BTS <- HL_BTS[,-28] ## remove old apha ID column which is now moved.
+
+save(list=ls(all=T), file = "./script2_output.rda")
+#load("./script2_output.rda")

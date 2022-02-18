@@ -130,4 +130,7 @@ rand_vect <- function(N, M, sd = 1, pos.only = TRUE) {
 #########################
 # Set Working Directory #
 #########################
-setwd("C:/R/OSPAR_IBTS_dc")
+#setwd("C:/R/OSPAR_IBTS_dc")
+
+save(list=ls(all=T), file = "./script1_output.rda")
+#load("./script1_output.rda")

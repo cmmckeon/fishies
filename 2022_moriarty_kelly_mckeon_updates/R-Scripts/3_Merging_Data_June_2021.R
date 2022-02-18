@@ -19,6 +19,11 @@
 # better able to deal with larger data files.
 # convert all HH data frames to data tables
 
+# load("./script2_output.rda")
+# load("./script3_output.rda")
+
+## OR
+
 gc()
 # cut each dataset to the start date used by Moriarty et al.2017 - RK 2021
 HH_EVHOE<-as.data.table(HH_EVHOE)
@@ -289,23 +294,23 @@ summary(HL)
 par(mfrow = c(3,3))
 
 
-HHx <- as.data.frame(HH)
-## Numeric variables
-for (i in names(Filter(is.numeric, HHx))) {
-  hist(HHx[,i],
-       breaks = 3000,
-       main = paste(i),
-       xlab = paste(i))
-}
-
-HLx <- as.data.frame(HL)
-## Numeric variables
-for (i in names(Filter(is.numeric, HLx))) {
-  hist(HLx[,i],
-       breaks = 3000,
-       main = paste(i),
-       xlab = paste(i))
-}
+# HHx <- as.data.frame(HH)
+# ## Numeric variables
+# for (i in names(Filter(is.numeric, HHx))) {
+#   hist(HHx[,i],
+#        breaks = 3000,
+#        main = paste(i),
+#        xlab = paste(i))
+# }
+# 
+# HLx <- as.data.frame(HL)
+# ## Numeric variables
+# for (i in names(Filter(is.numeric, HLx))) {
+#   hist(HLx[,i],
+#        breaks = 3000,
+#        main = paste(i),
+#        xlab = paste(i))
+# }
 
 # if all is good- move on, if not rerun numeric col stuff again after applying the
 # NA replace_function as this might mess with the structure.
@@ -331,4 +336,9 @@ for (i in names(Filter(is.numeric, HLx))) {
 # 
 # HH <- rem_na_df(HH)
 # HL <- rem_na_df(HL)
+
+save(list=ls(all=T), file = "./script3_output.rda")
+#load("./script3_output.rda")
+
+
 
