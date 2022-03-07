@@ -19,6 +19,7 @@
 # Script parts relating to the Biological Product and Standard Sample Area are 
 # deleted for simplicity. 
 
+# load("./script6_output.rda")
 
 #############
 # Prep Data #
@@ -28,7 +29,7 @@
 
 ## to run without running previous scripts load
 # setwd("C:/R/OSPAR_IBTS_dc")
-# hauls <- read.csv("Data_QA_Process_V4_2021/final_full_cleaned_hauls-end-haul-QA.csv")
+# hauls <- read.csv("Data_QA_Process_V5_2022/final_full_cleaned_hauls-end-haul-QA.csv")
 
 h<-hauls
 # check that the final list of hauls match in both groups
@@ -61,6 +62,9 @@ h$Survey_Acronym[h$Survey=="SCOWCGFS"&h$Quarter=="4"]<-"CSScoOT4"
 h$Survey_Acronym[h$Survey=="IE-IGFS"&h$Quarter=="4"]<-"CSIreOT4"
 
 h$Survey_Acronym[h$Survey=="NIGFS"&h$Quarter=="1"]<-"CSNIrOT1"
+
+h$Survey_Acronym[h$Survey=="NIGFS"&h$Quarter=="2"]<-"CSNIrOT2" ## CM Feb 2022
+
 h$Survey_Acronym[h$Survey=="NIGFS"&h$Quarter=="4"]<-"CSNIrOT4"
 h$Survey_Acronym[h$Survey=="EVHOE"&h$Quarter=="4"]<-"CSBBFraOT4"
 # h$Survey_Acronym[h$Survey=="SP-ARSA"&h$Quarter=="1"]<-"BBIC(s)SpaOT1"
@@ -112,6 +116,7 @@ h$SurvStratum<-h$DepthStratum
 summary(as.factor(h$SurvStratum))
 # Sort out strata 
 names(h)
+h$SurvStratum <- as.character(h$SurvStratum)
 h$SurvStratum[h$Survey_Acronym=="GNSIntOT1"]<-h$ICESStSq[h$Survey_Acronym=="GNSIntOT1"]
 h$SurvStratum[h$Survey_Acronym=="GNSIntOT3"]<-h$ICESStSq[h$Survey_Acronym=="GNSIntOT3"]
 h$SurvStratum[h$Survey_Acronym=="GNSGerBT3"]<-h$ICESStSq[h$Survey_Acronym=="GNSGerBT3"]
@@ -201,8 +206,12 @@ haul_dat<-subset(h,
                           WingSwpVol_CorF, DoorSwptArea_CorF,DoorSwptVol_CorF,
                           SurveyDATRAS))
 
+require(rgdal)
+europe<-readOGR("./Regional Boundaries Maps and Data/shapes//europe.dbf","europe") ## CM Feb 2022
+
+
 for (cat in unique(haul_dat$Survey_Acronym)){
-  mypath <- file.path(paste("Data_QA_Process_V4_2021/Diagnostics/Haul Diagnostics", cat, ".jpeg", sep = ""))
+  mypath <- file.path(paste("Data_QA_Process_V5_2022/Diagnostics/Haul Diagnostics", cat, ".jpeg", sep = ""))
   jpeg(file=mypath)
   par(mfrow=c(2,3))
   d <- subset(haul_dat, Survey_Acronym == cat)
@@ -229,7 +238,16 @@ for (cat in unique(haul_dat$Survey_Acronym)){
 }
 summary(haul_dat)
 
-write.csv(haul_dat, "Data_QA_Process_V4_2021/Sampling_info_all_surveysV4_13-06-2021.csv", row.names = FALSE)
-write.csv(haul_dat, "Data_QA_Process_V4_2021/Sampling_info_all_surveysV4_13-06-2021.txt",  row.names = FALSE)
+write.csv(haul_dat, "Data_QA_Process_V5_2022/Sampling_info_all_surveysV5.csv", row.names = FALSE)
+write.csv(haul_dat, "Data_QA_Process_V5_2022/Sampling_info_all_surveysV5.txt",  row.names = FALSE)
 
-write.csv(table(haul_dat$YearShot,haul_dat$SurveyDATRAS), "Data_QA_Process_V4_2021/Hauls_per_year_final_prod.csv")
+write.csv(table(haul_dat$YearShot,haul_dat$SurveyDATRAS), "Data_QA_Process_V5_2022/Hauls_per_year_final_prod.csv")
+
+# ## Looking at which varibles still contain NAs
+# list <- c()
+# for (i in names(h)){
+#   list[i] <-length(which(is.na(h[,i])))
+# }
+# 
+# print(list)  
+

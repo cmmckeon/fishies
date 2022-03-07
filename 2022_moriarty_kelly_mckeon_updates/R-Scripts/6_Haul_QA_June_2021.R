@@ -88,7 +88,7 @@ europe<-readOGR("./Regional Boundaries Maps and Data/shapes//europe.dbf","europe
 contour_1000m<-readOGR("./Regional Boundaries Maps and Data/shapes//1000m.dbf","1000m")
 NWW_boundary<-readOGR("./Regional Boundaries Maps and Data/shapes//NWW_boundary.dbf","NWW_boundary")
 contour_200m<-readOGR(".//Regional Boundaries Maps and Data/shapes//200m.dbf","200m")
-ospar<-readOGR("./Regional Boundaries Maps and Data/ospar_boundaries//OSPAR_inner_Boundary.dbf", "OSPAR_inner_Boundary")
+ospar<-readOGR("./Regional Boundaries Maps and Data/ospar_boundaries//OSPAR_Inner_Boundary.dbf", "OSPAR_Inner_Boundary") ## capitalised "Inner" in file path. CM feb 2022
 sco1<-readOGR("./Regional Boundaries Maps and Data/SWCQ1.WGS84//SWC_Q1.dbf", "SWC_Q1")
 sco3<-readOGR("./Regional Boundaries Maps and Data/SWCQ4.WGS84//SWC_Q4.dbf", "SWC_Q4")
 ices<-readOGR("./Regional Boundaries Maps and Data/ICES_rectangles_statistics/ICES_rectangles_statistics.dbf", "ICES_rectangles_statistics")
@@ -104,6 +104,7 @@ par(mai=c(0,0,0,0),bg='white' )
 plot(NWW_boundary, border="white", xlim = c(-16,13), ylim = c(36, 62))
 plot(europe,add=TRUE, xlim = c(-16, 13), ylim = c(36, 62), asp = 1, col=c('gray81'), 
      border='gray3')
+gc()
 # plot(contour_200m, add=TRUE, border="lightblue3")
 # plot(contour_1000m, add=TRUE, border="lightblue4")
 plot(ire, add=TRUE, lty=2, lwd=3, border="green")
@@ -154,7 +155,7 @@ summary(as.numeric(hauls$ShootLong))
 summary(papoue)
 
 # make a pretty map of all the stations
-png(file="Data_QA_Process_V4_2021/surveydepthmap.png")
+png(file="Data_QA_Process_V5_2022/surveydepthmap.png")
 blues <- c("lightsteelblue4", "lightsteelblue3",
            "lightsteelblue2", "lightsteelblue1")
 greys <- c(grey(0.99), grey(0.95), grey(0.85))
@@ -190,17 +191,19 @@ hauls$DepthNew[hauls$Depth==4]<-18
 hauls$DepthNew[hauls$Depth==-9]<-37
 summary(hauls$DepthNew)
 
+dev.new()
 
 # make a graph of all the difference between estimated and recorded depths
-png(file = "Data_QA_Process_V4_2021/Diagnostics/depth_differences.png", bg = "transparent")
+png(file = "Data_QA_Process_V5_2022/Diagnostics/depth_differences.png", bg = "transparent")
 plot(hauls$Depth, hauls$EstDepth, pch=19, xlab="Recorded Depth (m)",
      ylab="Estimated point depth (m)", ylim=c(0,800))
 abline(a=0, b=1, col="red")
 dev.off()
-write.csv(papoue, "Data_QA_Process_V4_2021/Diagnostics/Diagnostic_data/Bathy_map_12-06-2021.csv")
+dev.new()
+write.csv(papoue, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Bathy_map_12-06-2021.csv")
 
 # add some diagnostics to check if the differences in depth are acceptable 
-png(file = "Data_QA_Process_V4_2021/Diagnostics/map_depth_differences.png", bg = "transparent")
+png(file = "Data_QA_Process_V5_2022/Diagnostics/map_depth_differences.png", bg = "transparent")
 plot(papoue, image = TRUE, land = FALSE, lwd = 0.03,
      bpal = list(c(0, max(papoue), greys),
                  c(min(papoue), 0, blues)))
@@ -223,8 +226,9 @@ text(9.9, 49.5, "100m")
 text(9.9, 48.5, "1000m")
 text(9.9, 47.5, "2000m")
 dev.off()
+dev.new()
 
-png(file = "Data_QA_Process_V4_2021/Diagnostics/box_plot_depth_differences_survey.png", bg = "transparent")
+png(file = "Data_QA_Process_V5_2022/Diagnostics/box_plot_depth_differences_survey.png", bg = "transparent")
 plot(hauls$Survey,hauls$Diff_dep, col=cols[hauls$Survey], pch=19)
 dev.off()
 
@@ -357,6 +361,7 @@ hauls$EstSweepCat[hauls$EstSweepLngt==200]<-"long" ## Added by RK for long sweep
 sweepcatsummary<-ddply(hauls, c("Survey","Country", "Year", "Quarter", "EstSweepCat"),
                        summarise, N=length(EstSweepCat))
 
+
 #######################
 # 4.1.4 Haul Duration #
 #######################
@@ -371,34 +376,35 @@ summary(hauls$HaulDur)
 # if perfect we expect an intercept of 0 and a slope of 1
 
 hauls[which(hauls$Distance == 45074),] ## belgian BTS being off!
-png(file = "Data_QA_Process_V4_2021/Diagnostics/distance_speed_time_differences.png", bg = "transparent")
+png(file = "Data_QA_Process_V5_2022/Diagnostics/distance_speed_time_differences.png", bg = "transparent")
 par(xpd=FALSE)
 plot(hauls$GroundSpeed*1852/60*hauls$HaulDur, hauls$Distance, 
      pch=19, col="black", cex=0.5, xlab="Speed X Time", ylab="Distance")
 abline(a=0, b=1, col="lightgrey", lwd=2)
 dev.off()
-png(file="Data_QA_Process_V4_2021/Diagnostics/groundspeed_diagnostics.png", bg="transparent")
+png(file="Data_QA_Process_V5_2022/Diagnostics/groundspeed_diagnostics.png", bg="transparent")
 plot(hauls$HaulDur, hauls$GroundSpeed, pch=19, xlab="Time", ylab="Speed (knots)")
 abline(h=6, col="red")
 abline(h=2, col="red")
 dev.off()
 # Change the confidence interval fill color
-png(file = "Data_QA_Process_V4_2021/Diagnostics/distance_speed_time_differences_with_CI.png", bg = "transparent")
-p1<-ggplot(hauls, aes(x=hauls$GroundSpeed*1852/60*hauls$HaulDur,
-                      y=hauls$Distance)) + 
+png(file = "Data_QA_Process_V5_2022/Diagnostics/distance_speed_time_differences_with_CI.png", bg = "transparent")
+p1<-ggplot(hauls, aes(x=GroundSpeed*1852/60*HaulDur,
+                      y=Distance)) + 
   geom_point(shape=18, color="black")+
   geom_smooth(method=lm,  linetype="dashed",
               color="lightgrey", fill="darkgrey", se=TRUE, fullrange=FALSE, level=.95)
 p1 + scale_color_grey()+theme_classic()
 dev.off()
 # check ground speed
-png(file="Data_QA_Process_V4_2021/Diagnostics/groundspeed_boxplot.png", bg="transparent")
+png(file="Data_QA_Process_V5_2022/Diagnostics/groundspeed_boxplot.png", bg="transparent")
 plot(hauls$Survey, hauls$GroundSpeed, pch=19, xlab="Survey", 
      ylab="GroundSpeed (knots)", col="lightgrey")
 dev.off()
+dev.new()
 # outliers in Groundspeed found
 check<-hauls[hauls$GroundSpeed<3|hauls$GroundSpeed>5, ]
-png(file="Data_QA_Process_V4_2021/Diagnostics/groundspeed_distance_comparision.png", bg="transparent")
+png(file="Data_QA_Process_V5_2022/Diagnostics/groundspeed_distance_comparision.png", bg="transparent")
 plot(check$GroundSpeed*check$HaulDur*1852/60, check$Distance, pch=19, col="black")
 dev.off()
 # In Ns-IBTS 1995 it seems some of the french ground speeds are in the Speed Water Column
@@ -420,14 +426,14 @@ check<-hauls[hauls$GroundSpeed<3|hauls$GroundSpeed>5 ,]
 # GROUNDSPEED NOT RECORDED BUT DISTANCE AND DURATION RECORDED
 hauls$Realised_groundspeed<-hauls$Distance/hauls$HaulDur/1852*60
 ##summary(hauls$Estimated_groundspeed) # variable doesn't exist - RK
-
-png(file="Data_QA_Process_V4_2021/Diagnostics/groundspeed_predictedVdistance_divided_by_time.png", bg="transparent")
+dev.new()
+png(file="Data_QA_Process_V5_2022/Diagnostics/groundspeed_predictedVdistance_divided_by_time.png", bg="transparent")
 plot(hauls$Realised_groundspeed, hauls$GroundSpeed, 
      pch=19, col="lightgrey",
      xlim=c(1,6), ylim=c(1,6))
 abline(0,1, col="black")
 dev.off()
-png(file = "Data_QA_Process_V4_2021/Diagnostics/RecordedVRealisedGS.png", bg = "transparent")
+png(file = "Data_QA_Process_V5_2022/Diagnostics/RecordedVRealisedGS.png", bg = "transparent")
 plot(hauls$GroundSpeed, hauls$Distance/hauls$HaulDur/1852*60,
      pch=19, col="black", cex=1, xlab="Recorded Groundspeed (knots)", 
      ylab="Realised Groundspeed (knots)", xlim=c(0,9), ylim=c(0,9))
@@ -441,8 +447,12 @@ draw.circle(8.4, 8.4, 0.1, border="red", lty=4, lwd=2)
 dev.off()
 
 ##
+levels(hauls$Gear)
+hauls <- droplevels(hauls)
+levels(canSpeed$Gear)
+canSpeed <- droplevels(canSpeed)
 
-gs_model1<-lm(GroundSpeed~Quarter:Ship:Gear, data=hauls)
+gs_model1<-lm(GroundSpeed~Quarter:Ship:Gear, hauls)
 # pretty decent model here - problem is it won't work for all ships as I have some 
 # ships with no data at all on Ground speed to inform model
 summary(hauls$GroundSpeed)
@@ -464,10 +474,13 @@ anova(gs_model1,gs_model2)
 #predictedGS<-predict(gs_model2, hauls, allow.new.levels=F)
 # allmissing observations
 canSpeed<-subset(canSpeed, !canSpeed$Gear=="ROT",)
-canSpeed$predicted_groundspeed_gs1<-predict(gs_model1, canSpeed , allow.new.levels=T)
+
+canSpeed<-subset(canSpeed, !canSpeed$Gear=="BT8",) ## CM Feb 2022
+
+canSpeed$predicted_groundspeed_gs1<-predict(gs_model1, canSpeed, allow.new.levels=T)
 summary(canSpeed$predicted_groundspeed_gs1)
 plot(canSpeed$predicted_groundspeed_gs1,canSpeed$GroundSpeed, pch=19, col='grey' )
-gs5_dat<-subset(hauls, !hauls$Gear=="ROT",)
+gs5_dat<-subset(hauls, !hauls$Gear %in% c("ROT", "BT8")) ## add BT8 to the levels removed from this subset CM Feb 2022
 gs5_dat$predicted_groundspeed_gs2<-predict(gs_model2, gs5_dat , allow.new.levels=T)
 summary(gs5_dat$predicted_groundspeed_gs2)
 summary(canSpeed$predicted_groundspeed_gs1)
@@ -573,14 +586,14 @@ hauls1[ !is.na(SpeedTimeDist) &is.na(newDist)&
 summary(as.numeric(hauls1$newDist))
 
 # check new distances relationships
-png(file="Data_QA_Process_V4_2021/Diagnostics/distance_speed_time_differences.png", bg = "transparent")
+png(file="Data_QA_Process_V5_2022/Diagnostics/distance_speed_time_differences.png", bg = "transparent")
 par(xpd=FALSE)
 plot(hauls1$SpeedTimeDist, hauls1$newDist, 
      pch=19, col="black", cex=0.5, xlab="Speed X Time", ylab="Distance")
 abline(a=0, b=1, col="lightgrey", lwd=2)
 dev.off()
 # Check distances within bounds
-png(file="Data_QA_Process_V4_2021/Diagnostics/distance_speed_time_differences_bounds.png", bg = "transparent")
+png(file="Data_QA_Process_V5_2022/Diagnostics/distance_speed_time_differences_bounds.png", bg = "transparent")
 par(xpd=FALSE)
 plot(hauls1$SpeedTimeDist, hauls1$newDist, 
      pch=19, col="black", cex=0.5, xlab="Speed X Time", ylab="Distance")
@@ -663,7 +676,7 @@ hauls1$newDist[is.na(hauls1$newDist)]<-hauls1$SpeedTimeDist[is.na(hauls1$newDist
 summary(hauls1$newDist)
 
 # all vaules within accepted bounds.
-png(file="Data_QA_Process_V4_2021/Diagnostics/distances_cleaned.png", bg = "transparent")
+png(file="Data_QA_Process_V5_2022/Diagnostics/distances_cleaned.png", bg = "transparent")
 plot(hauls1$HaulDur, hauls1$newDist, pch=19, cex=0.5, xlab="Time", ylab="Distance")
 # perfect speed - 4 knots, bounds 2- 6 knots
 x<-c(13:66)
@@ -673,7 +686,7 @@ points(x, x*6*1852/60, type="l", col="red", lty=2, lwd=2)
 dev.off()
 # all distances in newDist are withing acceptable ranges the best estimate is applied in
 # each situation
-write.csv(hauls1, "Data_QA_Process_V4_2021/Diagnostics/Diagnostic_data/Working_hauls_12-06-2021.csv")
+write.csv(hauls1, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_hauls_12-06-2021.csv")
 # remove all the intermediate files 
 summary(as.factor(hauls1$qualityDistance))
 #############################################
@@ -759,7 +772,7 @@ data<-predict(ws_model1)
 summary(as.factor(train$Survey))
 summary(train$Survey)
 cols<-rainbow(13)
-png(file="Data_QA_Process_V4_2021/Diagnostics/GOV_Wingspreads_model1.png", bg="transparent")
+png(file="Data_QA_Process_V5_2022/Diagnostics/GOV_Wingspreads_model1.png", bg="transparent")
 plot(train$DepthNew, train$WingSpread, col=cols[as.factor(train$Survey)], 
      pch=15, xlab="Depth (m)", ylab="WingSpread(m)")
 points(train$DepthNew, exp(data), pch=21, col=cols[as.factor(train$Survey)],
@@ -827,7 +840,7 @@ r.squaredGLMM(model1_ds)
 cols<-rainbow(13)
 data<-predict(model1_ds)
 summary(as.factor(train$Survey))
-png(file="Data_QA_Process_V4_2021/Diagnostics/GOV_Doorspreads_model1.png", bg="transparent")
+png(file="Data_QA_Process_V5_2022/Diagnostics/GOV_Doorspreads_model1.png", bg="transparent")
 plot(train$DepthNew, train$DoorSpread, col=cols[as.factor(train$Survey)], 
      pch=15, xlab="Depth (m)", ylab="WingSpread(m)")
 points(train$DepthNew, exp(data), pch=21, col=cols[as.factor(train$Survey)],
@@ -873,7 +886,7 @@ summary(hauls$DoorSpread[hauls$Gear=="ROT"])
 # Doorspread can be sorted first
 # DoorSpread only has 955 missing values to be estimated
 
-png(file = "Data_QA_Process_V4_2021/Diagnostics/doorspread_ROT.png", bg = "transparent")
+png(file = "Data_QA_Process_V5_2022/Diagnostics/doorspread_ROT.png", bg = "transparent")
 plot(hauls$Depth[hauls$Gear=="ROT"], hauls$DoorSpread[hauls$Gear=="ROT"], 
      pch=19, xlab="Depth (m)",
      ylab="Door Spread (m)")
@@ -896,7 +909,7 @@ corrhaul_rot<-subset(hauls, Gear=="ROT",
                               DoorSpread))
 summary(corrhaul_rot)
 require(corrgram)
-png(file = "Data_QA_Process_V4_2021/Diagnostics/corrhaul_ROT.png", bg = "transparent")
+png(file = "Data_QA_Process_V5_2022/Diagnostics/corrhaul_ROT.png", bg = "transparent")
 corrgram(corrhaul_rot, order="PCA", lower.panel=panel.shade,
          upper.panel=panel.pie, text.panel=panel.txt,
          main="Hauls Data NI") 
@@ -935,7 +948,7 @@ summary(hauls$WingSpread[hauls$Gear=="ROT"])
 # Matt sent me some trail wingspreads to help to model these data
 # but data now available in DATRAS file 20 values available
 # lets look at these data first
-png(file = "Data_QA_Process_V4_2021/Diagnostics/wingspread_ROT.png", bg = "transparent")
+png(file = "Data_QA_Process_V5_2022/Diagnostics/wingspread_ROT.png", bg = "transparent")
 plot(hauls$DepthNew[hauls$Gear=="ROT"],hauls$WingSpread[hauls$Gear=="ROT"],
      pch=19, xlab="Depth (m)",
      ylab="Wingspread (m)" )
@@ -985,7 +998,7 @@ plot(train$WingSpread,train$Netopening )
 cols<-rainbow(6)
 data<-predict(lm5)
 summary(as.factor(train$Survey))
-png(file="Data_QA_Process_V4_2021/Diagnostics/GOV_Netopening_model1.png", bg="transparent")
+png(file="Data_QA_Process_V5_2022/Diagnostics/GOV_Netopening_model1.png", bg="transparent")
 plot(train$DepthNew, train$Netopening, col=cols[as.factor(train$Survey)], 
      pch=15, xlab="Depth (m)", ylab="Netopening(m)")
 points(train$DepthNew, exp(data), pch=21, col=cols[as.factor(train$Survey)],
@@ -1213,7 +1226,7 @@ hauls <- hauls[hauls$Gear != "BAK",]
 #                     hauls$Country=="ES"]<-"mod4_wingspread_spa"
 # summary(hauls$Use_WingSpread[hauls$Country=="ES"])
 # summary(as.factor(hauls$QualityWing[hauls$Country=="ES"]))
-# png(file="Data_QA_Process_V4_2021/Diagnostics/WingSpread_data_spain_col.png", bg="transparent")
+# png(file="Data_QA_Process_V5_2022/Diagnostics/WingSpread_data_spain_col.png", bg="transparent")
 # cols<- rainbow(3)
 # plot(hauls$DepthNew[hauls$Country=="ES"], hauls$Use_WingSpread[hauls$Country=="ES"],
 #      col=cols[as.factor(hauls$QualityWing[hauls$Country=="ES"])], pch=19,
@@ -1278,7 +1291,7 @@ hauls <- hauls[hauls$Gear != "BAK",]
 # 
 # summary(hauls$Use_DoorSpread[hauls$Country=="ES"])
 # summary(as.factor(hauls$QualityDoor[hauls$Country=="ES"]))
-# png(file="Data_QA_Process_V4_2021/Diagnostics/DoorSpread_data_spain_col.png", bg="transparent")
+# png(file="Data_QA_Process_V5_2022/Diagnostics/DoorSpread_data_spain_col.png", bg="transparent")
 # plot(hauls$DepthNew[hauls$Country=="ES"], hauls$Use_DoorSpread[hauls$Country=="ES"],
 #      col=cols[as.factor(hauls$QualityDoor[hauls$Country=="ES"])], pch=19,
 #      xlab="Depth (m)", ylab="DoorSpread (m)")
@@ -1322,7 +1335,7 @@ hauls <- hauls[hauls$Gear != "BAK",]
 # 
 # summary(hauls$Use_Netopening[hauls$Country=="ES"])
 # summary(as.factor(hauls$QualityNet[hauls$Country=="ES"]))
-# png(file="Data_QA_Process_V4_2021/Diagnostics/NetOpening_data_spain_col.png", bg="transparent")
+# png(file="Data_QA_Process_V5_2022/Diagnostics/NetOpening_data_spain_col.png", bg="transparent")
 # plot(hauls$DepthNew[hauls$Country=="ES"], hauls$Use_Netopening[hauls$Country=="ES"],
 #      col=cols[as.factor(hauls$QualityNet[hauls$Country=="ES"])], pch=19,
 #      xlab="Depth (m)", ylab="Net Opening (m)")
@@ -1337,7 +1350,7 @@ hauls <- hauls[hauls$Gear != "BAK",]
 # so at this point some of the results haven't transfered over - code reviewed
 # and changes made
 
-write.csv(hauls, "Data_QA_Process_V4_2021/Diagnostics/Diagnostic_data/hauls_monster_file_17-04-2017.csv")
+write.csv(hauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/hauls_monster_file_17-04-2017.csv")
 
 ###########################################################
 # 4.1.8 Calculation of the Area/Volume Swept by the Trawl #
@@ -1368,10 +1381,10 @@ summary(check_speed)
 
 hauls[, c("Wing/Door(Ratio)"):= list(hauls$Use_WingSpread/hauls$Use_DoorSpread),]
 # Save "raw" files - before all estimated data is added
-write.csv(HH, "Data_QA_Process_V4_2021/Raw_Combined_Data-end-haul-QA.csv")
+write.csv(HH, "Data_QA_Process_V5_2022/Raw_Combined_Data-end-haul-QA.csv")
 # remove from R environment
 # Save monster HH Chron File
-write.csv(hauls, "Data_QA_Process_V4_2021/final_full_cleaned_hauls-end-haul-QA.csv")
+write.csv(hauls, "Data_QA_Process_V5_2022/final_full_cleaned_hauls-end-haul-QA.csv")
 
 # take a list of haul IDs for use in the HL observation selection 
 list<-unique(hauls$NewUniqueID2)
@@ -1383,5 +1396,5 @@ setdiff( list, list1) ### these are due to removing 'BAK'
 
 HL1<-subset(HL, NewUniqueID2%in%list)
 
-
+save(list=ls(all=T), file = "./script6_output.rda")
 

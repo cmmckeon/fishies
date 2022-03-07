@@ -41,11 +41,10 @@
 # We show the processes undertaken to standardise/exclude hauls from the data set
 # Is the haul valid? yes retain, no remove
 
-
-# load("./script4_output.rda")
+ load("./script4_output.rda")
 
 invalidhauls<-subset(HH2, HaulVal=="I", ) # 1477 obs
-write.csv(invalidhauls, "Diagnostic_data/invalid_removed.csv")
+write.csv(invalidhauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/invalid_removed.csv")
 
 # Select only valid hauls 
 # Select important columns
@@ -113,7 +112,7 @@ list<-c('GOV','NCT','ROT','BT8','BT4A','BT7', 'PORB','BAK') ### readded PORB and
 non_standard_gear<-subset(hauls, !Gear%in%list,) ### 65056 hauls
 hauls <- subset(hauls, Gear%in%list, )
 summary(hauls$Gear)
-write.csv(non_standard_gear, "Diagnostic_data/deleted_non_standard_gear_hauls.csv")
+write.csv(non_standard_gear, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/deleted_non_standard_gear_hauls.csv")
 # What is the standard tow duration
 # Delete hauls that are outside of the standard time 
 
@@ -122,10 +121,10 @@ hist(hauls$HaulDur)
 summary(hauls$HaulDur)
 smallhauls<- subset(hauls, HaulDur<12 , )
 hauls<-subset(hauls, HaulDur>12 , )
-write.csv(smallhauls, "Diagnostic_data/deleted_too_short_hauls.csv")
+write.csv(smallhauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/deleted_too_short_hauls.csv")
 largehauls<- subset(hauls, HaulDur>67 ,)
 hauls<- subset(hauls, HaulDur<67 , )
-write.csv(largehauls, "Diagnostic_data/deleted_too_long_gear_hauls.csv")
+write.csv(largehauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/deleted_too_long_gear_hauls.csv")
 summary(as.numeric(hauls$HaulDur))
 # Is the Survey Coordinated eg Q1 NS-IBTS
 levels(as.factor(hauls$Survey))
@@ -229,7 +228,7 @@ table(hauls$QuarterCheck, hauls$Quarter)
 #####################################
 #
 
-write.csv(hauls, "Diagnostic_data/Working_HH_file_12-06-2021.csv")
+write.csv(hauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_HH_file_12-06-2021.csv")
 ## Check Unique IDS are unique
 check<-unique(hauls$NewUniqueID2)
 findduplicates<-hauls[duplicated(hauls$NewUniqueID2),]
@@ -251,8 +250,8 @@ hauls <- rbind(hauls_sub, add_SP)
 ### remove hauls no longer in the header data from the HL data
 
 HL2$NewUniqueID2<-paste(HL2$Survey,HL2$Year, HL2$Quarter,HL2$Ship, 
-                          HL2$HaulNo, HL2$Gear, HL2$StNo, HL2$Country,
-                          sep="/")
+                        HL2$HaulNo, HL2$Gear, HL2$StNo, HL2$Country,
+                        sep="/")
 
 
 ## Check Unique IDS are unique
@@ -318,8 +317,8 @@ names(HL3)
 #HL3$ValidAphiaID[is.na(HL3$ValidAphiaID)]<-127459
 ValidAphiaIDHL2<-unique(HL2$ValidAphiaID)
 setdiff(ValidAphiaIDHL, ValidAphiaIDHL2)
-write.csv(ValidAphiaIDHL2, "Diagnostic_data/Standard_Survey_Species_list.csv")
-write.csv(ValidAphiaIDHL, "Diagnostic_data/Full_Species_list.csv")
+write.csv(ValidAphiaIDHL2, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Standard_Survey_Species_list.csv")
+write.csv(ValidAphiaIDHL, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Full_Species_list.csv")
 
 summary(as.numeric(HL3$ValidAphiaID))
 
@@ -342,11 +341,11 @@ hauls$WingSpread[which(hauls$WingSpread == -9)]<- NA
 hauls$GroundSpeed[which(hauls$GroundSpeed  == -9)]<- NA 
 hauls$SpeedWater[which(hauls$GroundSpeed  == -9)]<- NA  
 
-write.csv(hauls, "Diagnostic_data/Working_HH_file.csv")
+write.csv(hauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_HH_file.csv")
 
 head(HL3)
 
-write.csv(HL3, "Diagnostic_data/Working_HL_file.csv")
+write.csv(HL3, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_HL_file.csv")
 
 ## tidy - RK -2021
 old_files <- c("hauls_sub", "haulsx", "haulsx2", "HH_BTS_DE", "HH_save", 
@@ -361,4 +360,3 @@ rm(list = old_files)
 
 save(list=ls(all=T), file = "./script5_output.rda")
 #load("./script5_output.rda")
-
