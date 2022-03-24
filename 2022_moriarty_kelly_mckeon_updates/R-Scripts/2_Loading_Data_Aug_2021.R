@@ -150,8 +150,7 @@ NS_DEN_sp_1986<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1986_GOV.CSV", header
 # Northern Irish Data #
 #######################
 # Northern Ireland early data not available on Datras
-#NI_extra<-read.csv("./Raw_Data/National Submissions/Datras_MSFD_NI/Datras_MSFD1.csv", header=F) ## not present in the folder. CM
-NI_extra<-read.csv("./Raw_Data/National Submissions/Datras_MSFD_NI/Datras_MSFD3.txt", header=F)
+NI_extra<-read.csv("./Raw_Data/National Submissions/Datras_MSFD_NI/Datras_MSFD3.txt", header=F) ## updated from Datras_MSFD1.csv to lastest data product CM
 
 ### Spain
 

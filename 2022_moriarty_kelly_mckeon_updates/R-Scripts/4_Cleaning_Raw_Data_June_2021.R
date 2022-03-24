@@ -333,6 +333,7 @@ unique(HH1$Country)
 # remove country DUM
 # Not standard survey
 HH1<-HH1[Country!="DUM"]
+HH1$Country <- droplevels(HH1$Country)
 # Question 1: 179m doorspread at depth of 73m. 
 # Is it a true value or a mistake?
 # JD: Most likely was the sensors reading incorrectly. 

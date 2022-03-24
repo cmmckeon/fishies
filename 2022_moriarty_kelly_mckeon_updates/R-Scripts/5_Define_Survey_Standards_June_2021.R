@@ -41,7 +41,7 @@
 # We show the processes undertaken to standardise/exclude hauls from the data set
 # Is the haul valid? yes retain, no remove
 
- load("./script4_output.rda")
+# load("./script4_output.rda")
 
 invalidhauls<-subset(HH2, HaulVal=="I", ) # 1477 obs
 write.csv(invalidhauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/invalid_removed.csv")
