@@ -1,12 +1,10 @@
-###################
-# Version Control #
-###################
-# R version 3.2.2 (2015-08-14): Fire Safety 
-# platform       x86_64-w64-mingw32 (64-bit)
-citation()
-###############
-# Script Info #
-###############
+# title: "1_Housekeeping.R"
+# date started: "18/6/2019"
+# last updated: "07/04/2022"
+
+## DATA NEEDED:
+
+
 # This is Script 1 of X 
 # The purpose of this script is to set up the working directory for this project,
 # do general house keeping, insure all functions and packages are uploaded.

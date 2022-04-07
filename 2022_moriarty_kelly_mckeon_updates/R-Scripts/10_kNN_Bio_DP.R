@@ -1,0 +1,9375 @@
+###################
+# Version Control #
+###################
+# R version 3.2.2 (2015-08-14): Fire Safety 
+# platform       x86_64-w64-mingw32 (64-bit)
+###############
+# Script Info #
+###############
+# Script 10
+# We now classify the non-species biological data for each of the surveys individually
+# I have done as much as possible on a global bases and now must work on a
+# survey by survey bases do do Knn species and length classification assignments
+# AUTHOR: Meadhbh Moriarty, 2016
+# REVIEWED BY: 
+###################################
+# Prepare Data for kNN proceedure #
+###################################
+#use normailsation function
+normalize<-function(x){
+  return((x-min(x))/(max(x)-min(x)))
+}
+# check
+normalize(c(1,2,3,4,5))
+
+# Normalizing data is of paramount importance since the scale used for 
+# the values for each variable is different. 
+# The best practice is to normalize the data and transform all the values 
+# to a common scale.
+# Load up quick map for use in data diagnostics
+library(ggmap)
+library(mapproj)
+library(class)
+map <- get_map(location = 'Europe', zoom = 4, color="bw", maptype="terrain")
+# Factors for use in Knn classification
+names(dat9)
+# valid_name - factor
+# Year - temporal
+# Quarter - temporal
+# FishLength_cm_below - lenght data
+# DensAbund_N_Sqkm - abundance data
+# ShootLat - spatial
+# ShootLong -spatial
+
+dat9$lat_Norm<-normalize(dat9$ShootLat)
+dat9$long_Norm<-normalize(dat9$ShootLong)
+dat9$lenght_Norm[!is.na(dat9$FishLength_cm_below)]<-normalize((dat9$FishLength_cm_below[!is.na(dat9$FishLength_cm_below)]))
+summary(dat9$lenght_Norm)
+summary((dat9$FishLength_cm_below))
+dat9$year_Norm<-normalize(as.numeric(dat9$Year))
+dat9$q_Norm<-normalize(as.numeric(dat9$Quarter))
+dat9$numbers_Norm[!is.na(dat9$DensAbund_N_Sqkm)]<-normalize((dat9$DensAbund_N_Sqkm[!is.na(dat9$DensAbund_N_Sqkm)]))
+summary(dat9$DensAbund_N_Sqkm)
+summary(dat9$numbers_Norm)
+summary(as.factor(dat9$RecordStatus))
+###########################################
+# 1. GNSGerBT3 -k-NN - Species Composotion#
+###########################################
+ger<-subset(dat9, Survey_Acronym=="GNSGerBT3",)
+
+summary(as.factor(ger$RecordStatus))
+lofa_ger<-subset(ger, !RecordStatus=="OK",)
+summary(as.factor(lofa_ger$estsciname))
+################# Syngnathus   #################
+#Seaweed pipefish 
+find<-subset(ger, genus=="Syngnathus",)
+
+png(filename="len_dist_seaweed_pipefish_bts_ger1_21-10-2016.png")
+ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                 colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Seaweed pipefish (BTS_GFR)")+
+  theme_classic()
+dev.off()
+
+dat9$estsciname[dat9$estsciname=="Syngnathus"&dat9$Survey_Acronym=="GNSGerBT3"]<-"Syngnathus rostellatus"
+dat9$estrank[dat9$estsciname=="Syngnathus"&dat9$Survey_Acronym=="GNSGerBT3"]<-"Species"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus rostellatus"&dat9$Survey_Acronym=="GNSGerBT3"]<-127389
+dat9$SpeciesQualityCode[dat9$valid_name=="Syngnathus"&dat9$Survey_Acronym=="GNSGerBT3"]<-"Genus_to_spp"
+dat9$RecordStatus[dat9$valid_name=="Syngnathus"&dat9$Survey_Acronym=="GNSGerBT3"]<-"OK"
+############################################
+# 2. GNSNetBT3 -k-NN - Species Composition #
+############################################
+net<-subset(dat9, Survey_Acronym=="GNSNetBT3",)
+summary(as.factor(net$RecordStatus))
+lofa_net<-subset(net, !RecordStatus=="OK",)
+summary(as.factor(lofa_net$estsciname[lofa_net$RecordStatus=="SCLFD"]))
+#####################Syngnathidae   39 #####################
+find<-subset(net, family=="Syngnathidae",)
+png(filename="len_dist_pipefish_bts_net1_12-10-2016.png")
+ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                 colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of pipefish (BTS_NET)")+
+  theme_classic()
+dev.off()
+
+set.seed(9850)
+str(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Entelurus aequoreus", "Syngnathus acus", "Syngnathus rostellatus")
+knn_dat<-subset(find, estsciname%in%list & !is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm, numbers_Norm,lenght_Norm))
+str(knn_dat)
+knn_dat<-as.data.frame(knn_dat)
+358/10
+# training data
+358-36
+train<- knn_dat[1:322, 3:8]
+test<- knn_dat[323:358,3:8]
+train_target<- knn_dat[1:322, 2 ]
+test_target<- knn_dat[323:358, 2 ]
+require(class)
+x<-sqrt(nrow(knn_dat))
+m1<-knn(train,test,cl=train_target, k=x)
+
+t1<-(table(droplevels(test_target, m1)))
+# happy with how this is working - so lets add the new test data
+# the fish that are not identified to species level
+# and use all the data available to train the model
+knn_dat_target<-subset(find, estsciname=="Syngnathidae" & !is.na(find$lenght_Norm ) ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:358, 3:8]
+test<- knn_dat_target[1:39,3:8]
+train_target<- knn_dat[1:358,2 ]
+test_target<- knn_dat_target[1:39,2 ]
+m2<-knn(train, test, cl=train_target, k=10)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+
+dat9$estrank[dat9$estsciname=="Syngnathidae"&dat9$Survey_Acronym=="GNSNetBT3"]<-"Species"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathidae"&dat9$Survey_Acronym=="GNSNetBT3"]<-127389
+dat9$SpeciesQualityCode[dat9$valid_name=="Syngnathidae"&dat9$Survey_Acronym=="GNSNetBT3"]<-"KNN_spp_assignment"
+dat9$RecordStatus[dat9$valid_name=="Syngnathidae"&dat9$Survey_Acronym=="GNSNetBT3"]<-"OK"
+dat9$estsciname[dat9$estsciname=="Syngnathidae"&dat9$Survey_Acronym=="GNSNetBT3"]<-"Syngnathus rostellatus"
+#####################Syngnathus     26 #####################
+find<-subset(net, genus=="Syngnathus",)
+png(filename="len_dist_pipefish1_bts_net1_12-10-2016.png")
+ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                 colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of pipefish (BTS_NET)")+
+  theme_classic()
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Syngnathus acus", "Syngnathus rostellatus")
+knn_dat<-subset(find, estsciname%in%list & !is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+knn_dat<-data.frame(knn_dat)
+185/10
+# training data
+185-19
+train<- knn_dat[1:166, 3:8]
+test<- knn_dat[167:185,3:8]
+train_target<- knn_dat[1:166,2 ]
+test_target<- knn_dat[167:185,2 ]
+require(class)
+x<-sqrt(185)
+summary(train_target)
+summary(test_target)
+m1<-knn(train, test, cl=train_target, k=x)
+t1<-(table(droplevels(test_target, m1)))
+# happy with how this is working - so lets add the new test data
+# the fish that are not identified to species level
+# and use all the data available to train the model
+knn_dat_target<-subset(find, estsciname=="Syngnathus" & !is.na(find$lenght_Norm),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,
+                                 long_Norm, numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:185, 3:8]
+test<- knn_dat_target[1:26,3:8]
+train_target<- knn_dat[1:185,2 ]
+test_target<- knn_dat_target[1:26,2 ]
+m2<-knn(train, test,cl=train_target, k=x)
+summary(droplevels(m2))
+# Knn predicts a mix of the three species at different stations
+# all knn assignments are Syngnathusrostellatus
+dat9$estrank[dat9$estsciname=="Syngnathus"&dat9$Survey_Acronym=="GNSNetBT3"]<-"Species"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus"&dat9$Survey_Acronym=="GNSNetBT3"]<-127389
+dat9$SpeciesQualityCode[dat9$valid_name=="Syngnathus"&dat9$Survey_Acronym=="GNSNetBT3"]<-"KNN_spp_assignment"
+dat9$RecordStatus[dat9$valid_name=="Syngnathus"&dat9$Survey_Acronym=="GNSNetBT3"]<-"OK"
+dat9$estsciname[dat9$estsciname=="Syngnathus"&dat9$Survey_Acronym=="GNSNetBT3"]<-"Syngnathus rostellatus"
+####################Rajidae        1 ####################
+lofa_net<-subset(net, is.na(estrank),)
+summary(as.factor(lofa_net$estsciname))
+find<-subset(net, family=="Rajidae",)
+summary<-ddply(find,
+               c("estsciname", "rank", 
+                 "FishLength_cm_below"),
+               summarise,
+               totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise, 
+             mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSNetBT3_diagnostics_Rajidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                 colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Rajidae (GNSNetBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find<-as.data.frame(find)
+str(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Amblyraja radiata", "Dipturus batis", "Leucoraja naevus",
+         "Raja brachyura", "Raja clavata", "Raja montagui")
+knn_dat<-subset(find, estsciname%in%list &
+                  !is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm))
+9749/10
+# training data
+9749-975
+train<- knn_dat[1:8774, 3:8]
+test<- knn_dat[8775:9749,3:8]
+train_target<- knn_dat[1:8774,2 ]
+test_target<- knn_dat[8775:9749,2 ]
+require(class)
+x=sqrt(nrow(knn_dat))
+summary(train_target)
+summary(test_target)
+m1<-knn(train, test, cl=train_target, k=x)
+t1<-(table(droplevels(test_target, m1)))
+# happy with how this is working - so lets add the new test data
+# the fish that are not identified to species level
+# and use all the data available to train the model
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:9749, 3:6]
+test<- knn_dat_target[1:5,3:6]
+train_target<- knn_dat[1:9749,2 ]
+test_target<- knn_dat_target[1:5,2 ]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+# Knn predicts 2 Amblyraja radiata and 2 Raja clavata and 1 Raja montagui
+dat9$estrank[dat9$New_UniqueID=="BTS/1998/3/ISI/10/BT8"
+             &dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID=="BTS/1998/3/ISI/10/BT8"
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID=="BTS/1998/3/ISI/10/BT8"
+                &dat9$estsciname=="Rajidae"]<-"Amblyraja radiata"
+dat9$estAphia_Code[dat9$estsciname=="Amblyraja radiata"]<-105865
+#2 Raja clavata
+dat9$estrank[dat9$New_UniqueID=="BTS/2000/3/ISI/86/BT8"
+             &dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID=="BTS/2000/3/ISI/86/BT8"
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID=="BTS/2000/3/ISI/86/BT8"
+                &dat9$estsciname=="Rajidae"]<-"Raja clavata"
+dat9$estAphia_Code[dat9$estsciname=="Raja clavata"]<-105883
+#1 Raja montagui
+dat9$estrank[dat9$New_UniqueID=="BTS/2007/3/TRI2/64/BT8"
+             &dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID=="BTS/2007/3/TRI2/64/BT8"
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID=="BTS/2007/3/TRI2/64/BT8"
+                &dat9$estsciname=="Rajidae"]<-"Raja montagui"
+dat9$estAphia_Code[dat9$estsciname=="Raja montagui"]<-105887
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#######################Callionymidae  2568 #######################
+lofa_net<-subset(net, is.na(estrank),)
+summary(as.factor(lofa_net$estsciname))
+find<-subset(net, family=="Callionymidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+                         sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSNetBT3_diagnostics_Callionymidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Callionymidae (GNSNetBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Callionymus lyra", "Callionymus maculatus", "Callionymus reticulatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+# Knn predicts Callionymus lyra
+dat9$estrank[dat9$Survey_Acronym=="GNSNetBT3"
+               &dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSNetBT3"
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="GNSNetBT3"
+                &dat9$estsciname=="Callionymus"]<-"Callionymus lyra"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus lyra"]<-126792
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################Mugilidae      5 ###################
+find<-subset(net, family=="Mugilidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSNetBT3_diagnostics_Mugilidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Mugilidae (GNSNetBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Only one species in family Chelon labrosus
+dat9$estrank[dat9$Survey_Acronym=="GNSNetBT3"
+             &dat9$estsciname=="Mugilidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSNetBT3"
+                        &dat9$estsciname=="Mugilidae"]<-"Genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="GNSNetBT3"
+                &dat9$estsciname=="Mugilidae"]<-"Chelon labrosus"
+dat9$estAphia_Code[dat9$estsciname=="Chelon labrosus"]<-126977
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Genus_to_spp"]<-"OK"
+#####################Mustelus       26 #####################
+find<-subset(net, genus=="Mustelus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSNetBT3_diagnostics_Mustelus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Mustelus (GNSNetBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Mustelus asterias", "Mustelus mustelus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+unique(knn_dat_target$New_UniqueID)
+# Knn predicts 6 M. asterias and 19 M.mustleus
+list<-c("BTS/2006/3/TRI2/70/BT8","BTS/2006/3/TRI2/71/BT8") 
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Mustelus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Mustelus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Mustelus"]<-"Mustelus asterias"
+dat9$estAphia_Code[dat9$estsciname=="Mustelus asterias"]<-105821
+
+list<-c("BTS/2010/3/TRI2/43/BT8","BTS/2012/3/TRI2/74/BT8",
+         "BTS/2012/3/TRI2/73/BT8","BTS/2012/3/TRI2/71/BT8",
+         "BTS/2014/3/TRI2/66/BT8","BTS/2015/3/TRI2/36/BT8",
+         "BTS/2015/3/TRI2/38/BT8")
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Mustelus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Mustelus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Mustelus"]<-"Mustelus mustelus"
+dat9$estAphia_Code[dat9$estsciname=="Mustelus mustelus"]<-105822
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###########################################
+# 3. GNSEngBT3 -k-NN - Species Composotion#
+###########################################
+eng<-subset(dat9, Survey_Acronym=="GNSEngBT3",)
+summary(as.factor(eng$RecordStatus))
+lofa_eng<-subset(eng, !RecordStatus=="OK",)
+summary(as.factor(lofa_eng$estsciname[lofa_eng$RecordStatus=="SCLFD"]))
+########################## Chelidonichthys   169 ##########################
+find<-subset(eng, genus=="Chelidonichthys",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Chelidonichthys.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Chelidonichthys (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Chelidonichthys cuculus", "Chelidonichthys lucerna")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 169 Chelidonichthys cuculus
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Chelidonichthys"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Chelidonichthys"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Chelidonichthys"]<-"Chelidonichthys cuculus"
+dat9$estAphia_Code[dat9$estsciname=="Chelidonichthys cuculus"]<-127259
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+########################## Dicentrarchus       4 ##########################
+find<-subset(eng, genus=="Dicentrarchus", )
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Dicentrarchus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Dicentrarchus (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# only one species Genus to species used
+dat9$estrank[dat9$Survey_Acronym=="GNSEngBT3"
+             &dat9$estsciname=="Dicentrarchus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSEngBT3"
+                        &dat9$estsciname=="Dicentrarchus"]<-"Genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="GNSEngBT3"
+                &dat9$estsciname=="Dicentrarchus"]<-"Dicentrarchus labrax"
+dat9$estAphia_Code[dat9$estsciname=="Dicentrarchus labrax"]<-126975
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Genus_to_spp"]<-"OK"
+########################## Gaidropsarus        3#########################
+find<-subset(eng, genus=="Gaidropsarus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Gaidropsarus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Gaidropsarus (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Gaidropsarus mediterraneus", "Gaidropsarus vulgaris")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts  Gaidropsarus vulgaris
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Gaidropsarus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Gaidropsarus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Gaidropsarus"]<-"Gaidropsarus vulgaris"
+dat9$estAphia_Code[dat9$estsciname=="Gaidropsarus vulgaris"]<-126458
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+########################## Gobiesocidae        6 ##########################
+find<-subset(eng, family=="Gobiesocidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Gobiesocidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Gobiesocidae (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Apletodon dentatus", "Diplecogaster bimaculata bimaculata")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Diplecogaster bimaculata bimaculata
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Gobiesocidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Gobiesocidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Gobiesocidae"]<-"Diplecogaster bimaculata bimaculata"
+dat9$estAphia_Code[dat9$estsciname=="Diplecogaster bimaculata bimaculata"]<-236458
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+########################## Labridae           15 ##########################
+find<-subset(eng, family=="Labridae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Labridae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Labridae (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Centrolabrus exoletus", "Ctenolabrus rupestris", "Labrus bergylta", 
+         "Labrus mixtus", "Symphodus","Symphodus bailloni","Symphodus melops")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+unique(knn_dat_target$New_UniqueID)
+# Knn predicts 6 M. asterias and 19 M.mustleus
+list<-c("BTS/2000/3/COR/36/BT4A") 
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Labridae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Labridae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Labridae"]<-"Labrus bergylta"
+dat9$estAphia_Code[dat9$estsciname=="Labrus bergylta"]<-126965
+list<-c("BTS/2000/3/COR/94/BT4A","BTS/2002/3/COR/61/BT4A","BTS/2002/3/COR/75/BT4A",
+        "BTS/2004/3/COR/35/BT4A", "BTS/2004/3/COR/57/BT4A")
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Labridae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Labridae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Labridae"]<-"Ctenolabrus rupestris"
+dat9$estAphia_Code[dat9$estsciname=="Ctenolabrus rupestris"]<-126964 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+########################## Liparis            31 #  #########################
+find<-subset(eng, genus=="Liparis",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Liparis.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Liparis (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Liparis liparis liparis", "Liparis montagui")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Liparis liparis liparis 
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Liparis"]<-"SubSpecies"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Liparis"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Liparis"]<-"Liparis liparis liparis"
+dat9$estAphia_Code[dat9$estsciname=="Liparis liparis liparis"]<-293624
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###########################Symphodus          26 ##########################
+find<-subset(eng, genus=="Symphodus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Symphodus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Symphodus (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) + theme_classic()
+p4<-ggmap(map) +geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Symphodus bailloni", "Symphodus melops")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 6 M. asterias and 19 M.mustleus
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Symphodus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Symphodus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Symphodus"]<-"Symphodus bailloni"
+dat9$estAphia_Code[dat9$estsciname=="Symphodus bailloni"]<-273566
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+########################## Zeugopterus        33 ##########################
+find<-subset(eng, genus=="Zeugopterus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Zeugopterus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Zeugopterus (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Zeugopterus punctatus", "Zeugopterus regius")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Zeugopterus punctatus
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Zeugopterus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Zeugopterus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Zeugopterus"]<-"Zeugopterus punctatus"
+dat9$estAphia_Code[dat9$estsciname=="Zeugopterus punctatus"]<-127151
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+ 
+########################## Mullus              4 # #########################
+summary(as.factor(lofa_eng$estsciname[lofa_eng$RecordStatus=="SCLFD"]))
+find<-subset(eng, genus=="Mullus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Mullus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Mullus (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+# only one species in genus in this survey
+dat9$estrank[dat9$Survey_Acronym=="GNSEngBT3"&dat9$estsciname=="Mullus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSEngBT3"
+                        &dat9$estsciname=="Mullus"]<-"Genus_to_spp"
+dat9$RecordStatus[dat9$Survey_Acronym=="GNSEngBT3"&dat9$estsciname=="Mullus"]<-"LFD"
+dat9$estsciname[dat9$Survey_Acronym=="GNSEngBT3"
+                &dat9$estsciname=="Mullus"]<-"Mullus surmuletus"
+dat9$estAphia_Code[dat9$estsciname=="Mullus surmuletus"]<-126986 
+########################## Syngnathidae        1 ##########################
+find<-subset(eng, family=="Syngnathidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSEngBT3_diagnostics_Syngnathidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Syngnathidae (GNSEngBT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Hippocampus guttulatus", "Hippocampus hippocampus",
+         "Syngnathus acus","Syngnathus rostellatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<-knn_dat[1:nrow(knn_dat), 3:5]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:5]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Syngnathus acus
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Syngnathidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathidae"]<-"KNN_spp_assignment"
+dat9$RecordStatus[dat9$New_UniqueID%in%list
+                  &dat9$estsciname=="Syngnathidae"&
+                    dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"LFD"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathidae"]<-"Syngnathus acus"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus acus"]<-127387 
+###########################################
+# 4. GNSIntOT1-k-NN - Species Composotion #
+###########################################
+ns1<-subset(dat9, Survey_Acronym=="GNSIntOT1",)
+summary(as.factor(ns1$RecordStatus))
+lofa_ns1<-subset(ns1, !RecordStatus=="OK",)
+summary(as.factor(lofa_ns1$estsciname[lofa_ns1$RecordStatus=="SC"|lofa_ns1$RecordStatus=="SCLFD"]))
+summary(as.factor(lofa_ns1$estsciname[lofa_ns1$RecordStatus=="SC"]))
+################ Alosa     1  #################
+find<-subset(ns1, genus=="Alosa",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Alosa.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Alosa (GNSIntOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Alosa agone",  "Alosa alosa", "Alosa fallax")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 1 Alosa fallax
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Alosa"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Alosa"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Alosa"]<-"Alosa fallax"
+dat9$estAphia_Code[dat9$estsciname=="Alosa fallax"]<-126415 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################### Argentina   368 ####################
+find<-subset(ns1, genus=="Argentina",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Argentina.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Argentina (GNSInt)T1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Argentina silus", "Argentina sphyraena")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 368 Argentina sphyraena
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Argentina"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Argentina"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Argentina"]<-"Argentina sphyraena"
+dat9$estAphia_Code[dat9$estsciname=="Argentina sphyraena"]<-126716
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+######################## Arnoglossus   22    ########################
+find<-subset(ns1, genus=="Arnoglossus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Arnoglossus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Arnoglossus (GNSIntOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Arnoglossus imperialis",  "Arnoglossus laterna")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 38 Arnoglossus laterna
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Arnoglossus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Arnoglossus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Arnoglossus"]<-"Arnoglossus laterna"
+dat9$estAphia_Code[dat9$estsciname=="Arnoglossus laterna"]<-127126  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################Blenniidae   1 ##################
+find<-subset(ns1, family=="Blenniidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Blenniidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Blenniidae (GNSIntOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Blennius ocellaris", "Parablennius gattorugine")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Blennius ocellaris 
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Blenniidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Blenniidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Blenniidae"]<-"Blennius ocellaris"
+dat9$estAphia_Code[dat9$estsciname=="Blennius ocellaris"]<-126761 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+######################Callionymus   207  ######################
+find<-subset(ns1, genus=="Callionymus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Callionymus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm, colour=estsciname, 
+                     group=estsciname)) +   geom_jitter() +
+  ggtitle("Lenght distribution of Callionymus (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname), 
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + geom_density()  + 
+  facet_grid(estsciname ~ .) + theme_classic()
+p4<-ggmap(map) + geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Callionymus lyra", "Callionymus maculatus", "Callionymus reticulatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Callionymus maculatus"])
+# Knn predicts 1 Alosa fallax
+dat9$estrank[dat9$New_UniqueID%in%list &dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Callionymus"]<-"Callionymus maculatus"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus maculatus"]<-126793  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Callionymus lyra"])
+dat9$estrank[dat9$New_UniqueID%in%list &dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Callionymus"]<-"Callionymus lyra"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus lyra"]<-126792  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################### Cottidae     11 ####################
+find<-subset(ns1, family=="Cottidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Cottidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Cottidae (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +   theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Artediellus atlanticus",  "Micrenophrys lilljeborgii", "Myoxocephalus quadricornis",
+         "Myoxocephalus scorpioides", "Myoxocephalus scorpius", "Taurulus bubalis",
+          "Triglops murrayi")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Cottidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Cottidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Cottidae"]<-"Myoxocephalus scorpius"
+dat9$estAphia_Code[dat9$estsciname=="Myoxocephalus scorpius"]<-127203 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+################## Gadiculus 1   ##################
+find<-subset(ns1, genus=="Gadiculus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Gadiculus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +  
+  ggtitle("Lenght distribution of Gadiculus (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +   geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +   geom_density()  + 
+  facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Gadiculus argenteus",  "Gadiculus thori")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Gadiculus argenteus
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Gadiculus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Gadiculus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Gadiculus"]<-"Gadiculus argenteus"
+dat9$estAphia_Code[dat9$estsciname=="Gadiculus argenteus"]<-126435  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+################### Gaidropsarus 4 ###################
+find<-subset(ns1, genus=="Gaidropsarus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Gaidropsarus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Gaidropsarus (GNSIntOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Gaidropsarus argentatus", "Gaidropsarus macrophthalmus", "Gaidropsarus mediterraneus",
+          "Gaidropsarus vulgaris")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 1 Alosa fallax
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Gaidropsarus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Gaidropsarus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Gaidropsarus"]<-"Gaidropsarus vulgaris"
+dat9$estAphia_Code[dat9$estsciname=="Gaidropsarus vulgaris"]<-126458  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################### Gasterosteidae 3 #####################
+find<-subset(ns1, family=="Gasterosteidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Gasterosteidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +   geom_jitter() +
+  ggtitle("Lenght distribution of Gasterosteidae (GNSIntOT1)")+   theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +   theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Gasterosteus aculeatus aculeatus", "Gasterosteus aculeatus williamsoni", 
+         "Spinachia spinachia")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Gasterosteidae
+dat9$estrank[dat9$New_UniqueID%in%list &dat9$estsciname=="Gasterosteidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Gasterosteidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Gasterosteidae"]<-"Gasterosteus aculeatus aculeatus"
+dat9$estAphia_Code[dat9$estsciname=="Gasterosteus aculeatus aculeatus"]<-236462 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+################### Liparis        40  #######################
+find<-subset(ns1, genus=="Liparis",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Liparis.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) + geom_jitter() +
+  ggtitle("Lenght distribution of Liparis (GNSIntOT1)")+ theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() + geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Liparis liparis liparis",        "Liparis montagui" )
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 41 Liparis liparis liparis 
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Liparis"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Liparis"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Liparis"]<-"Liparis liparis liparis"
+dat9$estAphia_Code[dat9$estsciname=="Liparis liparis liparis"]<-293624 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+############## Lycodes  2##############
+find<-subset(ns1, genus=="Lycodes",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Lycodes.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Lycodes (GNSIntOT1)")+theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Lycodes gracilis",   "Lycodes vahlii")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 1 Alosa fallax
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Lycodes"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Lycodes"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Lycodes"]<-"Lycodes vahlii"
+dat9$estAphia_Code[dat9$estsciname=="Lycodes vahlii"]<-127118  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+################### Microchirus 8  ###################
+find<-subset(ns1, genus=="Microchirus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Microchirus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Microchirus (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +   geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Only one spp in genus in survey
+dat9$estrank[dat9$Survey_Acronym=="GNSIntOT1" &dat9$estsciname=="Microchirus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSIntOT1" 
+                        &dat9$estsciname=="Microchirus"]<-"Genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="GNSIntOT1" 
+                &dat9$estsciname=="Microchirus"]<-"Microchirus variegatus"
+dat9$estAphia_Code[dat9$estsciname=="Microchirus variegatus"]<-274304  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Genus_to_spp"]<-"OK"
+############### Mugilidae 1 ################
+find<-subset(ns1, family=="Mugilidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Mugilidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Mugilidae (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Liza aurata", "Liza ramada")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Liza ramada
+dat9$estrank[dat9$New_UniqueID%in%list &dat9$estsciname=="Mugilidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Mugilidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Mugilidae"]<-"Liza ramada"
+dat9$estAphia_Code[dat9$estsciname=="Liza ramada"]<-126980  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###############Mustelus 147###############
+find<-subset(ns1, genus=="Mustelus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Mustelus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Mustelus (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Mustelus asterias", "Mustelus mustelus" )
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Mustelus asterias"])
+# Knn predicts 112 Mustelus asterias 35 Mustelus mustelus
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Mustelus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Mustelus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Mustelus"]<-"Mustelus asterias"
+dat9$estAphia_Code[dat9$estsciname=="Mustelus asterias"]<-105821 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Mustelus mustelus"])
+# Knn predicts 112 Mustelus asterias 35 Mustelus mustelus
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Mustelus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Mustelus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Mustelus"]<-"Mustelus mustelus"
+dat9$estAphia_Code[dat9$estsciname=="Mustelus mustelus"]<-105822 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+################## Phycidae    1 #  #################
+find<-subset(ns1, family=="Phycidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Phycidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Phycidae (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +   theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+# only one spp in this genus in this survey
+dat9$estrank[dat9$Survey_Acronym=="GNSIntOT1"&dat9$estsciname=="Phycidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSIntOT1"
+                        &dat9$estsciname=="Phycidae"]<-"family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="GNSIntOT1"
+                &dat9$estsciname=="Phycidae"]<-"Phycis blennoides"
+dat9$estAphia_Code[dat9$estsciname=="Phycis blennoides"]<-126501  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="family_to_spp"]<-"OK"
+###################Rajidae      54 ###################
+find<-subset(ns1, family=="Rajidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Rajidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Rajidae (GNSIntOT1)")+   theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Amblyraja radiata","Dipturus batis", "Dipturus linteus", 
+         "Leucoraja circularis", "Leucoraja fullonica", "Leucoraja naevus",
+         "Raja brachyura", "Raja clavata", "Raja microocellata",
+         "Raja montagui", "Raja undulata")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Amblyraja radiata"])
+# Knn predicts 
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Rajidae"]<-"Amblyraja radiata"
+dat9$estAphia_Code[dat9$estsciname=="Amblyraja radiata"]<-126415 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Raja clavata"])
+# Knn predicts 
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Rajidae"]<-"Raja clavata"
+dat9$estAphia_Code[dat9$estsciname=="Raja clavata"]<-105883 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################Soleidae      80 ####################
+find<-subset(ns1, family=="Soleidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Soleidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Soleidae (GNSIntOT1)")+ theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() + geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+ theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +  facet_grid(estsciname ~ .) + theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Buglossidium luteum", "Microchirus", "Microchirus variegatus", 
+         "Pegusa lascaris", "Solea solea")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Buglossidium luteum"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Soleidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Soleidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Soleidae"]<-"Buglossidium luteum"
+dat9$estAphia_Code[dat9$estsciname=="Buglossidium luteum"]<-127153  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Solea solea"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Soleidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Soleidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Soleidae"]<-"Solea solea"
+dat9$estAphia_Code[dat9$estsciname=="Solea solea"]<-127160   
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################### Sparidae      2 ####################
+find<-subset(ns1, family=="Sparidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Sparidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) + geom_jitter() +
+  ggtitle("Lenght distribution of Sparidae (GNSIntOT1)")+ theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() + geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+ theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +  facet_grid(estsciname ~ .) + theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Pagellus erythrinus",  "Sparus aurata", "Spondyliosoma cantharus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 1 Spondyliosoma cantharus 
+dat9$estrank[dat9$New_UniqueID%in%list &dat9$estsciname=="Sparidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Sparidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Sparidae"]<-"Spondyliosoma cantharus"
+dat9$estAphia_Code[dat9$estsciname=="Spondyliosoma cantharus"]<-127066  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################Squalidae    57  ####################
+find<-subset(ns1, family=="Squalidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Squalidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Squalidae (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() + geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+# only one species in family in this survey
+dat9$estrank[dat9$Survey_Acronym=="GNSIntOT1"&dat9$estsciname=="Squalidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSIntOT1"
+                        &dat9$estsciname=="Squalidae"]<-"family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="GNSIntOT1"
+                &dat9$estsciname=="Squalidae"]<-"Squalus acanthias"
+dat9$estAphia_Code[dat9$estsciname=="Squalus acanthias"]<-105923 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="family_to_spp"]<-"OK"
+#################### Stichaeidae  2  ####################
+find<-subset(ns1, family=="Stichaeidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Stichaeidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) + geom_jitter() +
+  ggtitle("Lenght distribution of Stichaeidae (GNSIntOT1)")+ theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() + geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+ theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) + theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Chirolophis ascanii",  "Leptoclinus maculatus", "Lumpenus lampretaeformis")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Stichaeidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Stichaeidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Stichaeidae"]<-"Lumpenus lampretaeformis"
+dat9$estAphia_Code[dat9$estsciname=="Lumpenus lampretaeformis"]<-154675 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################Syngnathidae 271 ####################
+find<-subset(ns1, family=="Syngnathidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Syngnathidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Syngnathidae (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Entelurus aequoreus", "Hippocampus hippocampus", 
+         "Nerophis lumbriciformis","Nerophis ophidion", 
+         "Syngnathus", "Syngnathus acus",  "Syngnathus rostellatus",   
+         "Syngnathus typhle")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+# Knn predicts Entelurus aequoreus  13     Syngnathus acus 33Syngnathus rostellatus 228
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Entelurus aequoreus"])
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Syngnathidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathidae"]<-"Entelurus aequoreus"
+dat9$estAphia_Code[dat9$estsciname=="Entelurus aequoreus"]<-127379 
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Syngnathus acus"])
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Syngnathidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathidae"]<-"Syngnathus acus"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus acus"]<-127387  
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Syngnathus rostellatus"])
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Syngnathidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathidae"]<-"Syngnathus rostellatus"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus rostellatus"]<-127389  
+
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#####################Syngnathus    15  #####################
+find<-subset(ns1, genus=="Syngnathus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Syngnathus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Syngnathus (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() + geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) + theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Syngnathus acus",  "Syngnathus rostellatus", "Syngnathus typhle")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Syngnathus acus"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Syngnathus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathus"]<-"Syngnathus acus"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus acus"]<-127387  
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Syngnathus rostellatus"])
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Syngnathus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathus"]<-"Syngnathus rostellatus"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus rostellatus"]<-127389  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Triglidae       171#######################
+find<-subset(ns1, family=="Triglidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Triglidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) + geom_jitter() +
+  ggtitle("Lenght distribution of Triglidae (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Chelidonichthys cuculus", "Chelidonichthys lucerna",
+         "Trigloporus lastoviza",  "Eutrigla gurnardus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Eutrigla gurnardus
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Triglidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Triglidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Triglidae"]<-"Eutrigla gurnardus"
+dat9$estAphia_Code[dat9$estsciname=="Eutrigla gurnardus"]<-150637 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###############Zeidae    7 ###############
+find<-subset(ns1, family=="Zeidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Zeidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Zeidae (GNSIntOT1)")+ theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Zeus faber is only spp in genus
+dat9$estrank[dat9$Survey_Acronym=="GNSIntOT1"&dat9$estsciname=="Zeidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSIntOT1"
+                        &dat9$estsciname=="Zeidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="GNSIntOT1"
+                &dat9$estsciname=="Zeidae"]<-"Zeus faber"
+dat9$estAphia_Code[dat9$estsciname=="Zeus faber"]<-127427 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+################## Zeugopterus 2 ##################
+find<-subset(ns1, genus=="Zeugopterus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Zeugopterus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Zeugopterus (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() + geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Zeugopterus punctatus",  "Zeugopterus regius")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts 
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Zeugopterus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Zeugopterus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Zeugopterus"]<-"Zeugopterus punctatus"
+dat9$estAphia_Code[dat9$estsciname=="Zeugopterus punctatus"]<-127151  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+################## Zoarcidae 1   #
+################## Sebastes  1   ##################
+find<-subset(ns1, genus=="Sebastes",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT1_diagnostics_Sebastes.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Sebastes (GNSIntOT1)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Sebastes norvegicus",  "Sebastes viviparus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Sebastes"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Sebastes"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Sebastes"]<-"Sebastes viviparus"
+dat9$estAphia_Code[dat9$estsciname=="Sebastes viviparus"]<-127255   
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###########################################
+# 5. GNSIntOT3-k-NN - Species Composotion #
+###########################################
+ns3<-subset(dat9, Survey_Acronym=="GNSIntOT3",)
+summary(as.factor(ns3$RecordStatus))
+lofa_ns3<-subset(ns3, !RecordStatus=="OK",)
+summary(as.factor(lofa_ns3$estsciname[lofa_ns3$RecordStatus=="SCLFD"]))
+##################Argentina 3895 # #################
+find<-subset(ns3, genus=="Argentina",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Argentina.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Argentina (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Argentina silus",  "Argentina sphyraena")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+
+# Knn predicts
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Argentina silus"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Argentina"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Argentina"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Argentina"]<-"Argentina silus"
+dat9$estAphia_Code[dat9$estsciname=="Argentina silus"]<-126715    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Argentina sphyraena"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Argentina"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Argentina"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Argentina"]<-"Argentina sphyraena"
+dat9$estAphia_Code[dat9$estsciname=="Argentina sphyraena"]<-126716    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################Callionymus 55 ##################
+find<-subset(ns3, genus=="Callionymus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Callionymus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Callionymus (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Callionymus lyra",  "Callionymus maculatus", "Callionymus reticulatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Callionymus lyra"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Callionymus"]<-"Callionymus lyra"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus lyra"]<-126792    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Callionymus maculatus"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Callionymus"]<-"Callionymus maculatus"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus maculatus"]<-126793     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#######################Chelidonichthys  89 #######################
+find<-subset(ns3, genus=="Chelidonichthys",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Chelidonichthys.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Chelidonichthys (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Chelidonichthys cuculus",  "Chelidonichthys lucerna")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Chelidonichthys cuculus"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Chelidonichthys"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Chelidonichthys"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Chelidonichthys"]<-"Chelidonichthys cuculus"
+dat9$estAphia_Code[dat9$estsciname=="Chelidonichthys cuculus"]<-127259     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Chelidonichthys lucerna"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Chelidonichthys"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Chelidonichthys"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Chelidonichthys"]<-"Chelidonichthys lucerna"
+dat9$estAphia_Code[dat9$estsciname=="Chelidonichthys lucerna"]<-127262      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###################Clupeidae    15 ###################
+find<-subset(ns3, family=="Clupeidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Clupeidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Clupeidae (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Alosa alosa", "Alosa fallax", "Clupea harengus", "Sardina pilchardus",
+         "Sprattus sprattus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Clupea harengus"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Clupeidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Clupeidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Clupeidae"]<-"Clupea harengus"
+dat9$estAphia_Code[dat9$estsciname=="Clupea harengus"]<-126417      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Sprattus sprattus"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Clupeidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Clupeidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Clupeidae"]<-"Sprattus sprattus"
+dat9$estAphia_Code[dat9$estsciname=="Sprattus sprattus"]<-126425       
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###############Cottidae 3  ###############
+find<-subset(ns3, family=="Cottidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Cottidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Cottidae (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Icelus bicornis",  "Myoxocephalus scorpius", "Taurulus bubalis", 
+         "Triglops murrayi")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Cottidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Cottidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Cottidae"]<-"Myoxocephalus scorpius"
+dat9$estAphia_Code[dat9$estsciname=="Myoxocephalus scorpius"]<-127203    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Dicentrarchus   1  #######################
+find<-subset(ns3, genus=="Dicentrarchus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Dicentrarchus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Dicentrarchus (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Genus to Spp
+dat9$estrank[dat9$Survey_Acronym=="GNSIntOT3"
+             &dat9$estsciname=="Dicentrarchus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSIntOT3"
+                        &dat9$estsciname=="Dicentrarchus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="GNSIntOT3"
+                &dat9$estsciname=="Dicentrarchus"]<-"Dicentrarchus labrax"
+dat9$estAphia_Code[dat9$estsciname=="Dicentrarchus labrax"]<-126975   
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Dipturus    10     #######################
+find<-subset(ns3, genus=="Dipturus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Dipturus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Dipturus (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Dipturus batis", "Dipturus oxyrinchus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Dipturus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Dipturus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Dipturus"]<-"Dipturus batis"
+dat9$estAphia_Code[dat9$estsciname=="Dipturus batis"]<-105869    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Lophiidae   2      #######################
+find<-subset(ns3, family=="Lophiidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Lophiidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Lophiidae (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Lophius budegassa", "Lophius piscatorius")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Lophiidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Lophiidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Lophiidae"]<-"Lophius piscatorius"
+dat9$estAphia_Code[dat9$estsciname=="Lophius piscatorius"]<-126555    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Mugilidae   1      #######################
+find<-subset(ns3, family=="Mugilidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Mugilidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Mugilidae (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Chelon labrosus","Liza aurata","Liza ramada", "Mugil cephalus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Mugilidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Mugilidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Mugilidae"]<-"Liza aurata"
+dat9$estAphia_Code[dat9$estsciname=="Liza aurata"]<-126978    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#######################  Rajidae 4         #######################
+find<-subset(ns3, family=="Rajidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Rajidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Rajidae (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Amblyraja radiata",  "Dipturus batis", "Dipturus oxyrinchus",
+         "Leucoraja circularis","Leucoraja fullonica",  "Leucoraja naevus",
+         "Raja brachyura", "Raja clavata","Raja montagui", "Rajella fyllae")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Amblyraja radiata"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Rajidae"]<-"Amblyraja radiata"
+dat9$estAphia_Code[dat9$estsciname=="Amblyraja radiata"]<-105865    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Raja clavata"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Rajidae"]<-"Raja clavata"
+dat9$estAphia_Code[dat9$estsciname=="Raja clavata"]<-105883    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Sebastes   3       #######################
+find<-subset(ns3, genus=="Sebastes",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Sebastes.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Sebastes (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Sebastes norvegicus",  "Sebastes viviparus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Sebastes"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Sebastes"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Sebastes"]<-"Sebastes viviparus"
+dat9$estAphia_Code[dat9$estsciname=="Sebastes viviparus"]<-127255   
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Stichaeidae  1  ######################
+find<-subset(ns3, family=="Stichaeidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Stichaeidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Stichaeidae (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Chirolophis ascanii",  "Leptoclinus maculatus", "Lumpenus lampretaeformis")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Stichaeidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Stichaeidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Stichaeidae"]<-"Lumpenus lampretaeformis"
+dat9$estAphia_Code[dat9$estsciname=="Lumpenus lampretaeformis"]<-154675    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Syngnathidae  15   #######################
+find<-subset(ns3, family=="Syngnathidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Syngnathidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Syngnathidae (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Entelurus aequoreus","Syngnathus acus", "Syngnathus rostellatus",
+          "Syngnathus typhle")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Entelurus aequoreus"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Syngnathidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathidae"]<-"Entelurus aequoreus"
+dat9$estAphia_Code[dat9$estsciname=="Entelurus aequoreus"]<-127379    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Syngnathus acus"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Syngnathidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathidae"]<-"Syngnathus acus"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus acus"]<-127387     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Syngnathus  1      #######################
+find<-subset(ns3, genus=="Syngnathus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Syngnathus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Syngnathus (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Syngnathus acus", "Syngnathus rostellatus",  "Syngnathus typhle")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Syngnathus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathus"]<-"Syngnathus acus"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus acus"]<-127387    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################### Zeidae 6           #######################
+find<-subset(ns3, family=="Zeidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Zeidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Zeidae (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Knn predicts
+dat9$estrank[dat9$Survey_Acronym=="GNSIntOT3"&dat9$estsciname=="Zeidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSIntOT3"
+                        &dat9$estsciname=="Zeidae"]<-"family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="GNSIntOT3"
+                &dat9$estsciname=="Zeidae"]<-"Zeus faber"
+dat9$estAphia_Code[dat9$estsciname=="Zeus faber"]<-127427    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="family_to_spp"]<-"OK"
+####################### Zeugopterus    7   #######################
+find<-subset(ns3, genus=="Zeugopterus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Zeugopterus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Zeugopterus (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$estrank[dat9$Survey_Acronym=="GNSIntOT3"&dat9$estsciname=="Zeugopterus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSIntOT3"
+                        &dat9$estsciname=="Zeugopterus"]<-"family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="GNSIntOT3"
+                &dat9$estsciname=="Zeugopterus"]<-"Zeugopterus punctatus"
+dat9$estAphia_Code[dat9$estsciname=="Zeugopterus punctatus"]<-127151     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="family_to_spp"]<-"OK"
+####################### Zoarcidae 2  #######################
+find<-subset(ns3, family=="Zoarcidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSIntOT3_diagnostics_Zoarcidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Zoarcidae (GNSIntOT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Lycenchelys sarsii","Lycodes gracilis","Lycodes vahlii",
+          "Zoarces viviparus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Zoarcidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Zoarcidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Zoarcidae"]<-"Lycodes vahlii"
+dat9$estAphia_Code[dat9$estsciname=="Lycodes vahlii"]<-127118    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###########################################
+# 6. GNSFraOT4-k-NN - Species Composotion #
+###########################################
+frenchcha<-subset(dat9, Survey_Acronym=="GNSFraOT4",)
+summary(as.factor(frenchcha$RecordStatus))
+lofa_frenchcha<-subset(frenchcha, !RecordStatus=="OK",)
+summary(as.factor(lofa_frenchcha$estsciname[lofa_frenchcha$RecordStatus=="SC"]))
+########################## Callionymus 147       ##########################
+find<-subset(frenchcha, genus=="Callionymus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSFraOT4_diagnostics_Callionymus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  #ggtitle("Lenght distribution of Callionymus (GNSFraOT4)")+  
+  theme(text = element_text(size=20))
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme(text = element_text(size=20))
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme(text = element_text(size=20))
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+grid.arrange(p4, ncol=1)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Knn predicts
+dat9$estrank[dat9$Survey_Acronym=="GNSFraOT4"&dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSFraOT4"&
+                        dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="GNSFraOT4"&
+                dat9$estsciname=="Callionymus"]<-"Callionymus lyra"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus lyra"]<-126792     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+########################## Microchirus  9        ##########################
+find<-subset(frenchcha, genus=="Microchirus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSFraOT4_diagnostics_Microchirus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Microchirus (GNSFraOT4)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Knn predicts
+dat9$estrank[dat9$Survey_Acronym=="GNSFraOT4"&dat9$estsciname=="Microchirus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="GNSFraOT4"&
+                          dat9$estsciname=="Microchirus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="GNSFraOT4"&
+                  dat9$estsciname=="Microchirus"]<-"Microchirus variegatus"
+dat9$estAphia_Code[dat9$estsciname=="Microchirus variegatus"]<-274304      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+################## Zeugopterus 1 ##################
+find<-subset(frenchcha, genus=="Zeugopterus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSFraOT4_diagnostics_Zeugopterus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Zeugopterus (GNSFraOT4)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Zeugopterus punctatus","Zeugopterus regius")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Zeugopterus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Zeugopterus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Zeugopterus"]<-"Zeugopterus punctatus"
+dat9$estAphia_Code[dat9$estsciname=="Zeugopterus punctatus"]<-127151     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##########################################
+# 7. CSEngBT3-k-NN - Species Composotion #
+##########################################
+eng_is<-subset(dat9, Survey_Acronym=="CSEngBT3",)
+summary(as.factor(eng_is$RecordStatus))
+lofa_eng_is<-subset(eng_is, !RecordStatus=="OK",)
+summary(as.factor(lofa_eng_is$estsciname[lofa_eng_is$RecordStatus=="SC"]))
+##################### Argentina     112#####################
+find<-subset(eng_is, genus=="Argentina",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSEngBT3_diagnostics_Argentina.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Argentina (CSEngBT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$estrank[dat9$Survey_Acronym=="CSEngBT3"&dat9$estsciname=="Argentina"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSEngBT3"&
+                          dat9$estsciname=="Argentina"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="CSEngBT3"&
+                  dat9$estsciname=="Argentina"]<-"Argentina sphyraena"
+dat9$estAphia_Code[dat9$estsciname=="Argentina sphyraena"]<-126716      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#####################Callionymus 8    #####################
+find<-subset(eng_is, genus=="Callionymus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSEngBT3_diagnostics_Callionymus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Callionymus (CSEngBT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Callionymus lyra", "Callionymus maculatus",  "Callionymus reticulatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Callionymus"]<-"Callionymus lyra"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus lyra"]<-126792    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+########################Chelidonichthys  835 ########################
+find<-subset(eng_is, genus=="Chelidonichthys",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSEngBT3_diagnostics_Chelidonichthys.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Chelidonichthys (CSEngBT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Chelidonichthys cuculus", "Chelidonichthys lucerna")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Chelidonichthys cuculus"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Chelidonichthys"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Chelidonichthys"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Chelidonichthys"]<-"Chelidonichthys cuculus"
+dat9$estAphia_Code[dat9$estsciname=="Chelidonichthys cuculus"]<-127259    
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Chelidonichthys lucerna"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Chelidonichthys"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Chelidonichthys"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Chelidonichthys"]<-"Chelidonichthys lucerna"
+dat9$estAphia_Code[dat9$estsciname=="Chelidonichthys lucerna"]<-127262     
+
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#########################Gobiesocidae        5##########################
+find<-subset(eng_is, family=="Gobiesocidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSEngBT3_diagnostics_Gobiesocidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Gobiesocidae (CSEngBT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Diplecogaster bimaculata bimaculata", "Lepadogaster lepadogaster")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Gobiesocidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Gobiesocidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Gobiesocidae"]<-"Diplecogaster bimaculata bimaculata"
+dat9$estAphia_Code[dat9$estsciname=="Diplecogaster bimaculata bimaculata"]<-236458     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#####################Labridae  2       #####################
+find<-subset(eng_is, family=="Labridae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSEngBT3_diagnostics_Labridae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Labridae (CSEngBT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Centrolabrus exoletus", "Ctenolabrus rupestris","Labrus bergylta",
+         "Labrus mixtus", "Symphodus", "Symphodus bailloni","Symphodus melops")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Labridae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Labridae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Labridae"]<-"Ctenolabrus rupestris"
+dat9$estAphia_Code[dat9$estsciname=="Ctenolabrus rupestris"]<-126964      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Liparis      6   #####################
+find<-subset(eng_is, genus=="Liparis",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSEngBT3_diagnostics_Liparis.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Liparis (CSEngBT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Liparis liparis liparis", "Liparis montagui")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Liparis"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Liparis"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Liparis"]<-"Liparis liparis liparis"
+dat9$estAphia_Code[dat9$estsciname=="Liparis liparis liparis"]<-293624       
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Rajidae     1    #####################
+find<-subset(eng_is, family=="Rajidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSEngBT3_diagnostics_Rajidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Rajidae (CSEngBT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Leucoraja naevus","Raja brachyura","Raja clavata", "Raja microocellata",
+          "Raja montagui", "Raja undulata")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Rajidae"]<-"Leucoraja naevus"
+dat9$estAphia_Code[dat9$estsciname=="Leucoraja naevus"]<-105876        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Symphodus     12 #####################
+find<-subset(eng_is, genus=="Symphodus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSEngBT3_diagnostics_Symphodus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Symphodus (CSEngBT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Symphodus bailloni",   "Symphodus melops")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Symphodus bailloni"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Symphodus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Symphodus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Symphodus"]<-"Symphodus bailloni"
+dat9$estAphia_Code[dat9$estsciname=="Symphodus bailloni"]<-273566        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Symphodus melops"])
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Symphodus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Symphodus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Symphodus"]<-"Symphodus melops"
+dat9$estAphia_Code[dat9$estsciname=="SSymphodus melops"]<-273571         
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Zeugopterus 87   #####################
+find<-subset(eng_is, genus=="Zeugopterus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSEngBT3_diagnostics_Zeugopterus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +  geom_jitter() +
+  ggtitle("Lenght distribution of Zeugopterus (CSEngBT3)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  +   facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Zeugopterus punctatus",    "Zeugopterus regius")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2])<-"Zeugopterus punctatus"
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Zeugopterus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Zeugopterus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Zeugopterus"]<-"Zeugopterus punctatus"
+dat9$estAphia_Code[dat9$estsciname=="Zeugopterus punctatus"]<-127151        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2])<-"Zeugopterus regius"
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Zeugopterus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Zeugopterus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Zeugopterus"]<-"Zeugopterus regius"
+dat9$estAphia_Code[dat9$estsciname=="Zeugopterus regius"]<-236488         
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##########################################
+# 8. CSScoOT1-k-NN - Species Composotion #
+##########################################
+summary(dat9$Survey_Acronym)
+sco<-subset(dat9, Survey_Acronym=="CSScoOT1", )
+summary(as.factor(sco$RecordStatus))
+lofa_sco<-subset(sco, !RecordStatus=="OK", )
+levels(as.factor(lofa_sco$estsciname))
+summary(as.factor(lofa_sco$estsciname[lofa_sco$RecordStatus=="SC"]))
+################## Phycidae    2 ##################
+find<-subset(sco, family=="Phycidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSScoOT1_diagnostics_Phycidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Phycidae (CSScoOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Only one species in this survey
+dat9$estrank[dat9$Survey_Acronym=="CSScoOT1"&dat9$estsciname=="Phycidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSScoOT1"&dat9$estsciname=="Phycidae"]<-"Genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="CSScoOT1"
+                &dat9$estsciname=="Phycidae"]<-"Phycis blennoides"
+dat9$estAphia_Code[dat9$estsciname=="Phycis blennoides"]<-126501 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Genus_to_spp"]<-"OK"
+################## Triglidae   1 ##################
+find<-subset(sco, family=="Triglidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSScoOT1_diagnostics_Triglidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Triglidae (CSScoOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Chelidonichthys cuculus", "Chelidonichthys lucerna",
+         "Eutrigla gurnardus", "Trigla lyra", "Trigloporus lastoviza")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Zeugopterus punctatus
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Triglidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Triglidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Triglidae"]<-"Eutrigla gurnardus"
+dat9$estAphia_Code[dat9$estsciname=="Eutrigla gurnardus"]<-150637
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###########################################
+# 9. CSScoOT4-k-NN - Species Composotion  #
+###########################################
+sco4<-subset(dat9, Survey_Acronym=="CSScoOT4", )
+summary(as.factor(sco4$RecordStatus))
+lofa_sco4<-subset(sco4, !RecordStatus=="OK", )
+levels(as.factor(lofa_sco4$estsciname))
+summary(as.factor(lofa_sco4$estsciname[lofa_sco4$RecordStatus=="SC"]))
+################### Gaidropsarus 2 ###################
+find<-subset(sco4, genus=="Gaidropsarus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSScoOT4_diagnostics_Gaidropsarus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Gaidropsarus (CSScoOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Only one species in this genus in the survey
+dat9$estrank[dat9$Survey_Acronym=="CSScoOT4"
+             %in%list&dat9$estsciname=="Gaidropsarus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSScoOT4"
+                        &dat9$estsciname=="Gaidropsarus"]<-"Genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="CSScoOT4"
+                &dat9$estsciname=="Gaidropsarus"]<-"Gaidropsarus vulgaris"
+dat9$estAphia_Code[dat9$estsciname=="Gaidropsarus vulgaris"]<-126458 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Genus_to_spp"]<-"OK"
+################## Labridae    3 ##################
+find<-subset(sco4, family=="Labridae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSScoOT4_diagnostics_Labridae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Labridae (CSScoOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Ctenolabrus rupestris", "Labrus bergylta","Labrus mixtus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+nrow(knn_dat)/10
+# training data
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+# training data
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID)
+# Knn predicts Zeugopterus punctatus
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Labridae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Labridae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Labridae"]<-"Labrus mixtus"
+dat9$estAphia_Code[dat9$estsciname=="Labrus mixtus"]<-151501 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+################## Myctophidae 10##################
+find<-subset(sco4, family=="Myctophidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSScoOT4_diagnostics_Myctophidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Myctophidae (CSScoOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Only one species in genus in survey
+dat9$estrank[dat9$Survey_Acronym=="CSScoOT4"
+             &dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSScoOT4"
+                        &dat9$estsciname=="Myctophidae"]<-"Family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="CSScoOT4"
+                &dat9$estsciname=="Myctophidae"]<-"Myctophum punctatum"
+dat9$estAphia_Code[dat9$estsciname=="Myctophum punctatum"]<-126627 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Family_to_spp"]<-"OK"
+################## Phycidae    14##################
+find<-subset(sco4, family=="Phycidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSScoOT4_diagnostics_Phycidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Phycidae (CSScoOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Only one species in genus in survey
+dat9$estrank[dat9$Survey_Acronym=="CSScoOT4"
+             &dat9$estsciname=="Phycidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSScoOT4"
+                        &dat9$estsciname=="Phycidae"]<-"Family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="CSScoOT4"
+                &dat9$estsciname=="Phycidae"]<-"Phycis blennoides"
+dat9$estAphia_Code[dat9$estsciname=="Phycis blennoides"]<-126501  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Family_to_spp"]<-"OK"
+###########################################
+# 10. CSIreOT4-k-NN - Species Composotion #
+###########################################
+ire<-subset(dat9, Survey_Acronym=="CSIreOT4",)
+summary(as.factor(ire$RecordStatus))
+lofa_ire<-subset(ire, !RecordStatus=="OK",)
+levels(as.factor(lofa_ire$estsciname))
+summary(as.factor(lofa_ire$estsciname[lofa_ire$RecordStatus=="SC"]))
+##################### Argentina  1112  #####################
+find<-subset(ire, genus=="Argentina",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Argentina.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Argentina (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Argentina silus", "Argentina sphyraena")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Argentina silus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Argentina"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Argentina"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Argentina"]<-"Argentina silus"
+dat9$estAphia_Code[dat9$estsciname=="Argentina silus"]<-126715 
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Argentina sphyraena"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Argentina"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Argentina"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Argentina"]<-"Argentina sphyraena"
+dat9$estAphia_Code[dat9$estsciname=="Argentina sphyraena"]<-126716  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Callionymus   4  #####################
+find<-subset(ire, genus=="Callionymus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Callionymus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Callionymus (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Callionymus lyra","Callionymus maculatus","Callionymus reticulatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Callionymus lyra"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list
+             &dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Callionymus"]<-"Callionymus lyra"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus lyra"]<-126792  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#####################Cottidae        3 #####################
+find<-subset(ire, family=="Cottidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Cottidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Cottidae (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Micrenophrys lilljeborgii","Myoxocephalus scorpius","Taurulus bubalis",
+         "Triglops murrayi")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Myoxocephalus scorpius"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Cottidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Cottidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Cottidae"]<-"Myoxocephalus scorpius"
+dat9$estAphia_Code[dat9$estsciname=="Myoxocephalus scorpius"]<-127203   
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Taurulus bubalis"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Cottidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Cottidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Cottidae"]<-"Taurulus bubalis"
+dat9$estAphia_Code[dat9$estsciname=="Taurulus bubalis"]<-127204   
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+###################### Gaidropsarus    8 ######################
+find<-subset(ire, genus=="Gaidropsarus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Gaidropsarus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Gaidropsarus (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Gaidropsarus macrophthalmus","Gaidropsarus mediterraneus","Gaidropsarus vulgaris")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Gaidropsarus vulgaris"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Gaidropsarus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Gaidropsarus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Gaidropsarus"]<-"Gaidropsarus vulgaris"
+dat9$estAphia_Code[dat9$estsciname=="Gaidropsarus vulgaris"]<-126458    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Labridae   2     #####################
+find<-subset(ire, family=="Labridae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Labridae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Labridae (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Acantholabrus palloni","Centrolabrus exoletus","Ctenolabrus rupestris",
+         "Labrus bergylta", "Labrus mixtus", "Symphodus melops" )
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Labrus mixtus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Labridae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Labridae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Labridae"]<-"Labrus mixtus"
+dat9$estAphia_Code[dat9$estsciname=="Labrus mixtus"]<-151501   
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Macrouridae  2   #####################
+find<-subset(ire, family=="Macrouridae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Macrouridae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Macrouridae (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Coelorinchus caelorhincus", "Coelorinchus labiatus",
+          "Coryphaenoides rupestris", "Macrourus berglax",
+          "Malacocephalus laevis", "Nezumia aequalis",
+          "Trachyrincus murrayi",    "Trachyrincus scabrus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Macrourus berglax"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Macrouridae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Macrouridae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Macrouridae"]<-"Macrourus berglax"
+dat9$estAphia_Code[dat9$estsciname=="Macrourus berglax"]<-126472    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Mullus  37       #####################
+find<-subset(ire, genus=="Mullus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Mullus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Mullus (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Mullus barbatus barbatus", "Mullus surmuletus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Mullus barbatus barbatus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Mullus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Mullus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Mullus"]<-"Mullus barbatus barbatus"
+dat9$estAphia_Code[dat9$estsciname=="Mullus barbatus barbatus"]<-293632    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Mullus surmuletus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Mullus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Mullus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Mullus"]<-"Mullus surmuletus"
+dat9$estAphia_Code[dat9$estsciname=="Mullus surmuletus"]<-126986    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Myctophidae 68   #####################
+find<-subset(ire, family=="Myctophidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Myctophidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Myctophidae (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Lampanyctus crocodilus","Notoscopelus kroyeri")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Lampanyctus crocodilus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Lampanyctus crocodilus"
+dat9$estAphia_Code[dat9$estsciname=="Lampanyctus crocodilus"]<-1  
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Scorpaenidae     2####################
+find<-subset(ire, family=="Scorpaenidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Scorpaenidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Scorpaenidae (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Knn predicts
+dat9$RecordStatus[dat9$Survey_Acronym=="CSIreOT4"&dat9$estsciname=="Scorpaenidae"]<-"OK"
+##################### Sparidae     1   #####################
+find<-subset(ire, family=="Sparidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Sparidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Sparidae (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Boops boops", "Pagellus acarne", "Pagellus bogaraveo",
+         "Pagrus pagrus", "Spondyliosoma cantharus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Spondyliosoma cantharus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Sparidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Sparidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Sparidae"]<-"Spondyliosoma cantharus"
+dat9$estAphia_Code[dat9$estsciname=="Spondyliosoma cantharus"]<-127047    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Syngnathidae    1#####################
+find<-subset(ire, family=="Syngnathidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Syngnathidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Syngnathidae (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c( "Entelurus aequoreus", "Nerophis ophidion", "Syngnathus acus",
+          "Syngnathus typhle")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Syngnathus acus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Syngnathidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathidae"]<-"Syngnathus acus"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus acus"]<-127387    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Zoarcidae   15   #####################
+find<-subset(ire, family=="Zoarcidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSIreOT4_diagnostics_Zoarcidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Zoarcidae (CSIreOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# can't do anything about this
+dat9$RecordStatus[dat9$Survey_Acronym=="CSIreOT4"&dat9$estsciname=="Zoarcidae"]<-"OK"
+###########################################
+# 11. CSNIrOT1-k-NN - Species Composotion #
+###########################################
+ni1<-subset(dat9, Survey_Acronym=="CSNIrOT1",)
+summary(as.factor(ni1$RecordStatus))
+lofa_ni1<-subset(ni1, !RecordStatus=="OK",)
+levels(as.factor(lofa_ni1$estsciname))
+summary(as.factor(lofa_ni1$estsciname[lofa_ni1$RecordStatus=="SC"]))
+################### Alosa       5##################
+find<-subset(ni1, genus=="Alosa",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSNIrOT1_diagnostics_Alosa.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Alosa (CSNIrOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Alosa"]<-"OK"
+################### Argentina    401 ##################
+find<-subset(ni1, genus=="Argentina",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSNIrOT1_diagnostics_Argentina.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Argentina (CSNIrOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Argentina"]<-"OK"
+###################Mustelus    445##################
+find<-subset(ni1, genus=="Mustelus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Mustelus"]<-"OK"
+dat9$estrank[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Mustelus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Mustelus"]<-"Genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Mustelus"]<-"Mustelus asterias"
+dat9$estAphia_Code[dat9$estsciname=="Mustelus asterias"]<-105821     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Genus_to_spp"]<-"OK"
+################### Petromyzontidae           3 ##################
+find<-subset(ni1, family=="Petromyzontidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Petromyzontidae"]<-"OK"
+dat9$estrank[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Petromyzontidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Petromyzontidae"]<-"Genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Petromyzontidae"]<-"Petromyzon marinus"
+dat9$estAphia_Code[dat9$estsciname=="Petromyzon marinus"]<-101174     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Genus_to_spp"]<-"OK"
+################### Salmo 4##################
+find<-subset(ni1, genus=="Salmo",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Salmo"]<-"OK"
+################## Syngnathus ##################
+find<-subset(ni1, genus=="Syngnathus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSNIrOT1_diagnostics_Syngnathus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Syngnathus (CSNIrOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT1"&dat9$estsciname=="Syngnathus"]<-"OK"
+ 
+###########################################
+# 12. CSNIrOT4-k-NN - Species Composotion #
+###########################################
+ni4<-subset(dat9, Survey_Acronym=="CSNIrOT4",)
+summary(as.factor(ni4$RecordStatus))
+lofa_ni4<-subset(ni4, !RecordStatus=="OK",)
+levels(as.factor(lofa_ni4$estsciname))
+summary(as.factor(lofa_ni4$estsciname[lofa_ni4$RecordStatus=="LFD"]))
+#################Alosa       2#################
+find<-subset(ni4, genus=="Alosa",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSNIrOT4_diagnostics_Alosa.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Alosa (CSNIrOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Alosa"]<-"OK"
+################# Argentina   2#################
+find<-subset(ni4, genus=="Argentina",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSNIrOT4_diagnostics_Argentina.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Argentina (CSNIrOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Argentina"]<-"OK"
+#################Mustelus  359 #################
+find<-subset(ni4, genus=="Mustelus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Mustelus"]<-"OK"
+dat9$estrank[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Mustelus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Mustelus"]<-"Genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Mustelus"]<-"Mustelus asterias"
+dat9$estAphia_Code[dat9$estsciname=="Mustelus asterias"]<-105821     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Genus_to_spp"]<-"OK"
+#########################Petromyzontidae  995  #########################
+find<-subset(ni4, family=="Petromyzontidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Petromyzontidae"]<-"OK"
+dat9$estrank[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Petromyzontidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Petromyzontidae"]<-"Genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Petromyzontidae"]<-"Petromyzon marinus"
+dat9$estAphia_Code[dat9$estsciname=="Petromyzon marinus"]<-101174     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="Genus_to_spp"]<-"OK"
+#################Salmo 2       #################
+find<-subset(ni4, genus=="Salmo",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Salmo"]<-"OK"
+################# Syngnathus  1#################
+dat9$RecordStatus[dat9$Survey_Acronym=="CSNIrOT4"&dat9$estsciname=="Syngnathus"]<-"OK"
+##############################################
+# 13. CS/BBFraOT4-k-NN - Species Composotion #
+##############################################
+summary(as.factor(dat9$Survey_Acronym))
+evhoe<-subset(dat9, Survey_Acronym=="CSBBFraOT4",)
+summary(as.factor(evhoe$RecordStatus))
+lofa_evhoe<-subset(evhoe, !RecordStatus=="OK",)
+levels(as.factor(lofa_evhoe$estsciname))
+summary(as.factor(lofa_evhoe$estsciname[lofa_evhoe$RecordStatus=="SC"]))
+#################### Argyropelecus   ####################
+find<-subset(evhoe, genus=="Argyropelecus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSBBFraOT4_diagnostics_Argyropelecus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Argyropelecus (CSBBFraOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Argyropelecus hemigymnus", "Argyropelecus olfersii")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Argyropelecus olfersii"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Argyropelecus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Argyropelecus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Argyropelecus"]<-"Argyropelecus olfersii"
+dat9$estAphia_Code[dat9$estsciname=="Argyropelecus olfersii"]<-274967    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################### Callionymus     ####################
+find<-subset(evhoe, genus=="Callionymus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSBBFraOT4_diagnostics_Callionymus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Callionymus (CSBBFraOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Callionymus lyra",   "Callionymus maculatus", "Callionymus reticulatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Callionymus lyra"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Callionymus"]<-"Callionymus lyra"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus lyra"]<-126792     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Callionymus maculatus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Callionymus"]<-"Callionymus maculatus"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus maculatus"]<-126793      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################### Diaphus         ####################
+find<-subset(evhoe, genus=="Diaphus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSBBFraOT4_diagnostics_Diaphus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Diaphus (CSBBFraOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Knn predicts
+dat9$RecordStatus[dat9$Survey_Acronym=="CSBBFraOT4"&dat9$estsciname=="Diaphus"]<-"OK"
+#################### Microchirus    ####################
+find<-subset(evhoe, genus=="Microchirus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSBBFraOT4_diagnostics_Microchirus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Microchirus (CSBBFraOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$estrank[dat9$Survey_Acronym=="CSBBFraOT4"&dat9$estsciname=="Microchirus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="CSBBFraOT4"
+                        &dat9$estsciname=="Microchirus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="CSBBFraOT4"
+                &dat9$estsciname=="Microchirus"]<-"Microchirus variegatus"
+dat9$estAphia_Code[dat9$estsciname=="Microchirus variegatus"]<-274304      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#####################Myctophidae ######################
+find<-subset(evhoe, family=="Myctophidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSBBFraOT4_diagnostics_Myctophidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Myctophidae (CSBBFraOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Benthosema glaciale", "Ceratoscopelus maderensis",        
+        "Myctophum punctatum",  "Notoscopelus kroyeri",
+        "Diaphus",    "Lampanyctus crocodilus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Lampanyctus crocodilus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Lampanyctus crocodilus"
+dat9$estAphia_Code[dat9$estsciname=="Lampanyctus crocodilus"]<-126612      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Notoscopelus kroyeri"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Notoscopelus kroyeri"
+dat9$estAphia_Code[dat9$estsciname=="Notoscopelus kroyeri"]<-272728       
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################### Pagellus        ####################
+find<-subset(evhoe, genus=="Pagellus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSBBFraOT4_diagnostics_Pagellus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Pagellus (CSBBFraOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Pagellus acarne",  "Pagellus bogaraveo", "Pagellus erythrinus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Pagellus acarne"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Pagellus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Pagellus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Pagellus"]<-"Pagellus acarne"
+dat9$estAphia_Code[dat9$estsciname=="Pagellus acarne"]<-127057      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################### Spratelloides  ####################
+find<-subset(evhoe, family=="Spratelloides",)
+dat9$RecordStatus[dat9$Survey_Acronym=="CSBBFraOT4"&dat9$estsciname=="Spratelloides"]<-"OK"
+#################### Syngnathus###################
+find<-subset(evhoe, genus=="Syngnathus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSBBFraOT4_diagnostics_Syngnathus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Syngnathus (CSBBFraOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Syngnathus acus", "Syngnathus rostellatus",      "Syngnathus typhle")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Syngnathus acus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Syngnathus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Syngnathus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Syngnathus"]<-"Syngnathus acus"
+dat9$estAphia_Code[dat9$estsciname=="Syngnathus acus"]<-127387     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#############################################
+# 14. BBICPorOT4-k-NN - Species Composotion #
+#############################################
+por<-subset(dat9, Survey_Acronym=="BBICPorOT4",)
+summary(as.factor(por$RecordStatus))
+lofa_por<-subset(por, !RecordStatus=="OK",)
+levels(as.factor(lofa_por$estsciname))
+summary(as.factor(lofa_por$estsciname[lofa_por$RecordStatus=="SC"]))
+####################Callionymus      ####################
+find<-subset(por, genus=="Callionymus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICPorOT4_diagnostics_Callionymus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Callionymus (BBICPorOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Callionymus lyra", "Callionymus maculatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Callionymus lyra"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Callionymus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Callionymus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Callionymus"]<-"Callionymus lyra"
+dat9$estAphia_Code[dat9$estsciname=="Callionymus lyra"]<-126792      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+####################Gaidropsarus     ####################
+find<-subset(por, genus=="Gaidropsarus",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICPorOT4_diagnostics_Gaidropsarus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Gaidropsarus (BBICPorOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Gaidropsarus biscayensis", "Gaidropsarus mediterraneus","Gaidropsarus vulgaris" )
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Gaidropsarus mediterraneus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Gaidropsarus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Gaidropsarus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Gaidropsarus"]<-"Gaidropsarus mediterraneus"
+dat9$estAphia_Code[dat9$estsciname=="Gaidropsarus mediterraneus"]<-126457       
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################### Myctophidae   ####################
+find<-subset(por, family=="Myctophidae",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICPorOT4_diagnostics_Myctophidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Myctophidae (BBICPorOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$estrank[dat9$Survey_Acronym=="BBICPorOT4"&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="BBICPorOT4"
+                        &dat9$estsciname=="Myctophidae"]<-"family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="BBICPorOT4"
+                &dat9$estsciname=="Myctophidae"]<-"Myctophum punctatum"
+dat9$estAphia_Code[dat9$estsciname=="Myctophum punctatum"]<-126627       
+dat9$RecordStatus[dat9$SpeciesQualityCode=="family_to_spp"]<-"OK"
+#################### Scorpaena       ####################
+find<-subset(por, genus=="Scorpaena",)
+find<-as.data.frame(find)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICPorOT4_diagnostics_Scorpaena.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Scorpaena (BBICPorOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="BBICPorOT4"&dat9$estsciname=="Scorpaena"]<-"OK"
+###########################################
+# 15. WAScoOT3-k-NN - Species Composotion #
+###########################################
+wasco<-subset(dat9, Survey_Acronym=="WAScoOT3",)
+summary(as.factor(wasco$RecordStatus))
+lofa_wasco<-subset(wasco, !RecordStatus=="OK",)
+levels(as.factor(lofa_wasco$estsciname))
+summary(as.factor(lofa_wasco$estsciname[lofa_wasco$RecordStatus=="SC"]))
+##################### Myctophidae 4####################
+find<-subset(wasco, family=="Myctophidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+dat9$RecordStatus[dat9$Survey_Acronym=="WAScoOT3"&dat9$estsciname=="Myctophidae"]<-"OK"
+##################### Phycidae    8####################
+find<-subset(wasco, family=="Phycidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+dat9$estrank[dat9$Survey_Acronym=="WAScoOT3"&dat9$estsciname=="Phycidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="WAScoOT3"
+                        &dat9$estsciname=="Phycidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="WAScoOT3"
+                &dat9$estsciname=="Phycidae"]<-"Phycis blennoides"
+dat9$estAphia_Code[dat9$estsciname=="Phycis blennoides"]<-126501       
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Syngnathidae 1####################
+find<-subset(wasco, family=="Syngnathidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$estrank[dat9$Survey_Acronym=="WAScoOT3"&dat9$estsciname=="Syngnathidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="WAScoOT3"
+                        &dat9$estsciname=="Syngnathidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="WAScoOT3"
+                &dat9$estsciname=="Syngnathidae"]<-"Entelurus aequoreus"
+dat9$estAphia_Code[dat9$estsciname=="Entelurus aequoreus"]<-127379       
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################################################
+# 16. BBIC(n)SpaOT4 -k-NN - Species Composotion #
+#################################################
+summary(as.factor(dat9$Survey_Acronym))
+span4<-subset(dat9, Survey_Acronym=="BBIC(n)SpaOT4",)
+summary(as.factor(span4$RecordStatus))
+lofa_span4<-subset(span4, !RecordStatus=="OK",)
+levels(as.factor(lofa_span4$estsciname))
+summary(as.factor(lofa_span4$estsciname[lofa_span4$RecordStatus=="SC"]))
+##################### Lampadena  8 ####################
+find<-subset(span4, genus=="Lampadena",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="BBIC(n)SpaOT4"&dat9$estsciname=="Lampadena"]<-"OK"
+##################### Myctophidae 9####################
+find<-subset(span4, family=="Myctophidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICSpaNOT4_diagnostics_Myctophidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Myctophidae (BBICSpaNOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Diaphus dumerilii", "Electrona risso", "Lampanyctus crocodilus",
+        "Lobianchia gemellarii", "Myctophum punctatum", "Notoscopelus kroyeri",
+        "Protomyctophum arcticum")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Lampanyctus crocodilus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Lampanyctus crocodilus"
+dat9$estAphia_Code[dat9$estsciname=="Lampanyctus crocodilus"]<-126612      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Myctophum punctatum"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Myctophum punctatum"
+dat9$estAphia_Code[dat9$estsciname=="Myctophum punctatum"]<-126627       
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Notoscopelus 4 ####################
+find<-subset(span4, genus=="Notoscopelus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$estrank[dat9$Survey_Acronym=="BBIC(n)SpaOT4"&dat9$estsciname=="Notoscopelus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="BBIC(n)SpaOT4"
+                        &dat9$estsciname=="Notoscopelus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="BBIC(n)SpaOT4"
+                &dat9$estsciname=="Notoscopelus"]<-"Notoscopelus kroyeri"
+dat9$estAphia_Code[dat9$estsciname=="Notoscopelus kroyeri"]<-272728        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################################################
+# 17. BBIC(s)SpaOT1 -k-NN - Species Composotion #
+#################################################
+spas1<-subset(dat9, Survey_Acronym=="BBIC(s)SpaOT1",)
+summary(as.factor(spas1$RecordStatus))
+lofa_spas1<-subset(spas1, !RecordStatus=="OK",)
+levels(as.factor(lofa_spas1$estsciname))
+summary(unique(as.factor(lofa_spas1$estsciname[lofa_spas1$RecordStatus=="SC"])))
+#################### Centrolophidae ####################
+find<-subset(spas1, family=="Centrolophidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# one spp in family in survey
+dat9$estrank[dat9$Survey_Acronym=="BBIC(s)SpaOT1"&dat9$estsciname=="Centrolophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="BBIC(s)SpaOT1"&dat9$estsciname=="Centrolophidae"]<-"family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="BBIC(s)SpaOT1"
+                &dat9$family=="Centrolophidae"]<-"Schedophilus ovalis"
+dat9$estAphia_Code[dat9$estsciname=="Schedophilus ovalis"]<-1        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="family_to_spp"]<-"OK"
+##################### Cyclothone      ####################
+find<-subset(spas1, genus=="Cyclothone",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="BBIC(s)SpaOT1"&dat9$estsciname=="Cyclothone"]<-"OK"
+##################### Diaphus         ####################
+find<-subset(spas1, genus=="Diaphus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# can't use knn here because 89 diaphus in total but only 7 are at spp level
+dat9$estrank[dat9$Survey_Acronym=="BBIC(s)SpaOT1"&dat9$genus=="Diaphus"]<-"Genus"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="BBIC(s)SpaOT1"
+                        &dat9$genus=="Diaphus"]<-"spp_to_genus"
+dat9$estsciname[dat9$Survey_Acronym=="BBIC(n)SpaOT1"
+                &dat9$genus=="Diaphus"]<-"Diaphus"
+dat9$estAphia_Code[dat9$genus=="Diaphus"]<-1        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="spp_to_genus"]<-"OK"
+##################### Lophius         ####################
+find<-subset(spas1, genus=="Lophius",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICsSpaOT1_diagnostics_Lophius.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Lophius (BBICSpa(s)OT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Lophius budegassa", "Lophius piscatorius")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Lophius budegassa"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Lophius"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Lophius"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Lophius"]<-"Lophius budegassa"
+dat9$estAphia_Code[dat9$estsciname=="Lophius budegassa"]<-1    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Microchirus     ####################
+find<-subset(spas1, genus=="Microchirus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICsSpaOT1_diagnostics_Microchirus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Microchirus (BBICsSpaOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Microchirus azevia", "Microchirus boscanion","Microchirus ocellatus", "Microchirus variegatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Microchirus variegatus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Microchirus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Microchirus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Microchirus"]<-"Microchirus variegatus"
+dat9$estAphia_Code[dat9$estsciname=="Microchirus variegatus"]<-126792     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Moridae         ####################
+find<-subset(spas1, family=="Moridae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="CSBBFraOT4_diagnostics_Moridae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Moridae (CSBBFraOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Gadella maraldi", "Guttigadus latifrons", "Mora moro", "Physiculus dalwigki")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Gadella maraldi"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Moridae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Moridae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Moridae"]<-"Gadella maraldi"
+dat9$estAphia_Code[dat9$estsciname=="Gadella maraldi"]<-1     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Myctophidae    ####################
+find<-subset(spas1, family=="Myctophidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICsSpaOT1_diagnostics_Myctophidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Myctophidae (BBICsSpaOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Ceratoscopelus maderensis", "Diaphus", "Hygophum benoiti", 
+        "Lampanyctus crocodilus", "Lobianchia dofleini", "Lobianchia gemellarii",     
+        "Myctophum punctatum", "Notoscopelus", "Symbolophorus veranyi")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Myctophum punctatum"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Myctophum punctatum"
+dat9$estAphia_Code[dat9$estsciname=="Myctophum punctatum"]<-1     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Diaphus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Diaphus"
+dat9$estAphia_Code[dat9$estsciname=="Diaphus"]<-1
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Notoscopelus    ####################
+find<-subset(spas1, genus=="Notoscopelus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+dat9$RecordStatus[dat9$Survey_Acronym=="BBIC(s)SpaOT1"&dat9$estsciname=="Notoscopelus"]<-"OK"
+##################### Rajidae         ####################
+find<-subset(spas1, family=="Rajidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICsSpaOT1_diagnostics_Rajidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Rajidae (BBICsSpaOT1)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Amblyraja radiata", "Dipturus batis","Dipturus oxyrinchus", "Leucoraja circularis",  
+        "Leucoraja fullonica", "Leucoraja naevus", "Neoraja iberica", "Raja asterias",
+        "Raja brachyura", "Raja clavata", "Raja microocellata", "Raja miraletus", "Raja montagui")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, estsciname=="Rajidae" ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Leucoraja naevus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Rajidae"]<-"Leucoraja naevus"
+dat9$estAphia_Code[dat9$estsciname=="Leucoraja naevus"]<-1    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Raja clavata"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Rajidae"]<-"Raja clavata"
+dat9$estAphia_Code[dat9$estsciname=="Raja clavata"]<-1     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+#################################################
+# 18. BBIC(s)SpaOT4 -k-NN - Species Composotion #
+#################################################
+spas4<-subset(dat9, Survey_Acronym=="BBIC(s)SpaOT4",)
+summary(as.factor(spas4$RecordStatus))
+lofa_spas4<-subset(spas4, !RecordStatus=="OK",)
+levels(as.factor(lofa_spas4$estsciname))
+summary(as.factor(lofa_spas4$estsciname[lofa_spas4$RecordStatus=="SCLFD"]))
+#################### Diaphus         ####################
+find<-subset(spas4, genus=="Diaphus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$estrank[dat9$Survey_Acronym=="BBIC(s)SpaOT4"&dat9$genus=="Diaphus"]<-"Genus"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="BBIC(s)SpaOT4"
+                        &dat9$genus=="Diaphus"]<-"spp_to_genus"
+dat9$estsciname[dat9$Survey_Acronym=="BBIC(n)SpaOT4"
+                &dat9$genus=="Diaphus"]<-"Diaphus"
+dat9$estAphia_Code[dat9$genus=="Diaphus"]<-1        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="spp_to_genus"]<-"OK"
+##################### Lobianchia      ####################
+find<-subset(spas4, genus=="Lobianchia",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICsSpaOT4_diagnostics_Lobianchia.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Lobianchia (BBICsSpaOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Lobianchia dofleini", "Lobianchia gemellarii")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Lobianchia dofleini"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Lobianchia"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Lobianchia"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Lobianchia"]<-"Lobianchia dofleini"
+dat9$estAphia_Code[dat9$estsciname=="Lobianchia dofleini"]<-1     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Microchirus     ####################
+find<-subset(spas1, genus=="Microchirus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICsSpaOT4_diagnostics_Microchirus.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Microchirus (BBICsSpaOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Microchirus azevia", "Microchirus boscanion","Microchirus ocellatus", "Microchirus variegatus")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Microchirus variegatus"])
+# Knn predicts
+dat9$estrank[dat9$Survey_Acronym=="BBIC(s)SpaOT4"&dat9$estsciname=="Microchirus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="BBIC(s)SpaOT4"
+                        &dat9$estsciname=="Microchirus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$Survey_Acronym=="BBIC(s)SpaOT4"
+                &dat9$estsciname=="Microchirus"]<-"Microchirus variegatus"
+dat9$estAphia_Code[dat9$estsciname=="Microchirus variegatus"]<-1     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Myctophidae     ####################
+find<-subset(spas4, family=="Myctophidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICsSpaOT4_diagnostics_Myctophidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Myctophidae (BBICsSpaOT4)")+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Ceratoscopelus maderensis", "Diaphus", "Hygophum benoiti",
+        "Lobianchia gemellarii", "Benthosema glaciale", "Lampanyctus crocodilus",
+        "Lobianchia dofleini", "Lobianchia gemellarii", "Myctophum punctatum",
+        "Notoscopelus", "Symbolophorus veranyi")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Myctophum punctatum"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Myctophum punctatum"
+dat9$estAphia_Code[dat9$estsciname=="Myctophum punctatum"]<-126792     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Notoscopelus   ###################
+find<-subset(spas4, genus=="Notoscopelus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# one spp identified but only 1 record - genus level is better to be in 
+# line with other spanish survey
+# can't use knn here because 89 diaphus in total but only 7 are at spp level
+dat9$estrank[dat9$Survey_Acronym=="BBIC(s)SpaOT4"&dat9$genus=="Notoscopelus"]<-"Genus"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="BBIC(s)SpaOT4"
+                        &dat9$genus=="Notoscopelus"]<-"spp_to_genus"
+dat9$estsciname[dat9$Survey_Acronym=="BBIC(n)SpaOT4"
+                &dat9$genus=="Notoscopelus"]<-"Notoscopelus"
+dat9$estAphia_Code[dat9$genus=="Notoscopelus"]<-1        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="spp_to_genus"]<-"OK"
+##################### Rajidae          ####################
+find<-subset(spas4, family=="Rajidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="BBICsSpaOT4_diagnostics_Spratelloides.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Spratelloides (BBICsSpaOT4)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Dipturus batis", "Dipturus oxyrinchus", "Leucoraja circularis",  "Leucoraja fullonica",  
+        "Leucoraja naevus", "Neoraja iberica", "Raja asterias", "Raja brachyura", "Raja clavata",
+        "Raja microocellata", "Raja miraletus", "Raja montagui", "Raja undulata", "Rostroraja alba")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Neoraja iberica"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Rajidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Rajidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Rajidae"]<-"Neoraja iberica"
+dat9$estAphia_Code[dat9$estsciname=="Neoraja iberica"]<-1     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+############################################
+# 19. WASpaOT3 -k-NN - Species Composotion #
+############################################
+waspa<-subset(dat9, Survey_Acronym=="WASpaOT3",)
+summary(as.factor(waspa$RecordStatus))
+lofa_waspa<-subset(waspa, !RecordStatus=="OK",)
+levels(as.factor(lofa_waspa$estsciname))
+summary(as.factor(lofa_waspa$estsciname[lofa_waspa$RecordStatus=="SCLFD"]))
+###################Alepocephalidae ###################
+find<-subset(waspa, family=="Alepocephalidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="WASpaOT3_diagnostics_Alepocephalidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Alepocephalidae (WASpaOT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Alepocephalus bairdii", "Alepocephalus rostratus", "Xenodermichthys copei")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Alepocephalus rostratus"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Alepocephalidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Alepocephalidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Alepocephalidae"]<-"Alepocephalus rostratus"
+dat9$estAphia_Code[dat9$estsciname=="Alepocephalus rostratus"]<-1    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Chiasmodon      # ###################
+find<-subset(waspa, genus=="Chiasmodon",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$RecordStatus[dat9$Survey_Acronym=="WASpaOT3"&dat9$estsciname=="Chiasmodon"]<-"OK"
+##################### Congridae       ####################
+find<-subset(waspa, family=="Congridae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+dat9$estrank[dat9$Survey_Acronym=="WASpaOT3"&dat9$estsciname=="Congridae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="WASpaOT3"
+                        &dat9$estsciname=="Congridae"]<-"family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="WASpaOT3"
+                &dat9$family=="Congridae"]<-"Conger conger"
+dat9$estAphia_Code[dat9$estsciname=="Conger conger"]<-1        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="family_to_spp"]<-"OK"
+##################### Diaphus         ####################
+find<-subset(waspa, genus=="Diaphus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+dat9$RecordStatus[dat9$Survey_Acronym=="WASpaOT3"&dat9$estsciname=="Diaphus"]<-"OK"
+##################### Dipturus        ####################
+find<-subset(waspa, genus=="Dipturus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="WASpaOT3_diagnostics_Spratelloides.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Spratelloides (WASpaOT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Dipturus batis","Dipturus nidarosiensis")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Dipturus batis"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Dipturus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Dipturus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Dipturus"]<-"Dipturus batis"
+dat9$estAphia_Code[dat9$estsciname=="Dipturus batis"]<-1    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Dipturus nidarosiensis"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Dipturus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Dipturus"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Dipturus"]<-"Dipturus nidarosiensis"
+dat9$estAphia_Code[dat9$estsciname=="Dipturus nidarosiensis"]<-1     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Lampadena       ####################
+find<-subset(waspa, genus=="Lampadena",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+dat9$RecordStatus[dat9$Survey_Acronym=="WASpaOT3"&dat9$estsciname=="Lampadena"]<-"OK"
+##################### Liparidae        ####################
+find<-subset(waspa, family=="Liparidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+dat9$estrank[dat9$Survey_Acronym=="WASpaOT3"&dat9$estsciname=="Liparidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="WASpaOT3"
+                        &dat9$estsciname=="Liparidae"]<-"family_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="WASpaOT3"
+                &dat9$family=="Liparidae"]<-"Paraliparis membranaceus"
+dat9$estAphia_Code[dat9$estsciname=="Paraliparis membranaceus"]<-1        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="family_to_spp"]<-"OK"
+##################### Lophius         ####################
+find<-subset(waspa, genus=="Lophius",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="WASpaOT3_diagnostics_Lophius.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Lophius (WASpaOT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Lophius budegassa", "Lophius piscatorius")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Lophius piscatorius"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Lophius"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Lophius"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Lophius"]<-"Lophius piscatorius"
+dat9$estAphia_Code[dat9$estsciname=="Lophius piscatorius"]<-1    
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Myctophidae      ####################
+find<-subset(waspa, family=="Myctophidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="WASpaOT3_diagnostics_Myctophidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() + ggtitle("Lenght distribution of Myctophidae (WASpaOT3)")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+                               linetype="dashed", size=1)+   theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + facet_grid(estsciname ~ .) +  theme_classic()
+p4<-ggmap(map) +  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+list<-c("Diaphus", "Electrona risso", "Lampanyctus",
+        "Lobianchia gemellarii", "Myctophum punctatum", "Notoscopelus kroyeri")
+knn_dat<-subset(find, estsciname%in%list &!is.na(find$lenght_Norm ) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                          lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+x=sqrt(nrow(knn_dat))
+knn_dat_target<-subset(find, !estsciname%in%list ,
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,
+                                 lat_Norm,long_Norm,numbers_Norm,lenght_Norm))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- knn_dat_target[1:nrow(knn_dat_target),3:6]
+train_target<- knn_dat[1:nrow(knn_dat),2]
+test_target<- knn_dat_target[1:nrow(knn_dat_target),2]
+m2<-knn(train, test, cl=train_target, k=x)
+summary(droplevels(m2))
+t2<-(table(test_target, m2))
+knn_dat_target$m2<-m2
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Myctophum punctatum"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Myctophum punctatum"
+dat9$estAphia_Code[dat9$estsciname=="Myctophum punctatum"]<-1     
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+
+list<-unique(knn_dat_target$New_UniqueID[knn_dat_target$m2=="Notoscopelus kroyeri"])
+# Knn predicts
+dat9$estrank[dat9$New_UniqueID%in%list&dat9$estsciname=="Myctophidae"]<-"Species"
+dat9$SpeciesQualityCode[dat9$New_UniqueID%in%list
+                        &dat9$estsciname=="Myctophidae"]<-"KNN_spp_assignment"
+dat9$estsciname[dat9$New_UniqueID%in%list
+                &dat9$estsciname=="Myctophidae"]<-"Notoscopelus kroyeri"
+dat9$estAphia_Code[dat9$estsciname=="Notoscopelus kroyeri"]<-1      
+dat9$RecordStatus[dat9$SpeciesQualityCode=="KNN_spp_assignment"]<-"OK"
+##################### Notoscopelus   ####################
+find<-subset(waspa, genus=="Notoscopelus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+
+dat9$estrank[dat9$Survey_Acronym=="WASpaOT3"&dat9$estsciname=="Notoscopelus"]<-"Species"
+dat9$SpeciesQualityCode[dat9$Survey_Acronym=="WASpaOT3"
+                        &dat9$estsciname=="Notoscopelus"]<-"genus_to_spp"
+dat9$estsciname[dat9$Survey_Acronym=="WASpaOT3"
+                &dat9$genus=="Notoscopelus"]<-"Notoscopelus kroyeri"
+dat9$estAphia_Code[dat9$genus=="Notoscopelus kroyeri"]<-1        
+dat9$RecordStatus[dat9$SpeciesQualityCode=="genus_to_spp"]<-"OK"
+memory.size(10000000000000)
+###############################################
+# Remove some hauls outside of Standard years #
+###############################################
+list<-haul_dat1$HaulID
+dat10<-subset(dat9, HaulID%in%list, )
+sum(dat10$Number)
+dat10<-as.data.frame(dat10)
+summary(as.factor(dat10$estrank))
+dat10$NewNumber<-dat10$Number
+dat10$NewDensAbund_N_Sqkm<-dat10$DensAbund_N_Sqkm
+sum(dat10$Number)
+sum(dat10$NewNumber)
+sum(dat10$DensAbund_N_Sqkm)
+sum(Baseline_Biological_sum$Number)
+sum(Baseline_Biological_sum$DensAbund_N_Sqkm)
+###########################################
+# 1. GNSGerBT3 -k-NN - Length Composotion #
+###########################################
+ger<-subset(dat10, Survey_Acronym=="GNSGerBT3",)
+summary(as.factor(ger$RecordStatus))
+lofa_ger<-subset(ger, FishLength_cm==0,)
+summary(as.factor(lofa_ger$estsciname))
+sum(ger$Number)
+sum(ger$NewNumber)
+find<-subset(ger, 
+             select=c(HaulID, estsciname, RecordStatus, FishLength_cm,
+                      Number, NewNumber))
+######################Ammodytidae#####################
+find<-subset(ger, family=="Ammodytidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+summary<-ddply(find, c("estsciname", "rank", "FishLength_cm_below"),
+               summarise,totalnopofsamples=sum(as.numeric(DensAbund_N_Sqkm)))
+means<-ddply(summary,c("estsciname", "rank"),
+             summarise,  mean=mean(FishLength_cm_below, na.rm=TRUE),
+             sd=sd(FishLength_cm_below, na.rm=TRUE))
+png(filename="GNSGerBT3_diagnostics_Ammodytidae.png")
+p1<-ggplot(find, aes(x=FishLength_cm_below, y=DensAbund_N_Sqkm,
+                     colour=estsciname, group=estsciname)) +
+  geom_jitter() +
+  ggtitle("Lenght distribution of Ammodytidae (GNSGerBT3")+
+  theme_classic()
+p2<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) +
+  geom_density() +
+  geom_vline(data=means, aes(xintercept=mean,  colour=estsciname),
+             linetype="dashed", size=1)+
+  theme_classic()
+p3<-ggplot(summary, aes(x=FishLength_cm_below, colour=estsciname)) + 
+  geom_density()  + 
+  facet_grid(estsciname ~ .) +
+  theme_classic()
+p4<-ggmap(map) +
+  geom_point(aes(x=find$ShootLong, y=find$ShootLat, colour=find$estsciname), data=find)
+grid.arrange(p1,p2,p3,p4,ncol=2)
+dev.off()
+find$estsciname<-as.factor(find$estsciname)
+summary(find$estsciname)
+# Predict which lenght a fish is based on given parameters
+# abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+#knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSGerBT3_lentghts_Ammodytidae_13-10-2016.csv")
+kdt<-read.csv("GNSGerBT3_lentghts_Ammodytidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+names(dat10)
+summary(dat10$estsciname)
+summary(dat10$FishLength_cm_below)
+summary(dat10$QC_Length)
+dat10$QC_Length[dat10$estsciname=="Ammodytidae"&(dat10$FishLength_cm_below==0)&
+                 dat10$Survey_Acronym=="GNSGerBT3"]<-"KNN_len_assignment"
+
+find1<-subset(dat10, dat10$estsciname=="Ammodytidae"&
+                       (dat10$FishLength_cm_below==0)&
+                       dat10$Survey_Acronym=="GNSGerBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Ammodytidae"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSGerBT3"), )
+dat10<-rbind(dat11, expanded)
+find<-subset(dat10,(estsciname=="Ammodytidae"& (dat10$FishLength_cm_below==0)
+                     &Survey_Acronym=="GNSGerBT3"),)
+summary(find$NewNumber)
+##############################Glyptocephalus cynoglossus ##############################
+find<-subset(ger, estsciname=="Glyptocephalus cynoglossus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+#knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSGerBT3_lentghts_Glyptocephaluscynoglossus_13-10-2016.csv")
+kdt<-read.csv("GNSGerBT3_lentghts_Glyptocephaluscynoglossus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Glyptocephalus cynoglossus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSGerBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Glyptocephalus cynoglossus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSGerBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Glyptocephalus cynoglossus"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSGerBT3"), )
+dat10<-rbind(dat11, expanded)
+#####################Gobiidae####################
+find<-subset(ger, estsciname=="Gobiidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSGerBT3_lentghts_Gobiidae_13-10-2016.csv")
+kdt<-read.csv("GNSGerBT3_lentghts_Gobiidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Gobiidae"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSGerBT3"]<-"KNN_len_assignment"
+
+find1<-subset(dat10, dat10$estsciname=="Gobiidae"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSGerBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Gobiidae"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSGerBT3"), )
+dat10<-rbind(dat11, expanded)
+##################Limanda limanda##################
+find<-subset(ger, estsciname=="Limanda limanda",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+knn_dat_target$Number[(knn_dat_target$Number==0)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSGerBT3_lentghts_Limanda limanda_13-10-2016.csv")
+kdt<-read.csv("GNSGerBT3_lentghts_Limanda limanda_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Limanda limanda"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSGerBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Limanda limanda"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSGerBT3",)
+
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Limanda limanda"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSGerBT3"), )
+dat10<-rbind(dat11, expanded)
+#########################Merluccius merluccius#########################
+find<-subset(ger, estsciname=="Merluccius merluccius",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSGerBT3_lentghts_Merluccius merluccius_13-10-2016.csv")
+kdt<-read.csv("GNSGerBT3_lentghts_Merluccius merluccius_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Merluccius merluccius"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSGerBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Merluccius merluccius"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSGerBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Merluccius merluccius"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSGerBT3"), )
+dat10<-rbind(dat11, expanded)
+##############Phrynorhombus norvegicus########################
+find<-subset(ger, estsciname=="Phrynorhombus norvegicus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSGerBT3_lentghts_Phrynorhombus norvegicus_13-10-2016.csv")
+kdt<-read.csv("GNSGerBT3_lentghts_Phrynorhombus norvegicus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Phrynorhombus norvegicus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSGerBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Phrynorhombus norvegicus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSGerBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Phrynorhombus norvegicus"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSGerBT3"), )
+dat10<-rbind(dat11, expanded)
+#############Solea solea########################
+find<-subset(ger, estsciname=="Solea solea",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSGerBT3_lentghts_Solea solea_13-10-2016.csv")
+kdt<-read.csv("GNSGerBT3_lentghts_Solea solea_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Solea solea"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSGerBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Solea solea"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSGerBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Solea solea"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSGerBT3"), )
+dat10<-rbind(dat11, expanded)
+##########################################
+# 2. GNSNetBT3 -k-NN - Length Composotion#
+##########################################
+net<-subset(dat10, Survey_Acronym=="GNSNetBT3",)
+summary(as.factor(net$RecordStatus))
+lofa_net<-subset(net, FishLength_cm==0,)
+summary(as.factor(lofa_net$estsciname[lofa_net$RecordStatus=="LFD"]))
+sum(net$Number)
+sum(net$NewNumber)
+################Stomias boa boa#####
+find<-subset(net, estsciname=="Stomias boa boa",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSNetBT3_lentghtsStomias boa boa_13-10-2016.csv")
+kdt<-read.csv("GNSNetBT3_lentghtsStomias boa boa_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Stomias boa boa"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSNetBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Stomias boa boa"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSNetBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Stomias boa boa"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSNetBT3"), )
+# 23 is the magic number
+dat10$FishLength_cm[(dat10$estsciname=="Stomias boa boa"& (dat10$FishLength_cm_below==0)
+                     &dat10$Survey_Acronym=="GNSNetBT3")]<-23
+dat10<-rbind(dat11, expanded)
+################Raja clavata########
+find<-subset(net, estsciname=="Raja clavata",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSNetBT3_lentghts_Raja clavata_13-10-2016.csv")
+kdt<-read.csv("GNSNetBT3_lentghts_Raja clavata_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Raja clavata"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSNetBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Raja clavata"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSNetBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Raja clavata"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSNetBT3"), )
+dat10<-rbind(dat11, expanded)
+#######################Agonus cataphractus #######################
+find<-subset(net, estsciname=="Agonus cataphractus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSNetBT3_lentghts_Agonus cataphractus_13-10-2016.csv")
+kdt<-read.csv("GNSNetBT3_lentghts_Agonus cataphractus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Agonus cataphractus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSNetBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Agonus cataphractus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSNetBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Agonus cataphractus"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSNetBT3"), )
+dat10<-rbind(dat11, expanded)
+###################Clupea harengus #######################
+find<-subset(net, estsciname=="Clupea harengus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSNetBT3_lentghts_Clupea harengus_13-10-2016.csv")
+kdt<-read.csv("GNSNetBT3_lentghts_Clupea harengus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Clupea harengus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSNetBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Clupea harengus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSNetBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Clupea harengus"& (dat10$FishLength_cm_below==0)
+                       &Survey_Acronym=="GNSNetBT3"), )
+dat10<-rbind(dat11, expanded)
+##########################Engraulis encrasicolus # #########################
+find<-subset(net, estsciname=="Engraulis encrasicolus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSNetBT3_lentghts_Engraulis encrasicolus_13-10-2016.csv")
+kdt<-read.csv("GNSNetBT3_lentghts_Engraulis encrasicolus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Engraulis encrasicolus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSNetBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Engraulis encrasicolus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSNetBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Engraulis encrasicolus"& (dat10$FishLength_cm_below==0) & 
+                         Survey_Acronym=="GNSNetBT3"), )
+dat10<-rbind(dat11, expanded)
+#############Gobiidae  #############
+find<-subset(net, estsciname=="Gobiidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSNetBT3_lentghts_Gobiidae_13-10-2016.csv")
+kdt<-read.csv("GNSNetBT3_lentghts_Gobiidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Gobiidae"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSNetBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Gobiidae"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSNetBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Gobiidae"& (dat10$FishLength_cm_below==0)&
+                         Survey_Acronym=="GNSNetBT3"), )
+dat10<-rbind(dat11, expanded)
+########################Scyliorhinus canicula######################
+find<-subset(net, estsciname=="Scyliorhinus canicula",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSNetBT3_lentghts_Scyliorhinus canicula_13-10-2016.csv")
+kdt<-read.csv("GNSNetBT3_lentghts_Scyliorhinus canicula_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Scyliorhinus canicula"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSNetBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Scyliorhinus canicula"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSNetBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Scyliorhinus canicula"& (dat10$FishLength_cm_below==0)&
+                       Survey_Acronym=="GNSNetBT3"), )
+dat10<-rbind(dat11, expanded)
+###########################################
+# 3. GNSEngBT3 -k-NN - Length Composotion #
+###########################################
+eng<-subset(dat10, Survey_Acronym=="GNSEngBT3",)
+summary(as.factor(eng$RecordStatus))
+lofa_eng<-subset(eng, FishLength_cm==0,)
+summary(as.factor(lofa_eng$estsciname))
+sum(eng$Number)
+sum(eng$NewNumber)
+############Gobiidae ############
+find<-subset(eng, estsciname=="Gobiidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+knn_dat_target$Number[(knn_dat_target$Number==0)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSEndBT3_lentghts_Gobiidae_13-10-2016.csv")
+kdt<-read.csv("GNSEndBT3_lentghts_Gobiidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Gobiidae"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNEngBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Gobiidae"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSEngBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Gobiidae"& (dat10$FishLength_cm==0)&
+                         Survey_Acronym=="GNSEngBT3"), )
+dat10<-rbind(dat11, expanded)
+##########################Hippocampus guttulatus ###########################
+find<-subset(eng, estsciname=="Hippocampus guttulatus",)
+dat10$QC_Length[dat10$estsciname=="Hippocampus guttulatus"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSEngBT3"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Hippocampus guttulatus"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSEngBT3"]<-"15"
+##########################Hippocampus hippocampus#########################
+find<-subset(eng, estsciname=="Hippocampus hippocampus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSEngBT3_lentghts_Hippocampus hippocampus_13-10-2016.csv")
+kdt<-read.csv("GNSEngBT3_lentghts_Hippocampus hippocampus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Hippocampus hippocampus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSEngBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Hippocampus hippocampus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSEngBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Hippocampus hippocampus"& (dat10$FishLength_cm==0)&
+                         Survey_Acronym=="GNSEngBT3"), )
+dat10<-rbind(dat11, expanded)
+#######################Taurulus bubalis ########################
+find<-subset(eng, estsciname=="Taurulus bubalis",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSEngBT3_lentghts_Taurulus bubalis_13-10-2016.csv")
+kdt<-read.csv("GNSEngBT3_lentghts_Taurulus bubalis_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Taurulus bubalis"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNEngBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Taurulus bubalis"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSEngBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Taurulus bubalis"& (dat10$FishLength_cm==0)&
+                         Survey_Acronym=="GNSEngBT3"), )
+dat10<-rbind(dat11, expanded)
+#####################Torpedo nobiliana #####################
+find<-subset(eng, estsciname=="Torpedo nobiliana",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+find<-subset(eng, estsciname=="Torpedo nobiliana",)
+dat10$QC_Length[dat10$estsciname=="Torpedo nobiliana"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSEngBT3"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Torpedo nobiliana"&
+                      (dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="GNSEngBT3"]<-"24"
+#######################Mullus surmuletus##########
+find<-subset(eng, estsciname=="Mullus surmuletus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+knn_dat_target$Number[(knn_dat_target$Number==0)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSEndBT3_lentghts_Mullus surmuletus_13-10-2016.csv")
+kdt<-read.csv("GNSEndBT3_lentghts_Mullus surmuletus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Mullus surmuletus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSEngBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Mullus surmuletus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSEngBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Mullus surmuletus"& (dat10$FishLength_cm==0)&
+                         Survey_Acronym=="GNSEngBT3"), )
+dat10<-rbind(dat11, expanded)
+#######################Syngnathus acus############ 
+find<-subset(eng, estsciname=="Syngnathus acus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+set.seed(9850)
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,
+                          year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,
+                                 year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+knn_dat_target$Number[(knn_dat_target$Number==0)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "GNSEndBT3_lentghts_Syngnathus acus_13-10-2016.csv")
+kdt<-read.csv("GNSEndBT3_lentghts_Syngnathus acus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), 
+                   summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Syngnathus acus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSEngBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Syngnathus acus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="GNSEngBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), 
+                             summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Syngnathus acus"& (dat10$FishLength_cm==0)&
+                         Survey_Acronym=="GNSEngBT3"), )
+dat10<-rbind(dat11, expanded)
+##########################################
+# 4. GNSIntOT1-k-NN - Length Composotion #
+##########################################
+ns1<-subset(dat10, Survey_Acronym=="GNSIntOT1",)
+summary(as.factor(ns1$RecordStatus))
+lofa_ns1<-subset(ns1, FishLength_cm==0,)
+summary(as.factor(lofa_ns1$estsciname))
+sum(ns1$Number)
+sum(ns1$NewNumber)
+#lofa_ns1<-subset(lofa_ns1, !estsciname=="Sprattus sprattus")
+summary(as.factor(lofa_ns1$estsciname[lofa_ns1$FishLength_cm==0]))
+dat10$QC_Length[dat10$estsciname=="Trachinus draco"&(dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSIntOT1"]<-"KNN_len_assignment"
+dat10$FishLength_cm[dat10$estsciname=="Trachinus draco"&(dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="GNSIntOT1"]<-29
+find<-subset(ns1, estsciname=="Raja clavata")
+
+dat10$QC_Length[dat10$estsciname=="Raja clavata"&(dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSIntOT1"
+                &dat10$New_UniqueID=="NS-IBTS/1984/1/ELD/2/GOV"]<-"KNN_len_assignment"
+dat10$FishLength_cm[dat10$estsciname=="Raja clavata"&(dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="GNSIntOT1"&
+                      dat10$New_UniqueID=="NS-IBTS/1984/1/ELD/2/GOV"]<-48
+dat10$QC_Length[dat10$estsciname=="Raja clavata"&(dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSIntOT1"
+                &dat10$New_UniqueID=="NS-IBTS/1988/1/THA/3/GOV"]<-"KNN_len_assignment"
+dat10$FishLength_cm[dat10$estsciname=="Raja clavata"&(dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="GNSIntOT1"&
+                      dat10$New_UniqueID=="NS-IBTS/1988/1/THA/3/GOV"]<-48
+dat10$QC_Length[dat10$estsciname=="Raja clavata"&(dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSIntOT1"
+                &dat10$New_UniqueID=="NS-IBTS/1988/1/THA/4/GOV"]<-"KNN_len_assignment"
+dat10$FishLength_cm[dat10$estsciname=="Raja clavata"&(dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="GNSIntOT1"&
+                      dat10$New_UniqueID=="NS-IBTS/1988/1/THA/4/GOV"]<-38
+dat10$QC_Length[dat10$estsciname=="Raja clavata"&(dat10$FishLength_cm==0)&
+                dat10$Survey_Acronym=="GNSIntOT1"
+                &dat10$New_UniqueID=="NS-IBTS/1988/1/THA/8/GOV"]<-"KNN_len_assignment"
+dat10$FishLength_cm[dat10$estsciname=="Raja clavata"&
+                      (dat10$FishLength_cm==0)&dat10$Survey_Acronym=="GNSIntOT1"&
+                      dat10$New_UniqueID=="NS-IBTS/1988/1/THA/8/GOV"]<-67
+dat10$QC_Length[dat10$estsciname=="Raja clavata"&(dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSIntOT1"
+                &dat10$New_UniqueID=="NS-IBTS/1988/1/THA/5/GOV"]<-"KNN_len_assignment"
+dat10$FishLength_cm[dat10$estsciname=="Raja clavata"&
+                      (dat10$FishLength_cm==0)&dat10$Survey_Acronym=="GNSIntOT1"&
+                      dat10$New_UniqueID=="NS-IBTS/1988/1/THA/5/GOV"]<-46
+dat10$QC_Length[dat10$estsciname=="Raja clavata"&(dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSIntOT1"
+                &dat10$New_UniqueID=="NS-IBTS/1988/1/THA/6/GOV"]<-"KNN_len_assignment"
+dat10$FishLength_cm[dat10$estsciname=="Raja clavata"&
+                      (dat10$FishLength_cm==0)&dat10$Survey_Acronym=="GNSIntOT1"&
+                      dat10$New_UniqueID=="NS-IBTS/1988/1/THA/6/GOV"]<-67
+
+for (cat in unique(as.list(lofa_ns1$estsciname))){
+find<-subset(ns1, estsciname==cat)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+ knn_dat<-subset(find, !(find$FishLength_cm==0) , select= c(New_UniqueID,estsciname,q_Norm,
+                        year_Norm,lat_Norm,long_Norm,numbers_Norm,lenght_Norm, Number))
+ knn_dat_target<-subset(find, (find$FishLength_cm==0),select= c(New_UniqueID,estsciname,q_Norm,
+                              year_Norm,lat_Norm,long_Norm, numbers_Norm,lenght_Norm,Number))
+ # expand rows based on total fish number
+ find$Number[is.na(find$Number)]<-1
+ find$Number[(find$Number<1)]<-1
+             knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+             knn_dat_target$Number[(knn_dat_target$Number==0)]<-1
+             knn_dat_target$Number[(knn_dat_target$Number<1)]<-1
+             kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+             train<- knn_dat[1:nrow(knn_dat), 3:6]
+             test<- kdt_expand[1:nrow(kdt_expand),3:6]
+             train_target<-knn_dat[1:nrow(knn_dat),8]
+             test_target<-kdt_expand[1:nrow(kdt_expand),8]
+             m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+             kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, (paste("GNSIntOT1_lenghts_", cat ,".csv", sep = "")))
+kdt<-read.csv((paste("GNSIntOT1_lenghts_", cat ,".csv", sep = "")))
+        kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+ kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise, freq=length(lenght))
+             plot(kdt_summary$lenght, kdt_summary$freq)
+             # add QC lable: 
+             dat10$QC_Length[dat10$estsciname==cat&(dat10$FishLength_cm==0)&
+                               dat10$Survey_Acronym=="GNSIntOT1"]<-"KNN_len_assignment"
+ find1<-subset(dat10, dat10$estsciname==cat& (dat10$FishLength_cm==0)& dat10$Survey_Acronym=="GNSIntOT1",)
+ find1$Number[is.na(find1$Number)]<-1
+ find1$Number[(find1$Number<1)]<-1
+  expand_find<-find1[rep(row.names(find1),find1$Number), ]
+ expand_find$FishLength_cm<-kdt$lenght
+ expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise, freq=length(FishLength_cm))
+             expanded$NewNumber<-expanded$freq
+             expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname==cat&dat10$FishLength_cm==0&dat10$Survey_Acronym=="GNSIntOT1"), )
+             dat10<-rbind(dat11, expanded)
+}
+##########################################
+# 5. GNSIntOT3 -k-NN - Length Composotion#
+##########################################
+ns3<-subset(dat10, Survey_Acronym=="GNSIntOT3",)
+summary(as.factor(ns3$RecordStatus))
+lofa_ns3<-subset(ns3, FishLength_cm==0,)
+summary(as.factor(lofa_ns3$estsciname))
+#####
+find<-subset(ns3, estsciname=="Scyliorhinus canicula")
+find<-subset(dat9, estsciname=="Acipenser sturio")
+# crazy record no consistency remove
+dat10<-subset(dat10, !(Survey_Acronym=="GNSIntOT3"&estsciname=="Acipenser sturio"),)
+
+dat10$QC_Length[dat10$estsciname=="Pagellus erythrinus"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="GNSIntOT3"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Pagellus erythrinus"&
+                      (dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="GNSIntOT3"]<-"4"
+
+for (cat in unique(as.list(lofa_ns3$estsciname))){
+  find<-subset(ns3, estsciname==cat)
+  find<-as.data.frame(find)
+  find$estsciname<-as.factor(find$estsciname)
+  # Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+  knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                  select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                            numbers_Norm,lenght_Norm, Number))
+  
+  knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                         select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                   numbers_Norm,lenght_Norm,Number))
+  # expand rows based on total fish number
+  knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+  knn_dat_target$Number[(knn_dat_target$Number==0)]<-1
+  kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+  # training data
+  nrow(knn_dat)
+  nrow(kdt_expand)
+  sqrt(nrow(knn_dat))
+  train<- knn_dat[1:nrow(knn_dat), 3:6]
+  test<- kdt_expand[1:nrow(kdt_expand),3:6]
+  train_target<-knn_dat[1:nrow(knn_dat),8]
+  test_target<-kdt_expand[1:nrow(kdt_expand),8]
+  m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+  kdt_expand$lenght_Norm<-(m2)
+  write.csv(kdt_expand, (paste("GNSIntOT3_lentghts_", cat ,".csv", sep = "")))
+  kdt<-read.csv((paste("GNSIntOT3_lentghts_", cat ,".csv", sep = "")))
+  str(kdt)
+  max(dat9$FishLength_cm_below)
+  kdt$lenght<-((kdt$lenght_Norm)*265)
+  # now get the frequency of each lenght for each station
+  kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                     freq=length(lenght))
+  plot(kdt_summary$lenght, kdt_summary$freq)
+  # add QC lable: 
+  dat10$QC_Length[dat10$estsciname==cat&
+                    (dat10$FishLength_cm_below==0)&
+                    dat10$Survey_Acronym=="GNSIntOT3"]<-"KNN_len_assignment"
+  find1<-subset(dat10, dat10$estsciname==cat&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSIntOT3",)
+  expand_find<-find1[rep(row.names(find1),find1$Number), ]
+  expand_find$FishLength_cm<-kdt$lenght
+  expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                               freq=length(FishLength_cm))
+  
+  expanded$NewNumber<-expanded$freq
+  expanded$freq<-NULL
+  dat11<-subset(dat10, !(estsciname==cat& (dat10$FishLength_cm_below==0)
+                         & dat10$Survey_Acronym=="GNSIntOT3"), )
+  dat10<-rbind(dat11, expanded)
+}
+#########################################
+#6. GNSFraOT4-k-NN - Length Composotion #
+#########################################
+frenchcha<-subset(dat10, Survey_Acronym=="GNSFraOT4",)
+summary(as.factor(frenchcha$RecordStatus))
+lofa_frenchcha<-subset(frenchcha, FishLength_cm==0,)
+summary(as.factor(lofa_frenchcha$estsciname))
+
+for (cat in unique(as.list(lofa_frenchcha$estsciname))){
+  find<-subset(frenchcha, estsciname==cat)
+  find<-as.data.frame(find)
+  find$estsciname<-as.factor(find$estsciname)
+  # Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+  knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                  select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                            numbers_Norm,lenght_Norm, Number))
+  
+  knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                         select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                   numbers_Norm,lenght_Norm,Number))
+  # expand rows based on total fish number
+  find$Number[is.na(find$Number)]<-1
+  find$Number[(find$Number<1)]<-1
+  knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+  knn_dat_target$Number[(knn_dat_target$Number<1)]<-1
+  kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+  # training data
+  nrow(knn_dat)
+  nrow(kdt_expand)
+  sqrt(nrow(knn_dat))
+  train<- knn_dat[1:nrow(knn_dat), 3:6]
+  test<- kdt_expand[1:nrow(kdt_expand),3:6]
+  train_target<-knn_dat[1:nrow(knn_dat),8]
+  test_target<-kdt_expand[1:nrow(kdt_expand),8]
+  m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+  kdt_expand$lenght_Norm<-(m2)
+  write.csv(kdt_expand, (paste("GNSFraOT4_lentghts_", cat ,".csv", sep = "")))
+  kdt<-read.csv((paste("GNSFraOT4_lentghts_", cat ,".csv", sep = "")))
+  str(kdt)
+  max(dat9$FishLength_cm_below)
+  kdt$lenght<-((kdt$lenght_Norm)*265)
+  # now get the frequency of each lenght for each station
+  kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                     freq=length(lenght))
+  plot(kdt_summary$lenght, kdt_summary$freq)
+  # add QC lable: 
+  dat10$QC_Length[dat10$estsciname==cat&
+                    (dat10$FishLength_cm_below==0)&
+                    dat10$Survey_Acronym=="GNSFraOT4"]<-"KNN_len_assignment"
+  find1<-subset(dat10, dat10$estsciname==cat&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="GNSFraOT4",)
+  find1$Number[is.na(find1$Number)]<-1
+  find1$Number[(find1$Number<1)]<-1
+  expand_find<-find1[rep(row.names(find1),find1$Number), ]
+  expand_find$FishLength_cm<-kdt$lenght
+  expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                               freq=length(FishLength_cm))
+  
+  expanded$NewNumber<-expanded$freq
+  expanded$freq<-NULL
+  dat11<-subset(dat10, !(estsciname==cat& (dat10$FishLength_cm_below==0)
+                         & dat10$Survey_Acronym=="GNSFraOT4"), )
+  dat10<-rbind(dat11, expanded)
+}
+#########################################
+#7. CSEngBT3 -k-NN - Length Composotion #
+#########################################
+eng_is<-subset(dat10, Survey_Acronym=="CSEngBT3",)
+summary(as.factor(eng_is$RecordStatus))
+lofa_eng_is<-subset(eng_is, FishLength_cm==0,)
+summary(as.factor(lofa_eng_is$estsciname))
+###########Gobiidae#######
+find<-subset(eng_is, estsciname=="Gobiidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSEngBT3_lentghts_Gobiidae_13-10-2016.csv")
+kdt<-read.csv("CSEngBT3_lentghts_Gobiidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Gobiidae"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSEngBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Gobiidae"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSEngBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Gobiidae"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSEngBT3"), )
+dat10<-rbind(dat11, expanded)
+##########Lepadogaster lepadogaster########
+find<-subset(eng_is, estsciname=="Lepadogaster lepadogaster",)
+find<-subset(eng, estsciname=="Lepadogaster lepadogaster",)
+dat10$QC_Length[dat10$estsciname=="Lepadogaster lepadogaster"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="CSEngBT3"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Lepadogaster lepadogaster"&
+                      (dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="CSEngBT3"]<-"5"
+############Raja montagui################     
+find<-subset(eng_is, estsciname=="Raja montagui",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSEngBT3_lentghts_Raja montagui_13-10-2016.csv")
+kdt<-read.csv("CSEngBT3_lentghts_Raja montagui_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Raja montagui"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSEngBT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Raja montagui"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSEngBT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Raja montagui"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSEngBT3"), )
+dat10<-rbind(dat11, expanded)
+#######Sebastes viviparus#########       
+find<-subset(eng_is, estsciname=="Sebastes viviparus",)
+dat10$QC_Length[dat10$estsciname=="Sebastes viviparus"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="CSEngBT3"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Sebastes viviparus"&
+                      (dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="CSEngBT3"]<-"10"
+########Torpedo nobiliana #######
+find<-subset(eng_is, estsciname=="Torpedo nobiliana",)
+dat10$QC_Length[dat10$estsciname=="Torpedo nobiliana"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="CSEngBT3"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Torpedo nobiliana"&
+                      (dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="CSEngBT3"]<-"74"
+########################################
+#8. CSScoOT1-k-NN - Length Composotion #
+########################################
+summary(dat10$Survey_Acronym)
+sco<-subset(dat10, Survey_Acronym=="CSScoOT1", )
+summary(as.factor(sco$RecordStatus))
+lofa_sco<-subset(sco, FishLength_cm==0, )
+levels(as.factor(lofa_sco$estsciname))
+summary(as.factor(lofa_sco$estsciname[lofa_sco$RecordStatus=="LFD"]))
+sum(sco$Number)
+sum(sco$NewNumber)
+#######Squalus acanthias  ########
+find<-subset(sco, estsciname=="Squalus acanthias",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSScoOT1_lentghts_Squalus acanthias_13-10-2016.csv")
+kdt<-read.csv("CSScoOT1_lentghts_Squalus acanthias_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Squalus acanthias"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSScoOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Squalus acanthias"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSScoOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Squalus acanthias"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSScoOT1"), )
+dat10<-rbind(dat11, expanded)
+#######Zeus faber #######
+find<-subset(sco, estsciname=="Zeus faber",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+knn_dat_target$Number[(knn_dat_target$Number<1)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSScoOT1_lentghts_Zeus faber_13-10-2016.csv")
+kdt<-read.csv("CSScoOT1_lentghts_Zeus faber_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Zeus faber"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSScoOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Zeus faber"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSScoOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Zeus faber"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSScoOT1"), )
+dat10<-rbind(dat11, expanded)
+########################################
+#9. CSScoOT4-k-NN - Length Composotion #
+########################################
+summary(dat10$Survey_Acronym)
+sco4<-subset(dat10, Survey_Acronym=="CSScoOT4", )
+summary(as.factor(sco4$RecordStatus))
+lofa_sco4<-subset(sco4, FishLength_cm==0, )
+levels(as.factor(lofa_sco4$estsciname))
+##########Gobiidae#########
+find<-subset(sco4, estsciname=="Gobiidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSScoOT4_lentghts_Gobiidae_13-10-2016.csv")
+kdt<-read.csv("CSScoOT4_lentghts_Gobiidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Gobiidae"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSScoOT4"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Gobiidae"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSScoOT4",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Gobiidae"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSScoOT4"), )
+dat10<-rbind(dat11, expanded)
+#########################################
+#10. CSIreOT4-k-NN - Length Composotion #
+#########################################
+ire<-subset(dat10, Survey_Acronym=="CSIreOT4",)
+summary(as.factor(ire$RecordStatus))
+lofa_ire<-subset(ire, FishLength_cm==0,)
+levels(as.factor(lofa_ire$estsciname))
+##########Torpedo nobiliana#########
+find<-subset(ire, estsciname=="Torpedo nobiliana",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+dat10$QC_Length[dat10$estsciname=="Torpedo nobiliana"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="CSIreOT4"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Torpedo nobiliana"&
+                      (dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="CSIreOT4"]<-dat10$fish_len_est_catch_weight_round[dat10$estsciname=="Torpedo nobiliana"&
+                                                                                                 (dat10$FishLength_cm==0)&
+                                                                                                 dat10$Survey_Acronym=="CSIreOT4"]
+#########################################
+#11. CSNIrOT1-k-NN - Length Composotion #
+#########################################
+ni1<-subset(dat10, Survey_Acronym=="CSNIrOT1",)
+summary(as.factor(ni1$RecordStatus))
+lofa_ni1<-subset(ni1, FishLength_cm==0,)
+levels(as.factor(lofa_ni1$estsciname))
+summary(as.factor(lofa_ni1$estsciname[lofa_ni1$RecordStatus=="LFD"]))
+#############Argentina##########
+find<-subset(ni1, estsciname=="Argentina",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT1_lentghts_Argentina_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT1_lentghts_Argentina_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Argentina"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Argentina"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Argentina"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT1"), )
+dat10<-rbind(dat11, expanded)
+#########"Callionymus lyra"  ########
+find<-subset(ni1, estsciname=="Callionymus lyra",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT1_lentghts_Callionymus lyra_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT1_lentghts_Callionymus lyra_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Callionymus lyra"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Callionymus lyra"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Callionymus lyra"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT1"), )
+dat10<-rbind(dat11, expanded)
+##########"Callionymus maculatus" ########
+find<-subset(ni1, estsciname=="Callionymus maculatus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT1_lentghts_Callionymus maculatus_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT1_lentghts_Callionymus maculatus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Callionymus maculatus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Callionymus maculatus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Callionymus maculatus"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT1"), )
+dat10<-rbind(dat11, expanded)
+########"Gobiidae"######                   
+find<-subset(ni1, estsciname=="Gobiidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT1_lentghts_Gobiidae_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT1_lentghts_Gobiidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Gobiidae"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Gobiidae"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Gobiidae"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT1"), )
+dat10<-rbind(dat11, expanded)
+######"Hippoglossoides platessoides"##########
+find<-subset(ni1, estsciname=="Hippoglossoides platessoides",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT1_lentghts_Hippoglossoides platessoides_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT1_lentghts_Hippoglossoides platessoides_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Hippoglossoides platessoides"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Hippoglossoides platessoides"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Hippoglossoides platessoides"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT1"), )
+dat10<-rbind(dat11, expanded)
+##########"Platichthys flesus"  ##########
+find<-subset(ni1, estsciname=="Platichthys flesus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT1_lentghts_Platichthys flesus_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT1_lentghts_Platichthys flesus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Platichthys flesus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Platichthys flesus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Platichthys flesus"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT1"), )
+dat10<-rbind(dat11, expanded)
+########"Trisopterus esmarkii"########
+find<-subset(ni1, estsciname=="Trisopterus esmarkii",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT1_lentghts_Trisopterus esmarkii_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT1_lentghts_Trisopterus esmarkii_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Trisopterus esmarkii"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Trisopterus esmarkii"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Trisopterus esmarkii"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT1"), )
+dat10<-rbind(dat11, expanded)
+#########Ammodytidae########
+find<-subset(ni1, estsciname=="Ammodytidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT1_lentghts_Ammodytidae_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT1_lentghts_Ammodytidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Ammodytidae"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Ammodytidae"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Ammodytidae"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT1"), )
+dat10<-rbind(dat11, expanded)
+#########################################
+#12. CSNIrOT4-k-NN - Length Composotion #
+#########################################
+ni4<-subset(dat10, Survey_Acronym=="CSNIrOT4",)
+summary(as.factor(ni4$RecordStatus))
+lofa_ni4<-subset(ni4, FishLength_cm==0,)
+levels(as.factor(lofa_ni4$estsciname))
+summary(as.factor(lofa_ni4$estsciname[lofa_ni4$RecordStatus=="LFD"]))
+######"Gobiidae"####    
+find<-subset(ni4, estsciname=="Gobiidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT4_lentghts_Gobiidae_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT4_lentghts_Gobiidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Gobiidae"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT4"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Gobiidae"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT4",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Gobiidae"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT4"), )
+dat10<-rbind(dat11, expanded)
+##########"Mullus surmuletus" #######
+find<-subset(ni4, estsciname=="Mullus surmuletus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT4_lentghts_Mullus surmuletus_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT4_lentghts_Mullus surmuletus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Mullus surmuletus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT4"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Mullus surmuletus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT4",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Mullus surmuletus"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT4"), )
+dat10<-rbind(dat11, expanded)
+###########"Sprattus sprattus"#########
+find<-subset(ni4, estsciname=="Sprattus sprattus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT4_lentghts_Sprattus sprattus_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT4_lentghts_Sprattus sprattus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Sprattus sprattus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT4"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Sprattus sprattus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT4",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Sprattus sprattus"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT4"), )
+dat10<-rbind(dat11, expanded)
+########Ammodytidae#####
+find<-subset(ni4, estsciname=="Ammodytidae",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSNIrOT4_lentghts_Ammodytidae_13-10-2016.csv")
+kdt<-read.csv("CSNIrOT4_lentghts_Ammodytidae_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Ammodytidae"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSNIrOT4"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Ammodytidae"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSNIrOT4",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Ammodytidae"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSNIrOT4"), )
+dat10<-rbind(dat11, expanded)
+############################################
+#13. CS/BBFraOT4-k-NN - Length Composotion #
+############################################
+summary(as.factor(dat10$Survey_Acronym))
+evhoe<-subset(dat10, Survey_Acronym=="CSBBFraOT4",)
+summary(as.factor(evhoe$RecordStatus))
+lofa_evhoe<-subset(evhoe, FishLength_cm==0,)
+summary(as.factor(lofa_evhoe$estsciname[lofa_evhoe$RecordStatus=="LFD"]))
+########"Torpedo nobiliana"#####
+find<-subset(evhoe, estsciname=="Torpedo nobiliana",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "CSBBFraOT4_lentghts_Torpedo nobiliana_13-10-2016.csv")
+kdt<-read.csv("CSBBFraOT4_lentghts_Torpedo nobiliana_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Torpedo nobiliana"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="CSBBFraOT4"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Torpedo nobiliana"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="CSBBFraOT4",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Torpedo nobiliana"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="CSBBFraOT4"), )
+dat10<-rbind(dat11, expanded)
+
+dat10$FishLength_cm[dat10$estsciname=="Torpedo nobiliana"& (dat10$FishLength_cm_below==0)
+                    &dat10$Survey_Acronym=="CSBBFraOT4"]<-dat10$Use_Lenght_cm[dat10$estsciname=="Torpedo nobiliana"& 
+                                                                             (dat10$FishLength_cm_below==0)&dat10$Survey_Acronym=="CSBBFraOT4"]
+###########################################
+#14. BBICPorOT4-k-NN - Length Composotion #
+###########################################
+por<-subset(dat10, Survey_Acronym=="BBICPorOT4",)
+summary(as.factor(por$RecordStatus))
+lofa_por<-subset(por, FishLength_cm==0,)
+levels(as.factor(lofa_por$estsciname))
+summary(as.factor(lofa_por$estsciname))
+###################
+#Gonostoma elongatum 7
+dat10$QC_Length[dat10$estsciname=="Gonostoma elongatum"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="BBICPorOT4"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Gonostoma elongatum"&
+                      (dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="BBICPorOT4"]<-7
+
+dat10$QC_Length[dat10$estsciname=="Lepidopus caudatus"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="BBICPorOT4"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Lepidopus caudatus"&
+                      (dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="BBICPorOT4"]<-48
+
+dat10$QC_Length[dat10$estsciname=="Hippocampus hippocampus"&
+                  (dat10$FishLength_cm==0)&
+                  dat10$Survey_Acronym=="BBICPorOT4"]<-"abWeightest"
+dat10$FishLength_cm[dat10$estsciname=="Hippocampus hippocampus"&
+                      (dat10$FishLength_cm==0)&
+                      dat10$Survey_Acronym=="BBICPorOT4"]<-12
+
+for (cat in unique(as.list(lofa_por$estsciname))){
+  find<-subset(por, estsciname==cat)
+  find<-as.data.frame(find)
+  find$estsciname<-as.factor(find$estsciname)
+  # Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+  knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                  select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                            numbers_Norm,lenght_Norm, Number))
+  knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                         select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                   numbers_Norm,lenght_Norm,Number))
+  # expand rows based on total fish number
+  knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+  knn_dat_target$Number[(knn_dat_target$Number==0)]<-1
+  kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+  # training data
+  train<- knn_dat[1:nrow(knn_dat), 3:6]
+  test<- kdt_expand[1:nrow(kdt_expand),3:6]
+  train_target<-knn_dat[1:nrow(knn_dat),8]
+  test_target<-kdt_expand[1:nrow(kdt_expand),8]
+  m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+  kdt_expand$lenght_Norm<-(m2)
+  write.csv(kdt_expand, (paste("BBICPorOT4_lengths_", cat ,".csv", sep = "")))
+  kdt<-read.csv((paste("BBICPorOT4_lengths_", cat ,".csv", sep = "")))
+  kdt$lenght<-((kdt$lenght_Norm)*265)
+  # now get the frequency of each lenght for each station
+  kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                     freq=length(lenght))
+  plot(kdt_summary$lenght, kdt_summary$freq)
+  # add QC lable: 
+  dat10$QC_Length[dat10$estsciname==cat&
+                    (dat10$FishLength_cm_below==0)&
+                    dat10$Survey_Acronym=="BBICPorOT4"]<-"KNN_len_assignment"
+  find1<-subset(dat10, dat10$estsciname==cat&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="BBICPorOT4",)
+  expand_find<-find1[rep(row.names(find1),find1$Number), ]
+  expand_find$FishLength_cm<-kdt$lenght
+  expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                               freq=length(FishLength_cm))
+  
+  expanded$NewNumber<-expanded$freq
+  expanded$freq<-NULL
+  dat11<-subset(dat10, !(estsciname==cat & dat10$FishLength_cm==0
+                         &dat10$Survey_Acronym=="BBICPorOT4"), )
+  dat10<-rbind(dat11, expanded)
+}
+#########################################
+#15. WAScoOT3-k-NN - Length Composotion #
+#########################################
+wasco<-subset(dat10, Survey_Acronym=="WAScoOT3",)
+summary(as.factor(wasco$RecordStatus))
+ # Survey sorted - final steps needed
+##############################################
+#16. BBIC(n)SpaOT4-k-NN - Length Composotion #
+##############################################
+summary(as.factor(dat10$Survey_Acronym))
+span4<-subset(dat9, Survey_Acronym=="BBIC(n)SpaOT4",)
+summary(as.factor(span4$RecordStatus))
+# Survey sorted - final steps needed
+##############################################
+#17. BBIC(s)SpaOT1-k-NN - Length Composotion #
+##############################################
+spas1<-subset(dat10, Survey_Acronym=="BBIC(s)SpaOT1",)
+summary(as.factor(spas1$RecordStatus))
+lofa_spas1<-subset(spas1, FishLength_cm==0,)
+levels(as.factor(lofa_spas1$estsciname))
+########"Coelorinchus caelorhincus"#######
+find<-subset(spas1, estsciname=="Coelorinchus caelorhincus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "BBIC(s)SpaOT1_lentghts_Coelorinchus caelorhincus_13-10-2016.csv")
+kdt<-read.csv("BBIC(s)SpaOT1_lentghts_Coelorinchus caelorhincus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Coelorinchus caelorhincus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="BBIC(s)SpaOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Coelorinchus caelorhincus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="BBIC(s)SpaOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Coelorinchus caelorhincus"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="BBIC(s)SpaOT1"), )
+dat10<-rbind(dat11, expanded)
+#######"Howella sherborni" ####  
+find<-subset(spas1, estsciname=="Howella sherborni",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "BBIC(s)SpaOT1_lentghts_Howella sherborni_13-10-2016.csv")
+kdt<-read.csv("BBIC(s)SpaOT1_lentghts_Howella sherborni_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Howella sherborni"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="BBIC(s)SpaOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Howella sherborni"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="BBIC(s)SpaOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Howella sherborni"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="BBIC(s)SpaOT1"), )
+dat10<-rbind(dat11, expanded)
+dat10$FishLength_cm[dat10$FishLength_cm==0
+                          &dat10$Survey_Acronym=="BBIC(s)SpaOT1"&dat10$estsciname=="Howella sherborni"]<-6
+#####"Sardina pilchardus" ####
+find<-subset(spas1, estsciname=="Sardina pilchardus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "BBIC(s)SpaOT1_lentghts_Sardina pilchardus_13-10-2016.csv")
+kdt<-read.csv("BBIC(s)SpaOT1_lentghts_Sardina pilchardus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Sardina pilchardus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="BBIC(s)SpaOT1"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Sardina pilchardus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="BBIC(s)SpaOT1",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Sardina pilchardus"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="BBIC(s)SpaOT1"), )
+dat10<-rbind(dat11, expanded)
+##############################################
+#18. BBIC(s)SpaOT4-k-NN - Length Composotion #
+##############################################
+spas4<-subset(dat10, Survey_Acronym=="BBIC(s)SpaOT4",)
+summary(as.factor(spas4$RecordStatus))
+lofa_spas4<-subset(spas4, FishLength_cm==0,)
+levels(as.factor(lofa_spas4$estsciname))
+###"Nezumia sclerorhynchus"#####
+find<-subset(spas4, estsciname=="Nezumia sclerorhynchus",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+#knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "BBIC(s)SpaOT4_lentghts_Nezumia sclerorhynchus_13-10-2016.csv")
+kdt<-read.csv("BBIC(s)SpaOT4_lentghts_Nezumia sclerorhynchus_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Nezumia sclerorhynchus"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="BBIC(s)SpaOT4"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Nezumia sclerorhynchus"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="BBIC(s)SpaOT4",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Nezumia sclerorhynchus"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="BBIC(s)SpaOT4"), )
+dat10<-rbind(dat11, expanded)
+#########################################
+#19. WASpaOT3-k-NN - Length Composotion #
+#########################################
+waspa<-subset(dat10, Survey_Acronym=="WASpaOT3",)
+summary(as.factor(waspa$RecordStatus))
+lofa_waspa<-subset(waspa, FishLength_cm==0,)
+levels(as.factor(lofa_waspa$estsciname))
+###"Nezumia aequalis" #####
+find<-subset(waspa, estsciname=="Nezumia aequalis",)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$Number[is.na(knn_dat_target$Number)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "WASpaOT3_lentghts_Nezumia aequalis_13-10-2016.csv")
+kdt<-read.csv("WASpaOT3_lentghts_Nezumia aequalis_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Nezumia aequalis"&
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="WASpaOT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Nezumia aequalis"&
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="WASpaOT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Nezumia aequalis" & (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="WASpaOT3"), )
+dat10<-rbind(dat11, expanded)
+####"Urophycis chuss" #######
+dat11<-subset(dat10, !(estsciname=="Urophycis chuss"& (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="WASpaOT3"), )
+dat10<-rbind(dat11, expanded)
+
+
+find<-subset(waspa, estsciname=="Urophycis chuss" ,)
+find<-as.data.frame(find)
+find$estsciname<-as.factor(find$estsciname)
+# Predict which lenght a fish is based on given parameters abundance, Quarter, Year etc
+knn_dat<-subset(find, !(find$lenght_Norm==0) ,
+                select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                          numbers_Norm,lenght_Norm, Number))
+
+knn_dat_target<-subset(find, (find$lenght_Norm==0),
+                       select= c(New_UniqueID,estsciname,q_Norm,year_Norm,lat_Norm,long_Norm,
+                                 numbers_Norm,lenght_Norm,Number))
+# expand rows based on total fish number
+knn_dat_target$TotalNo[is.na(knn_dat_target$TotalNo)]<-1
+kdt_expand<-knn_dat_target[rep(row.names(knn_dat_target),knn_dat_target$Number),1:9]
+# training data
+nrow(knn_dat)
+nrow(kdt_expand)
+sqrt(nrow(knn_dat))
+train<- knn_dat[1:nrow(knn_dat), 3:6]
+test<- kdt_expand[1:nrow(kdt_expand),3:6]
+train_target<-knn_dat[1:nrow(knn_dat),8]
+test_target<-kdt_expand[1:nrow(kdt_expand),8]
+m2<-knn(train, test, cl=train_target, k=sqrt(nrow(knn_dat)))
+kdt_expand$lenght_Norm<-(m2)
+write.csv(kdt_expand, "WASpaOT3_lentghts_Urophycis chuss_13-10-2016.csv")
+kdt<-read.csv("WASpaOT3_lentghts_Urophycis chuss_13-10-2016.csv")
+str(kdt)
+max(dat9$FishLength_cm_below)
+kdt$lenght<-((kdt$lenght_Norm)*265)
+# now get the frequency of each lenght for each station
+kdt_summary<-ddply(kdt, c("New_UniqueID", "estsciname", "lenght"), summarise,
+                   freq=length(lenght))
+plot(kdt_summary$lenght, kdt_summary$freq)
+# add QC lable: 
+dat10$QC_Length[dat10$estsciname=="Urophycis chuss" &
+                  (dat10$FishLength_cm_below==0)&
+                  dat10$Survey_Acronym=="WASpaOT3"]<-"KNN_len_assignment"
+find1<-subset(dat10, dat10$estsciname=="Urophycis chuss" &
+                (dat10$FishLength_cm_below==0)&
+                dat10$Survey_Acronym=="WASpaOT3",)
+expand_find<-find1[rep(row.names(find1),find1$Number), ]
+expand_find$FishLength_cm<-kdt$lenght
+expanded<-kdt_summary<-ddply(expand_find, c(1:101), summarise,
+                             freq=length(FishLength_cm))
+
+expanded$NewNumber<-expanded$freq
+expanded$freq<-NULL
+dat11<-subset(dat10, !(estsciname=="Urophycis chuss" & (dat10$FishLength_cm_below==0)
+                       & dat10$Survey_Acronym=="WASpaOT3"), )
+dat10<-rbind(dat11, expanded)
+#########################################
+# Check ll zero lenghts are reassigned  #
+#########################################
+find<-subset(dat10, FishLength_cm==0, )
+find<-subset(dat10, is.na(FishLength_cm),)
+summary(as.factor(find$Survey_Acronym))
+summary(as.factor(find$QC_Length))
+dat10$FishLength_cm[is.na(dat10$FishLength_cm)]<-dat10$LmaxFB[is.na(dat10$FishLength_cm)]*1.10
+summary(as.numeric(dat10$FishLength_cm))
+dat10$FishLength_cm_round<-round(dat10$FishLenght_cm)
+summary(as.factor(find$Survey_Acronym))
+str(dat10)
+sum(dat10$Number)
+sum(dat10$NewNumber)
+sum(Baseline_Biological_sum$Number)
+nrow(find)
+summary(as.factor(find$Survey_Acronym))
+summary(as.factor(find$QC_Length))
+summary(as.factor(find$LngtClass))
+##################
+# Prep data files#
+##################
+write.csv(dat10, "dat10_biologicaldata.csv")
+dat10<-read.csv("dat10_biologicaldata.csv")
+SSA_haul_dat<-read.csv("SSA_all_hauls_12-10-2016.csv")
+list<-SSA_haul_dat$HaulID
+#traits<-read.csv("./Raw_Data/Fish_traits_products/Species_List_05-10-2016.csv")
+# This file contains information about the Classes of fish that we are interested in
+names(dat10)
+
+dat10$SpeciesSciName<-dat10$estsciname
+
+list<-c('GNSIntOT1/ARG/1991/28','GNSNetBT3/ISI/1999/1',
+        'GNSIntOT1/THA2/2000/47','GNSIntOT1/ARG/1994/50',
+        'GNSIntOT1/THA2/2005/23','GNSIntOT1/ARG/1991/37',
+        'GNSIntOT1/ARG/1991/30','GNSIntOT1/ARG/1993/20',
+        'GNSNetBT3/ISI/2000/1','GNSIntOT1/ARG/1994/49',
+        'GNSIntOT1/ELD/1985/41','GNSIntOT1/CIR/1989/4',
+        'GNSIntOT1/ARG/1993/20')
+dat10$SpeciesSciName[dat10$HaulID%in%list&
+                       dat10$SpeciesSciName=="Syngnathus rostellatus"&
+                       dat10$FishLength_cm>19]<-"Syngnathus acus"
+
+list<-c('CSBBFraOT4/THA2/2015/113', 'CSBBFraOT4/THA2/2015/113',
+        'CSBBFraOT4/THA2/2015/113', 'CSBBFraOT4/THA2/2015/122',
+        'GNSIntOT1/MIC/1998/1', 'CSBBFraOT4/THA2/2015/90',
+        'CSBBFraOT4/THA2/2015/122','CSBBFraOT4/THA2/2015/106',
+        'CSBBFraOT4/THA2/2015/106')
+dat10$SpeciesSciName[dat10$HaulID%in%list&
+                       dat10$SpeciesSciName=="Callionymus maculatus"&
+                       dat10$FishLength_cm>18]<-"Callionymus lyra"
+traits<-read.csv("Species_List_Final.csv")
+dat<-subset(dat10,
+            select=c(HaulID,Survey_Acronym, Year, NewNumber,
+                     FishLength_cm, SpeciesSciName, SweptArea_wing_km_sqrd))
+names(traits)
+sum(dat10$NewNumber)
+traits$SpeciesSciName<-traits$valid_name
+list<-unique(dat10$SpeciesSciName)
+write.csv(list, "All_SppSciNames.csv")
+dat11<-merge(dat, traits, by.x="SpeciesSciName")
+test1 <- dat11[ which(as.numeric(dat11$FishLength_cm) > as.numeric(dat11$LmaxFB)*1.4),]
+test1 <- dat10[ which(as.numeric(dat10$FishLength_cm) > as.numeric(dat10$LmaxFB)*1.4),]
+# Non Standard Survery area - Master copy only
+
+# dat11$SpeciesSciName<-dat11$estsciname
+# summary(as.factor(dat10$SpeciesSciName))
+summary(as.numeric(dat10$FishLenght_cm))
+# dat10<-subset(dat10, !dat10$FishLength_cm==0,)
+# should be no zero length clases
+# dat9$DensNsqkm1[dat9$DensNsqkm==0]<-dat9$TotalNoKm2[dat9$DensNsqkm==0]
+dat11$FishLength_cm_round<-round(dat11$FishLength_cm)
+summary(dat11$FishLength_cm_round)
+dat11$Lengthplus0.5<-(dat11$FishLength_cm_round) + 0.5
+summary(dat11$Lengthplus0.5)
+dat11$IndivFishWgt_g<-dat11$LWRa*dat11$Lengthplus0.5^dat11$LWRb
+summary(dat11$LWRa)
+find<-subset(dat11, LWRa==0,)
+dat11$LWRa[dat11$SpeciesSciName=="Hexanchus griseus"]<-0.000202
+summary(find$SpeciesSciName)
+summary(dat11$LWRb)
+dat11$IndivFishWgt_g<-dat11$LWRa*dat11$Lengthplus0.5^dat11$LWRb
+summary(dat11$IndivFishWgt_g)
+dat11$FishLength_cm<-dat11$FishLength_cm_round
+dat11$DensAbund_N_Sqkm<-dat11$NewNumber/dat11$SweptArea_wing_km_sqrd
+
+summary(dat11$DensAbund_N_Sqkm)
+find<-subset(dat11, is.na(IndivFishWgt_g),)
+summary(dat11$DensNsqkm2)
+dat11$Number<-dat11$DensAbund_N_Sqkm*dat11$SweptArea_wing_km_sqrd
+summary(dat11$Number)
+dat11$DensBiom_kg_Sqkm<-dat11$IndivFishWgt_g*dat11$DensAbund_N_Sqkm/1000
+###################
+# Required Fields #
+###################
+## HaulID
+## SpeciesSciName
+## FishLength(cm)
+## IndivFishWght(g)
+## Number
+## DensAbund(N_sqkm)
+## DensBiom(kg_Sqkm)
+#######################
+#Master Copy Knn-all#
+#######################
+list<-SSA_haul_dat$HaulID
+SSA_kNN_bio<-subset(dat11, HaulID%in%list, )
+names(SSA_kNN_bio)
+Knn_Biological<-subset(dat11, 
+                 select=c(HaulID,Survey_Acronym,Year, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                          DensAbund_N_Sqkm,DensBiom_kg_Sqkm ))
+sum(Knn_Biological$Number)
+Knn_Biological_sum<-ddply(Knn_Biological, c("HaulID","Survey_Acronym","Year",
+                                "SpeciesSciName", "FishLength_cm","IndivFishWgt_g"),
+                       summarise,
+                       Total_Number=sum(Number), 
+                       Total_DensAbund_N_Sqkm=sum(DensAbund_N_Sqkm),
+                       Total_DensBiom_kg_Sqkm=sum(DensBiom_kg_Sqkm))
+Knn_Biological_sum$Number<-Knn_Biological_sum$Total_Number
+Knn_Biological_sum$DensAbund_N_Sqkm<-Knn_Biological_sum$Total_DensAbund_N_Sqkm
+Knn_Biological_sum$DensBiom_kg_Sqkm<-Knn_Biological_sum$Total_DensBiom_kg_Sqkm
+sum(Knn_Biological_sum$Number)
+
+write.csv(Knn_Biological_sum, "BiologicalInfo_All_surveys_FullSMP_kNN_V2.csv")
+list<-SSA_haul_dat$HaulID
+SSA_kNN_Biological<-subset(Knn_Biological_sum, Knn_Biological_sum$HaulID%in%list,
+                       select=c(HaulID, Survey_Acronym,Year,SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+
+write.csv(SSA_kNN_Biological, "BiologicalInfo_AllSurveys_SSASMP_kNN_V2.csv")
+###############
+# Full kNN    #
+###############
+################ 1 GNSGerBT3 ################
+kNN_GNSGerBT3<-subset(Knn_Biological_sum, Survey_Acronym=="GNSGerBT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_GNSGerBT3, "BiologicalInfo_GNSGerBT3_FullSMP_kNN_V2.csv")
+################### 2. GNSNetBT3" ##################
+kNN_GNSNetBT3<-subset(Knn_Biological_sum, Survey_Acronym=="GNSNetBT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_GNSNetBT3, "BiologicalInfo_GNSNetBT3_FullSMP_kNN_V2.csv")
+################## 3. GNSEngBT3" ##################
+kNN_GNSEngBT3<-subset(Knn_Biological_sum, Survey_Acronym=="GNSEngBT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_GNSEngBT3, "BiologicalInfo_GNSEngBT3_FullSMP_kNN_V2.csv")
+################  4. GNSIntOT1"###############
+kNN_GNSIntOT1<-subset(Knn_Biological_sum, Survey_Acronym=="GNSIntOT1",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_GNSIntOT1, "BiologicalInfo_GNSIntOT1_FullSMP_kNN_V2.csv")
+############smaller files for simons paradox system#####
+V2_kNN_SSA_GNSIntOT1a<-subset(Knn_Biological_sum, Survey_Acronym=="GNSIntOT1"&Year<1994,
+                              select=c(HaulID,Year, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                       DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSIntOT1a, "BiologicalInfo_GNSIntOT1_FullSMP_kNN_V2a.csv")
+
+V2_kNN_GNSIntOT1b<-subset(Knn_Biological_sum, Survey_Acronym=="GNSIntOT1"&Year>1993&Year<2006,
+                              select=c(HaulID, Year,SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                       DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_GNSIntOT1b, "BiologicalInfo_GNSIntOT1_FullSMP_kNN_V2b.csv")
+V2_kNN_GNSIntOT1c<-subset(Knn_Biological_sum, Survey_Acronym=="GNSIntOT1"&Year>2005,
+                             select=c(HaulID, Year,SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                      DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_GNSIntOT1c, "BiologicalInfo_GNSIntOT1_FullSMP_kNN_V2c.csv")
+################# 5. GNSIntOT3 #################
+kNN_GNSIntOT3<-subset(Knn_Biological_sum, Survey_Acronym=="GNSIntOT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_GNSIntOT3, "BiologicalInfo_GNSIntOT3_FullSMP_kNN_V2.csv")
+################## 6. GNSFraOT4  ##################
+kNN_GNSFraOT4<-subset(Knn_Biological_sum, Survey_Acronym=="GNSFraOT4",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_GNSFraOT4, "BiologicalInfo_GNSFraOT4_FullSMP_kNN_V2.csv")
+############### 7. CSEngBT3 ###############
+kNN_CSEngBT3<-subset(Knn_Biological_sum, Survey_Acronym=="CSEngBT3",
+                         select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                  DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_CSEngBT3, "BiologicalInfo_CSEngBT3_FullSMP_kNN_V2.csv")
+################ 8. CSScoOT1 ################
+kNN_CSScoOT1<-subset(Knn_Biological_sum, Survey_Acronym=="CSScoOT1",
+                         select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                  DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_CSScoOT1, "BiologicalInfo_CSScoOT1_FullSMP_kNN_V2.csv")
+################ 9. CSScoOT4 ################
+kNN_CSScoOT4<-subset(Knn_Biological_sum, Survey_Acronym=="CSScoOT4",
+                         select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                  DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_CSScoOT4, "BiologicalInfo_CSScoOT4_FullSMP_kNN_V2.csv")
+################# 10. CSIreOT4 #################
+kNN_CSIreOT4<-subset(Knn_Biological_sum, Survey_Acronym=="CSIreOT4",
+                         select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                  DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_CSIreOT4, "BiologicalInfo_CSIreOT4_FullSMP_kNN_V2.csv")
+################# 11. CSNIrOT1 #################
+kNN_CSNIrOT1<-subset(Knn_Biological_sum, Survey_Acronym=="CSNIrOT1",
+                         select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                  DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_CSNIrOT1, "BiologicalInfo_CSNIrOT1_FullSMP_kNN_V2.csv")
+################# 12. CSNIrOT4 #################
+kNN_CSNIrOT4<-subset(Knn_Biological_sum, Survey_Acronym=="CSNIrOT4",
+                         select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                  DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_CSNIrOT4, "BiologicalInfo_CSNIrOT4_FullSMP_kNN_V2.csv")
+###################13. CS/BBFraOT4 ###################
+kNN_CSBBFraOT4<-subset(Knn_Biological_sum, Survey_Acronym=="CSBBFraOT4",
+                           select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                    DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_CSBBFraOT4, "BiologicalInfo_CSBBFraOT4_FullSMP_kNN_V2.csv")
+################### 14. BBICPorOT4 ###################
+kNN_BBICPorOT4<-subset(Knn_Biological_sum, Survey_Acronym=="BBICPorOT4",
+                           select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                    DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_BBICPorOT4, "BiologicalInfo_BBICPorOT4_FullSMP_kNN_V2.csv")
+################ 15. WAScoOT3 ################
+kNN_WAScoOT3<-subset(Knn_Biological_sum, Survey_Acronym=="WAScoOT3",
+                         select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                  DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_WAScoOT3, "BiologicalInfo_WAScoOT3_FullSMP_kNN_V2.csv")
+####################16 BBIC(n)SpaOT4 ####################
+kNN_NSpa4<-subset(Knn_Biological_sum, Survey_Acronym=="BBIC(n)SpaOT4",
+                      select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                               DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_NSpa4, "BiologicalInfo_BBICnSpaOT4_FullSMP_kNN_V2.csv")
+####################17 BBIC(s)SpaOT1 ####################
+kNN_sspa1<-subset(Knn_Biological_sum, Survey_Acronym=="BBIC(s)SpaOT1",
+                      select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                               DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_sspa1, "BiologicalInfo_BBICsSpaOT1_FullSMP_kNN_V2.csv")
+####################18 BBIC(s)SpaOT4 ###################
+kNN_sspa4<-subset(Knn_Biological_sum, Survey_Acronym=="BBIC(s)SpaOT4",
+                      select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                               DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_sspa4, "BiologicalInfo_BBICsSpaOT4_FullSMP_kNN_V2.csv")
+###############19 WASpaOT3 ###############
+kNN_WASpaOT3<-subset(Knn_Biological_sum, Survey_Acronym=="WASpaOT3",
+                         select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                  DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(kNN_WASpaOT3, "BiologicalInfo_WASpaOT3_FullSMP_kNN_V2.csv")
+###############
+# SSA kNN#
+###############
+summary(as.factor(SSA_haul_dat$Survey_Acronym))
+# following on from previous file - create a biological file for each level
+################ 1 GNSGerBT3 ################
+V2_kNN_SSA_GNSGerBT3<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSGerBT3",
+                               select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                        DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSGerBT3, "BiologicalInfo_GNSGerBT3_SSASMP_kNN_V2.csv")
+################### 2. GNSNetBT3" ##################
+V2_kNN_SSA_GNSNetBT3<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSNetBT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSNetBT3, "BiologicalInfo_GNSNetBT3_SSASMP_kNN_V2.csv")
+################## 3. GNSEngBT3" ##################
+V2_kNN_SSA_GNSEngBT3<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSEngBT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSEngBT3, "BiologicalInfo_GNSEngBT3_SSASMP_kNN_V2.csv")
+################  4. GNSIntOT1"###############
+V2_kNN_SSA_GNSIntOT1<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSIntOT1",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSIntOT1, "BiologicalInfo_GNSIntOT1_SSASMP_kNN_V2.csv")
+############smaller files for simons paradox system#####
+V2_kNN_SSA_GNSIntOT1a<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSIntOT1"&Year<1994,
+                           select=c(HaulID,Year, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                    DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSIntOT1a, "BiologicalInfo_GNSIntOT1_SSASMP_kNN_V2a.csv")
+V2_kNN_SSA_GNSIntOT1b<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSIntOT1"&Year>1993&Year<2006,
+                          select=c(HaulID,Year, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSIntOT1b, "BiologicalInfo_GNSIntOT1_SSASMP_kNN_V2b.csv")
+V2_kNN_SSA_GNSIntOT1c<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSIntOT1"&Year>2005,
+                          select=c(HaulID, Year,SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSIntOT1c, "BiologicalInfo_GNSIntOT1_SSASMP_kNN_V2c.csv")
+################# 5. GNSIntOT3 #################
+V2_kNN_SSA_GNSIntOT3<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSIntOT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSIntOT3, "BiologicalInfo_GNSIntOT3_SSASMP_kNN_V2.csv")
+V2_kNN_SSA_GNSIntOT3a<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSIntOT3"&Year<2007,
+                             select=c(HaulID, Year,SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                      DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+summary(V2_kNN_SSA_GNSIntOT3a$Year)
+write.csv(V2_kNN_SSA_GNSIntOT3a, "BiologicalInfo_GNSIntOT3_SSASMP_kNN_V2a.csv")
+V2_kNN_SSA_GNSIntOT3b<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSIntOT3"&Year>2006,
+                             select=c(HaulID, Year,SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                      DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSIntOT3b, "BiologicalInfo_GNSIntOT3_SSASMP_kNN_V2b.csv")
+################## 6. GNSFraOT4  ##################
+V2_kNN_SSA_GNSFraOT4<-subset(SSA_kNN_Biological, Survey_Acronym=="GNSFraOT4",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_GNSFraOT4, "BiologicalInfo_GNSFraOT4_SSASMP_kNN_V2.csv")
+################ 7. CSEngBT3 ###############
+V2_kNN_SSA_CSEngBT3<-subset(SSA_kNN_Biological, Survey_Acronym=="CSEngBT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_CSEngBT3, "BiologicalInfo_CSEngBT3_SSASMP_kNN_V2.csv")
+################ 8. CSScoOT1 ################
+V2_kNN_SSA_CSScoOT1<-subset(SSA_kNN_Biological, Survey_Acronym=="CSScoOT1",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_CSScoOT1, "BiologicalInfo_CSScoOT1_SSASMP_kNN_V2.csv")
+################ 9. CSScoOT4 ################
+V2_kNN_SSA_CSScoOT4<-subset(SSA_kNN_Biological, Survey_Acronym=="CSScoOT4",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_CSScoOT4, "BiologicalInfo_CSScoOT4_SSASMP_kNN_V2.csv")
+################# 10. CSIreOT4 #################
+V2_kNN_SSA_CSIreOT4<-subset(SSA_kNN_Biological, Survey_Acronym=="CSIreOT4",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_CSIreOT4, "BiologicalInfo_CSIreOT4_SSASMP_kNN_V2.csv")
+################# 11. CSNIrOT1 #################
+V2_kNN_SSA_CSNIrOT1<-subset(SSA_kNN_Biological, Survey_Acronym=="CSNIrOT1",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_CSNIrOT1, "BiologicalInfo_CSNIrOT1_SSASMP_kNN_V2.csv")
+################# 12. CSNIrOT4 #################
+V2_kNN_SSA_CSNIrOT4<-subset(SSA_kNN_Biological, Survey_Acronym=="CSNIrOT4",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_CSNIrOT4, "BiologicalInfo_CSNIrOT4_SSASMP_kNN_V2.csv")
+###################13. CS/BBFraOT4 ###################
+summary(as.factor(SSA_kNN_Biological$Survey_Acronym))
+V2_kNN_SSA_CSBBFraOT4<-subset(SSA_kNN_Biological, Survey_Acronym=="CSBBFraOT4",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_CSBBFraOT4, "BiologicalInfo_CSBBFraOT4_SSASMP_kNN_V2.csv")
+################### 14. BBICPorOT4 ###################
+V2_kNN_SSA_BBICPorOT4<-subset(SSA_kNN_Biological, Survey_Acronym=="BBICPorOT4",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_BBICPorOT4, "BiologicalInfo_BBICPorOT4_SSASMP_kNN_V2.csv")
+################ 15. WAScoOT3 ################
+V2_kNN_SSA_WAScoOT3<-subset(SSA_kNN_Biological, Survey_Acronym=="WAScoOT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_WAScoOT3, "BiologicalInfo_WAScoOT3_SSASMP_kNN_V2.csv")
+####################16 BBIC(n)SpaOT4 ####################
+V2_kNN_SSA_NSpa4<-subset(SSA_kNN_Biological, Survey_Acronym=="BBIC(n)SpaOT4",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_NSpa4, "BiologicalInfo_BBICnSpaOT4_SSASMP_kNN_V2.csv")
+####################17 BBIC(s)SpaOT1 ####################
+V2_kNN_SSA_sspa1<-subset(SSA_kNN_Biological, Survey_Acronym=="BBIC(s)SpaOT1",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_sspa1, "BiologicalInfo_BBICsSpaOT1_SSASMP_kNN_V2.csv")
+####################18 BBIC(s)SpaOT4 ###################
+V2_kNN_SSA_sspa4<-subset(SSA_kNN_Biological, Survey_Acronym=="BBIC(s)SpaOT4",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_sspa4, "BiologicalInfo_BBICsSpaOT4_SSASMP_kNN_V2.csv")
+###############19 WASpaOT3 ###############
+V2_kNN_SSA_WASpaOT3<-subset(SSA_kNN_Biological, Survey_Acronym=="WASpaOT3",
+                          select=c(HaulID, SpeciesSciName, FishLength_cm,IndivFishWgt_g,Number, 
+                                   DensAbund_N_Sqkm,DensBiom_kg_Sqkm))
+write.csv(V2_kNN_SSA_WASpaOT3, "BiologicalInfo_WASpaOT3_SSASMP_kNN_V2.csv")
