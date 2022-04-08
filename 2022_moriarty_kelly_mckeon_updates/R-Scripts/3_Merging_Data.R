@@ -1,23 +1,9 @@
-###################
-# Version Control #
-###################
-# R version 3.2.2 (2015-08-14): Fire Safety 
-# platform       x86_64-w64-mingw32 (64-bit)
-###############
-# Script Info #
-###############
+# title: "3_Merging_Data.R"
+# last updated: "08/04/2022"
+
 # This is Script 3 of x 
-# The purpose of this script is to merge the data into approperiate groupings for  
+# The purpose of this script is to merge the data into appropriate groupings for 
 # data checking and processing
-# AUTHOR: Meadhbh Moriarty, 2016
-# REVIEWED BY: Nicola Walker (Cefas) Jonas Hentati Sundberg (SLU)
-# Edits by: Ruth Kelly (AFBI), June 2021 - R version 4.0.4 (2021-02-15) -- "Lost Library Book"
-####################
-# Check str of data#
-####################
-# using data tables is better than data frames
-# better able to deal with larger data files.
-# convert all HH data frames to data tables
 
 # load("./script2_output.rda")
 # load("./script3_output.rda")
@@ -25,7 +11,12 @@
 ## OR
 
 gc()
+
+## Survey data (HL)------------
+
 # cut each dataset to the start date used by Moriarty et al.2017 - RK 2021
+HH_NIGFS<-as.data.table(HH_NIGFS)
+
 HH_EVHOE<-as.data.table(HH_EVHOE)
 table(HH_EVHOE$Year)
 
@@ -35,134 +26,85 @@ table(HH_FRCGFS$Year)
 HH_IGFS<-as.data.table(HH_IGFS)
 table(HH_IGFS$Year)
 
-HH_NSIBTS<-as.data.table(HH_NSIBTS)
-table(HH_NSIBTS$Year, HH_NSIBTS$Quarter)
-
-HH_NSIBTS <- HH_NSIBTS[HH_NSIBTS$Year >1982,]
-## remove earlier years in Q 3/4
-
-x1 <- which(HH_NSIBTS$Year <1998 & HH_NSIBTS$Quarter %in% c(3,4))
-length(x1) #3862 (Feb 2022)
-
-HH_NSIBTS <- HH_NSIBTS[-x1,]
-
-table(HH_NSIBTS$Year, HH_NSIBTS$Quarter)
+HH_SWC<-as.data.table(HH_SWC)
+table(HH_SWC$Year)
 
 HH_ROCK<-as.data.table(HH_ROCK)
 table(HH_ROCK$Year)
 
-
-HH_SWC<-as.data.table(HH_SWC)
-table(HH_SWC$Year)
-
-HH_NIGFS<-as.data.table(HH_NIGFS)
-
-HH_BTS<-as.data.table(HH_BTS)
-
-HH_BTS <- HH_BTS[HH_BTS$Year> 1986,]
-
-HH_BTS_DE <- HH_BTS[HH_BTS$Country == "DE",]
-table(HH_BTS_DE$Ship, HH_BTS_DE$Year)
-table(HH_BTS_DE$DoorSpread, HH_BTS_DE$Year)
-
+HH_BTS <- as.data.table(HH_BTS[HH_BTS$Year > 1986,])
 x2 <- which(HH_BTS$Year <2002 & HH_BTS$Country == "DE")
-length(x2) #397
-
 HH_BTS <- HH_BTS[-x2,]
-
 ## Remove DE prior to 2002 - this wasn't on Datras yet when 
 # Moriarty did there work. It does appear to be the same ship, 
 # but the gear type and other params would need to be error checked 
 # before inclusion
 
-HH_PT<-as.data.table(HH_PT)
-table(HH_PT$Year) ## 2002-2018 present on Datras - Moriarty had 2001, but that's not on Datras anymore
+HH_NSIBTS <- as.data.table(HH_NSIBTS[HH_NSIBTS$Year >1982,])
+table(HH_NSIBTS$Year, HH_NSIBTS$Quarter)
+x1 <- which(HH_NSIBTS$Year <1998 & HH_NSIBTS$Quarter %in% c(3,4))
+HH_NSIBTS <- HH_NSIBTS[-x1,]
+## remove earlier years in Q 3/4
 
+HH_SNS <- as.data.table(HH_SNS)
+table(HH_SNS$Year)
 
-## added Spain 2021
-## There are know to have been big changes in the Spannish data on DATRAS 
-## User caution advised
+HH_BTS8 <- as.data.table(HH_BTS8)
+table(HH_BTS8$Year)
 
-HH_SP_PORC <- as.data.table(HH_SP_PORC)
-table(HH_SP_PORC$Year)
-HH_SP_NORTH <- as.data.table(HH_SP_NORTH)
-table(HH_SP_NORTH$Year)
-HH_SP_ARSA <- as.data.table(HH_SP_ARSA)
-table(HH_SP_ARSA$Year, HH_SP_ARSA$Ship) ### remove 1996 to give continous series from 2000
-HH_SP_ARSA <- HH_SP_ARSA[HH_SP_ARSA$Year >1999,]
+HH_DYFS <- as.data.table(HH_DYFS)
+table(HH_DYFS$Year)
 
+# merge HH data files --------------------
 
-
-
-# merge DATRAS HH data files
-
-
-HH<-rbind(HH_EVHOE, HH_FRCGFS, HH_IGFS, HH_NSIBTS, 
-          HH_ROCK, HH_SWC, HH_NIGFS, HH_PT, HH_BTS, 
-          HH_SP_ARSA,HH_SP_PORC, HH_SP_NORTH)#, fill=TRUE)
+HH <- rbind(HH_NIGFS,HH_EVHOE, HH_FRCGFS, HH_IGFS, HH_SWC, HH_ROCK, HH_BTS,
+          HH_NSIBTS, HH_SNS, HH_BTS8, HH_DYFS)
 
 # check - should return TRUE
 nrow(HH) == nrow(HH_EVHOE)+nrow(HH_FRCGFS)+nrow(HH_IGFS)+
   nrow(HH_NSIBTS)+nrow(HH_ROCK)+nrow(HH_SWC)+
-  nrow(HH_NIGFS)+nrow(HH_PT)+nrow(HH_BTS)  +
-  nrow(HH_SP_PORC) + nrow(HH_SP_NORTH) + nrow(HH_SP_ARSA) 
+  nrow(HH_NIGFS)+nrow(HH_SNS)+nrow(HH_BTS)+nrow(HH_BTS8)+nrow(HH_DYFS)  
+rm(HH_NIGFS, HH_EVHOE, HH_FRCGFS, HH_IGFS, HH_SWC, HH_ROCK, HH_BTS, HH_NSIBTS, HH_SNS, HH_BTS8, HH_DYFS)
 
-# convert HL data trames to data tables
-# cut to same years
+## Biological data (HH) -------------
+
+# cut each dataset to the start date used by Moriarty et al.2017 - RK 2021
+
+HL_NIGFS<-as.data.table(HL_NIGFS)
+
 HL_EVHOE<-as.data.table(HL_EVHOE)
 
 HL_FRCGFS<-as.data.table(HL_FRCGFS)
+
 HL_IGFS<-as.data.table(HL_IGFS)
-HL_NSIBTS<-as.data.table(HL_NSIBTS)
-
-table(HL_NSIBTS$Year)
-HL_NSIBTS <- HL_NSIBTS[HL_NSIBTS$Year >1982,]
-## remove earlier years in Q 3/4
-
-x3 <- which(HL_NSIBTS$Year <1998 & HL_NSIBTS$Quarter %in% c(3,4))
-length(x3) # 432320 (feb 2022)
-
-HL_NSIBTS[head(x3),]
-
-HL_NSIBTS <- HL_NSIBTS[-x3,]
-
-table(HL_NSIBTS$Year, HL_NSIBTS$Quarter)
-
-
-HL_ROCK<-as.data.table(HL_ROCK)
-table(HL_ROCK$Year)
 
 HL_SWC<-as.data.table(HL_SWC)
-table(HL_SWC$Year)
 
-HL_NIGFS<-as.data.table(HL_NIGFS)
-  table(HL_NIGFS$Year)
+HL_ROCK<-as.data.table(HL_ROCK)
 
-HL_BTS<-as.data.table(HL_BTS)
-
-
-HL_BTS <- HL_BTS[HL_BTS$Year> 1986,]
+HL_BTS<-as.data.table(HL_BTS[HL_BTS$Year> 1986,])
 x4 <- which(HL_BTS$Year <2002 & HL_BTS$Country == "DE")
-length(x4) # 32805 (feb 2022)
 HL_BTS <- HL_BTS[-x4,]
+names(HL_BTS)[names(HL_BTS) == 'ValidAphiaID'] <- 'Valid_Aphia'
+HL_BTS <- HL_BTS[, c("RecordType", "Survey", "Quarter", "Country", "Ship", "Gear", 
+                     "SweepLngt", "GearEx", "DoorType", "StNo", "HaulNo", "Year", 
+                     "SpecCodeType", "SpecCode", "SpecVal", "Sex", "TotalNo", "CatIdentifier", 
+                     "NoMeas", "SubFactor", "SubWgt", "CatCatchWgt", "LngtCode", "LngtClass", 
+                     "HLNoAtLngt", "DevStage", "LenMeasType", "DateofCalculation", "Valid_Aphia")]
 
-HL_PT<-as.data.table(HL_PT)
+HL_NSIBTS<-as.data.table(HL_NSIBTS[HL_NSIBTS$Year >1982,])
+x3 <- which(HL_NSIBTS$Year <1998 & HL_NSIBTS$Quarter %in% c(3,4))
+HL_NSIBTS <- HL_NSIBTS[-x3,]
 
-## spain added
-HL_SP_ARSA <-as.data.table(HL_SP_ARSA)
-table(HL_SP_ARSA$Year, HL_SP_ARSA$Ship) ### remove 1996 to give continous series from 2000
-HL_SP_ARSA <- HL_SP_ARSA[HL_SP_ARSA$Year >1999,]
+HL_SNS <-as.data.table(HL_SNS[HL_SNS$Year> 1986,])
 
-HL_SP_PORC<-as.data.table(HL_SP_PORC)
-table(HH_SP_PORC$Year)
+HL_BTS8 <-as.data.table(HL_BTS8)
 
-HL_SP_NORTH<-as.data.table(HL_SP_NORTH)
-table(HH_SP_NORTH$Year)
+HL_DYFS <-as.data.table(HL_DYFS)
 
-### bind
-HL<-rbind(HL_EVHOE, HL_FRCGFS,HL_IGFS, HL_NSIBTS, 
-          HL_ROCK, HL_SWC,HL_NIGFS,HL_PT,HL_BTS,
-          HL_SP_ARSA,HL_SP_PORC, HL_SP_NORTH)#, fill=TRUE)
+## merge HL data files ----------------------
+HL<-rbind(HL_NIGFS, HL_EVHOE, HL_FRCGFS, HL_IGFS,HL_SWC, HL_ROCK, HL_NSIBTS, 
+          HL_BTS,HL_SNS, HL_BTS8, HL_DYFS)
 
 # check - should return true
 nrow(HL) == nrow(HL_EVHOE)+nrow(HL_FRCGFS)+nrow(HL_IGFS)+

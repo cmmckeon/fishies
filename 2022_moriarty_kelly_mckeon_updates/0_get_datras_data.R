@@ -34,12 +34,10 @@
 # ROCKALL
 # SCOROC
 # BTS
-
 # NS-IBTS
-# BITS
+# SNS
 # BTS-VIII
 # DYFS
-# SNS
 
 
 
@@ -140,96 +138,98 @@ gc()
 ### BTS (Beam Trawl Survey) ----------------
 HH_BTS <-  getDATRAS(record = "HH", survey = "BTS",
                       years = 1985:2021, quarters = c(1,2,3,4))
-HL_BTS <-  getDATRAS(record = "HL", survey = "BTS",
-                     years = 1985:2021, quarters = c(1,2,3,4))
+# Repeated curl error in download of this next file, so I directly downloaded it from the Datras web download site
+# HL_BTS <-  getDATRAS(record = "HL", survey = "BTS",
+#                      years = 1985:2021, quarters = c(1,2,3,4))
 
-## aaaaahahahahah
 write.csv(HH_BTS, "Raw_Data/DATRAS/BTS/HH_data_BTS.csv", row.names = FALSE )
-write.csv(HL_BTS, "Raw_Data/DATRAS/BTS/HL_data_BTS.csv", row.names = FALSE )
+#write.csv(HL_BTS, "Raw_Data/DATRAS/BTS/HL_data_BTS.csv", row.names = FALSE )
 gc()
 
 
-gc()
-beep(sound = 1, expr = NULL)
 
+### NS-IBTS (North Sea International Bottom Trawl Survey) ---------------------
 HH_NSIBTS <- getDATRAS(record = "HH", survey = "NS-IBTS",
                        years = 1965:2021, quarters = c(1,2,3,4))
 gc()
 
-HL_NSIBTS_80 <- getDATRAS(record = "HL", survey = "NS-IBTS",
-                       years = 1965:1980, quarters = c(1,2,3,4))
+# Repeated curl error in download of these files; downloaded from the Datras web download site
 
-gc()
-HL_NSIBTS_90 <- getDATRAS(record = "HL", survey = "NS-IBTS",
-                          years = 1981:1990, quarters = c(1,2,3,4))
+# HL_NSIBTS_80 <- getDATRAS(record = "HL", survey = "NS-IBTS",
+#                        years = 1965:1980, quarters = c(1,2,3,4))
+# Sys.sleep(60)
+# gc()
+# HL_NSIBTS_90 <- getDATRAS(record = "HL", survey = "NS-IBTS",
+#                           years = 1981:1990, quarters = c(1,2,3,4))
+# Sys.sleep(60)
+# gc()
+# HL_NSIBTS_00 <- getDATRAS(record = "HL", survey = "NS-IBTS",
+#                           years = 1991:2000, quarters = c(1,2,3,4))
+# Sys.sleep(60)
+# gc()
+# HL_NSIBTS_10 <- getDATRAS(record = "HL", survey = "NS-IBTS",
+#                           years = 2001:2010, quarters = c(1,2,3,4))
+# Sys.sleep(60)
+# gc()
+# HL_NSIBTS_21 <- getDATRAS(record = "HL", survey = "NS-IBTS",
+#                           years = 2011:2021, quarters = c(1,2,3,4))
+# gc()
 
-gc()
-HL_NSIBTS_00 <- getDATRAS(record = "HL", survey = "NS-IBTS",
-                          years = 1991:2000, quarters = c(1,2,3,4))
-
-gc()
-Sys.sleep(60)
-
-HL_NSIBTS_10 <- getDATRAS(record = "HL", survey = "NS-IBTS",
-                          years = 2001:2010, quarters = c(1,2,3,4))
-gc()
-HL_NSIBTS_21 <- getDATRAS(record = "HL", survey = "NS-IBTS",
-                          years = 2011:2021, quarters = c(1,2,3,4))
-gc()
-Sys.sleep(60)
-
+HL_NSIBTS_80 <- read.csv("Raw_Data/DATRAS/HL_NSIBTS_80.csv")
+HL_NSIBTS_90 <- read.csv("Raw_Data/DATRAS/HL_NSIBTS_90.csv")
+HL_NSIBTS_00 <- read.csv("Raw_Data/DATRAS/HL_NSIBTS_00.csv")
+HL_NSIBTS_10 <- read.csv("Raw_Data/DATRAS/HL_NSIBTS_10.csv")
+HL_NSIBTS_21 <- read.csv("Raw_Data/DATRAS/HL_NSIBTS_21.csv")
 
 HL_NSIBTS <- rbind(HL_NSIBTS_00,HL_NSIBTS_10,
                    HL_NSIBTS_21, HL_NSIBTS_80,
                    HL_NSIBTS_90)
 
-head(HL_NSIBTS)
 write.csv(HH_NSIBTS, "Raw_Data/DATRAS/NS-IBTS/HH_NSIBTS.csv")
-
 write.csv(HL_NSIBTS, "Raw_Data/DATRAS/NS-IBTS/HL_NSIBTS.csv")
 gc()
 
-### other beam trawls included in the Datras WGBeam product for possible inclusion. 
 
-# Sole Net surveys
+### SNS (Sole Net Survey) ---------------
 
 HH_SNS <- getDATRAS(record = "HH", survey = "SNS",
                           years = 1985:2021, quarters = c(1,2,3,4))
-
 HLSNS <- getDATRAS(record = "HL", survey = "SNS",
                           years = 1985:2021, quarters = c(1,2,3,4))
 
 write.csv(HH_SNS, "Raw_Data/DATRAS/Beam_oth/HH_SNS.csv")
 write.csv(HLSNS, "Raw_Data/DATRAS/Beam_oth/HL_SNS.csv")
-
 gc()
-Sys.sleep(60)
 
-# BTS area VIII - France
+### BTS-VIII (Beam Trawl Survey - Bay of Biscay (VIII)) --------------
 
 HH_BT8 <- getDATRAS(record = "HH", survey = "BTS-VIII",
-                    years = 2011:2020, quarters = c(1,2,3,4))
-
+                    years = 2011:2021, quarters = c(1,2,3,4))
 HL_BT8<- getDATRAS(record = "HL", survey = "BTS-VIII",
-                   years = 2011:2020, quarters = c(1,2,3,4))
+                   years = 2011:2021, quarters = c(1,2,3,4))
 
 write.csv(HH_BT8, "Raw_Data/DATRAS/Beam_oth/HH_BTS8.csv")
 write.csv(HL_BT8, "Raw_Data/DATRAS/Beam_oth/HL_BTS8.csv")
 
 gc()
-Sys.sleep(60)
+beep(sound = 1, expr = NULL)
 
-# DYFS - Inshore Beam Trawl (young fish survey)
+### DYFS (Inshore Beam Trawl) (young fish survey) ----------------
 HH_DYFS <- getDATRAS(record = "HH", survey = "DYFS",
-                    years = 2002:2020, quarters = c(1,2,3,4))
+                    years = 2002:2021, quarters = c(1,2,3,4))
 HL_DYFS<- getDATRAS(record = "HL", survey = "DYFS",
-                   years = 2002:2020, quarters = c(1,2,3,4))
+                   years = 2002:2021, quarters = c(1,2,3,4))
 
 write.csv(HH_DYFS, "Raw_Data/DATRAS/Beam_oth/HH_DYFS.csv")
 write.csv(HL_DYFS, "Raw_Data/DATRAS/Beam_oth/HL_DYFS.csv")
 gc()
 
-Sys.sleep(60)
 
-gc()
 beep(sound = 1, expr = NULL)
+
+
+
+### end ---------
+
+
+

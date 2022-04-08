@@ -2,77 +2,29 @@
 # date started: "18/6/2019"
 # last updated: "07/04/2022"
 
-## DATA NEEDED:
-
 
 # This is Script 1 of X 
 # The purpose of this script is to set up the working directory for this project,
 # do general house keeping, insure all functions and packages are uploaded.
-# In general the goals of the scripts in series are outline below:
-# Goal 1. Check survey data for outliers and query with data providers
-#             This code has been re-run to insure all errors that have been 
-#             reported have been removed from DATRAS, otherwise a "fix" is used
-# Goal 2. Derive Surveys and fix errors not updated in DATRAS
-# Goal 3. Estimate missing/incorrect gear parameters
-# Goal 4. Calculate Swept Area and Swepth Volume
-# Goal 5. Estimate missing/incorrect biological parameters
-# Goal 6. Calculate Swept Area densities
 
-# AUTHOR: Meadhbh Moriarty, 2016
-# REVIEWED BY: Nicola Walker (Cefas) Jonas Hentati Sundberg (SLU)
-# Edits by: Ruth Kelly (AFBI), 2021 for rerun - R version 4.0.4 (2021-02-15) -- "Lost Library Book"
-# Edits by: Caroline McKeon (TCD) 2022 for rerun - R 
+## Housekeeping ---------------
 
-# DATA SOURCE: DATRAS DOWNLOAD 22-02-2016/18-03-2016
-# Updated with more recent download Feb 2016
-# Second Download from DATRAS 09-05-2016
-# Third Download from DATRAS 29-09-2016 - 
-# Fourth download from DATRAS 08 and 09, June 2021. 
-# Fifth download from DATRA Feb 2022.
+# set working directory
+setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 
-# the THIRD version (29-09-2016) is the version used to derived the MSFD-QA-GFS-MA-DP
-# it is provided in the associated sharepoint file. "Raw-Data-29-09-2016"
-# Irish data updated on 28-06-2016 - duplicates from DATRAS removed
-# New surveys added September 2016
-# Spanish data re-checked and major revisions occured
-
-#################
-## Housekeeping## 
-#################
 # Remove files from R Global Environment 
 rm(list = ls())
-##Check proxy settings##
-Sys.getenv("http_proxy")
-## Fix proxy settings (; should be :)
-Sys.setenv(http_proxy="http://192.168.41.8:80")
-## this proxy is required for my system if no proxy is required use:
-# Sys.setenv(http_proxy="")
-############
-# PACKAGES #
-############
-# There are several useful packeages that we will use for this project, throughtout the 
-# follwing scripts, so having them loaded in the R environment is useful
-# ggplot2 is for pretty plots; data.table- for dealing with big data
-# DMwR - for lofactor(..): lme4- for mixed models
-# plyr - for summariesing data; marmap #for depth estimates
+
+### library packages ---------------
 list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "lme4", "plyr",
         "marmap", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
         "mapplots", "class", "gridExtra", "ggmap")
 lapply(list, require, character.only=T)
 lapply(list, citation)
-# The following packages are only required to download directly from DATRAS - so if you are
-# using the pre downloaded data there is no need to worry about these pkgs.
-# library(devtools) #- only required to download the rICES package from github
-#devtools::install_github("ices-dk/rICES")
-# library(rICES) #- only required if downloading directly from DATRAS
-# library(DATRAS) only required if downloading from DATRAS directly - see getDATRAS
-# function if this isn't loading as required.
 
-# RK these ICES packages may be deprecated - may need icesDatras instead 
-# for direct download now.
-##################
-# Load functions #
-##################
+
+### load functions ----------------
+
 # Calculate distance in kilometers between two points
 earth.dist <- function (long1, lat1, long2, lat2) {
   rad <- pi/180
@@ -87,16 +39,18 @@ earth.dist <- function (long1, lat1, long2, lat2) {
   R <- 6371 # Mean radius (km) of the earth
   d <- R * c
   return(d)
-}
+  }
+
 earth.dist(-15.5,56.25,-15.5,55.72)
 # na.false function 
 na.false <- function(x) {return(replace(x, which(is.na(x)), FALSE))}
+
 # Function to compare if two dataset contain the same information
 compare_function <- function(x.1,x.2,...){
   x.1p <- do.call("paste", x.1)
   x.2p <- do.call("paste", x.2)
   x.1[! x.1p %in% x.2p, ]
-}
+  }
 
 # Funtion to replace multiple -9 across lots of data tables
 replace_function=function(DT){
@@ -108,6 +62,7 @@ replace_function=function(DT){
     set(DT, i = which(DT[[cname]] == -9), j = cname, value = NA)
   }
 }
+
 # Function to create a random vector of numbers
 rand_vect <- function(N, M, sd = 1, pos.only = TRUE) {
   vec <- rnorm(N, M/N, sd)
@@ -125,10 +80,20 @@ rand_vect <- function(N, M, sd = 1, pos.only = TRUE) {
   }
   vec
 }
-#########################
-# Set Working Directory #
-#########################
-#setwd("C:/R/OSPAR_IBTS_dc")
+
+# If FALSE, mostly suppress CI computation
+need.CI <- FALSE
+# Number of bootstrap replicates
+if(need.CI){
+  nb <- 1000
+}else{
+  nb <- 3 ## just to make code run through
+}
+#
+# Confidence interval range
+CV <- .95
+# Set seed for reproducible results
+setSeed <- set.seed(627)
 
 save(list=ls(all=T), file = "./script1_output.rda")
 #load("./script1_output.rda")
