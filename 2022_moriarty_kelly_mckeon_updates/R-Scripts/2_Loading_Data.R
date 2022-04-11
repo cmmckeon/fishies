@@ -4,6 +4,9 @@
 # This is Script 2 of X 
 # The purpose of this script is to load the raw data into R from the various folders.
 
+## set up
+setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+
 # Load data ----------------
 
 # load("./script1_output.rda")
