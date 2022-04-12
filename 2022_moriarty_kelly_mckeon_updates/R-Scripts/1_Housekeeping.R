@@ -25,6 +25,9 @@ lapply(list, citation)
 
 ### load functions ----------------
 
+## create "not in" operator
+'%nin%' = Negate('%in%')
+
 # Calculate distance in kilometers between two points
 earth.dist <- function (long1, lat1, long2, lat2) {
   rad <- pi/180

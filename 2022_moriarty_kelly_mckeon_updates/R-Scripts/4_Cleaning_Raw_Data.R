@@ -11,10 +11,6 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 #load("./script3_output.rda")
 
 
-x <- unique((HH[HH$Country == "DK",]))
-levels(factor(x$Year))
-
-
 ## Add in the Corrections sent directly to Meadhbh 
 # The first step in the correction procedure is to add in any missing data
 # these are the datasets that were stored loaded up during script 2_Loading_data
@@ -245,7 +241,7 @@ for(i in names(copy_den)){
 
 test<-compare_function(copy_den, copy1)
 test1<-compare_function(copy1, copy_den)
-# nightmare data should only have extra data in the test, not the test1,
+# now only have extra data in the test, not the test1,
 # all stations and unique ID StNo relapces Haul No in the DEN_add 
 # datasets. They are the same except for Unique ID NS-IBTS/1986/1/DAN2/30/GOV which 
 # is only in the DATRAS copy not the Denmark copy 
@@ -263,21 +259,21 @@ test1<-compare_function(copy1, copy_den)
 # complete mis-match
 summary(as.factor(test$Year))
 summary(as.factor(test1$Year))
-summary(as.factor(test$ValidAphiaID))
+summary(as.factor(test$Valid_Aphia))
 
 # 56 spp missing from records
 summary(as.factor(test1$Valid_Aphia))
 
 setdiff(Den_ibts_fish$Valid_Aphia, NS_DEN_add_HL$Valid_Aphia)
-# 4 in Datras not in supplement
+# 0 in Datras not in supplement
 
 length(setdiff(NS_DEN_add_HL$Valid_Aphia, Den_ibts_fish$Valid_Aphia))
-# 26 in supplement not on Datras
+# 62 in supplement not on Datras
 
 # total mess!
 # Gonna add in the missing records in the Denmark files and flag them
-Den_ibts_fish$match<-paste(Den_ibts_fish$UniqueID,Den_ibts_fish$ValidAphiaID, sep="_")
-NS_DEN_add_HL$match<-paste(NS_DEN_add_HL$UniqueID,NS_DEN_add_HL$ValidAphiaID, sep="_")
+Den_ibts_fish$match<-paste(Den_ibts_fish$UniqueID,Den_ibts_fish$Valid_Aphia, sep="_")
+NS_DEN_add_HL$match<-paste(NS_DEN_add_HL$UniqueID,NS_DEN_add_HL$Valid_Aphia, sep="_")
 list<-Den_ibts_fish$match
 Den_HL_additions<-subset(NS_DEN_add_HL, match%in%list)
 
@@ -334,8 +330,9 @@ HH1$ShootLat[HH1$UniqueID=="NS-IBTS_1986_1_58EJ_41_GOV"] <-57.24
 # The following stations have outlying net opening values, 
 # can you verify that these outliers are true values (figure 1.1.1.13/14).
 # response was to use all but one - changed below
-HH1$Netopening[HH1$UniqueID=="NS-IBTS_1998_3_CIR_66_GOV"]#<-NA
-HH1$Netopening[HH1$UniqueID=="NS-IBTS-1998_3_74C_66_GOV"]  <- NA
+HH1$Netopening[HH1$UniqueID=="NS-IBTS_1998_3_CIR_66_GOV"]#<-NA ## no ship with this name
+HH1$Netopening[HH1$UniqueID=="NS-IBTS_1998_3_74CZ_66_GOV"]#  <- NA  
+#value is currently 3.4, doesn't seem like an outlier now
 
 
 ## Denmark NS-IBTS Q1 -------------------
@@ -371,7 +368,7 @@ HH1$DoorSpread[HH1$UniqueID%in%list]<-NA
 # outliers removed
 
 
-# Netherlands IBTS Q1  ----------------------
+## Netherlands IBTS Q1  ----------------------
 
 # For station with unique ID 2004/1/TRI2/33/GOV the door spread 
 # is 118m at a depth of 64m. Is the door spread value correct?
@@ -387,7 +384,7 @@ HH1$DoorSpread[HH1$UniqueID=="NS-IBTS_2004_1_64T2_33_GOV"] <-NA
 HH1$Netopening[HH1$UniqueID=="NS-IBTS_1984_1_64T0_4_GOV"] <-6
 
 
-### GERMANY NS-IBTS -----------------------
+## GERMANY NS-IBTS -----------------------
 
 # Question: sweep of 80m for H18 gear 
 funnysweep<-subset(HH1, c(HH1$Country=="DE"& HH1$Survey=="NS-IBTS"& Year=="1984" & Gear == "H18"),)
@@ -416,8 +413,7 @@ list<-(delete_ship$UniqueID)
 
 HH1<-subset(HH1, !HH1$UniqueID%in%list, )
 
-
-# France NS-IBTS Q1 -----------------
+## France NS-IBTS Q1 -----------------
 
 #Wingspread is not consistent with depth, 
 #can you verify that these outliers are true values. 
@@ -453,9 +449,9 @@ HH1$DoorSpread[HH1$UniqueIDP%in%list] <- NA
 HH1$Netopening[HH1$UniqueIDP=='NS-IBTS_2011_1_THA2_74_GOV']<-NA
 
 
-# 1.1.2	The Third Quarter International Bottom Trawl Survey (GNSIntOT3) ------------------
+## 1.1.2 The Third Quarter International Bottom Trawl Survey (GNSIntOT3) ------------------
 
-### NORWAY NS-IBTS Q3 --------------------
+## NORWAY NS-IBTS Q3 --------------------
 
 # Question 3: haul duration
 # JD: 2008/3/JHJ/259/GOV: this is not an IBTS haul. 
@@ -494,17 +490,15 @@ check<-HH1[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV",]
  HH1$ShootLong[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-5.501
  HH1$HaulLat[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-54.641
  HH1$HaulLong[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-5.564
-
-## start
  
-# 1.1.3	The Fourth Quarter French Channel Groundfish Survey  (GNSFraOT4) ------------
+## 1.1.3 The Fourth Quarter French Channel Groundfish Survey  (GNSFraOT4) ------------
 
 # quick check from Appendix 1 Figure 1.1.3.3 which highlights a haul duration of
 # 90 minutes in the haul with unique ID 1995/4/GWD/49/GOV. Is this correct?
 # Y.V & F.C:  This should be 30 mins not 90 mins.
 # haul not corrected
 
- HH1$HaulDur[HH1$UniqueIDP=="FR-CGFS/1995/4/GWD/49/GOV"]<-30
+ HH1$HaulDur[HH1$UniqueIDP=="FR-CGFS_1995_4_GWD_49_GOV"]<-30
 
 # Figure 1.1.3.4, shows stations in 2012 which have been recorded with
 # shoot positions on land. What is the correct shoot positions?
@@ -524,148 +518,54 @@ abline(v=2, col="grey")
 
 # check Stat Rec is right?
 landlocked<-HH1[HH1$StatRec=="27F0",]
-points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/49/GOV"], 
-       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/49/GOV"],
+points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_49_GOV"], 
+       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_49_GOV"],
        pch=19, col="red")
-points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/50/GOV"], 
-       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/50/GOV"],
+points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_50_GOV"], 
+       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_50_GOV"],
        pch=19, col="red")
-points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/51/GOV"], 
-       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/51/GOV"],
+points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_51_GOV"], 
+       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_51_GOV"],
        pch=19, col="red")
 landlocked<-HH1[HH1$StatRec=="28F0",]
-points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/52/GOV"], 
-       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/52/GOV"],
+points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_52_GOV"], 
+       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_52_GOV"],
        pch=19, col="red")
-points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/53/GOV"], 
-       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS/2012/4/GWD/53/GOV"],
+points(HH1$ShootLong[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_53_GOV"], 
+       HH1$ShootLat[HH1$UniqueIDP=="FR-CGFS_2012_4_GWD_53_GOV"],
        pch=19, col="red")
-list<-c("FR-CGFS/2012/4/GWD/49/GOV", "FR-CGFS/2012/4/GWD/50/GOV",
-        "FR-CGFS/2012/4/GWD/51/GOV", "FR-CGFS/2012/4/GWD/52/GOV",
-        "FR-CGFS/2012/4/GWD/53/GOV")
+list<-c("FR-CGFS_2012_4_GWD_49_GOV", "FR-CGFS_2012_4_GWD_50_GOV",
+        "FR-CGFS_2012_4_GWD_51_GOV", "FR-CGFS_2012_4_GWD_52_GOV",
+        "FR-CGFS_2012_4_GWD_53_GOV")
 HH1$StatRec[HH1$UniqueIDP%in%list]<-c("27E9", "27E9", "28E9", "28E9" ,"28E9")
 # find stations on land
 HH1$HaulLong[HH1$UniqueIDP%in%list]<-as.numeric(HH1$HaulLong[HH1$UniqueIDP%in%list])*-1
 HH1$ShootLong[HH1$UniqueIDP%in%list]<-as.numeric(HH1$ShootLong[HH1$UniqueIDP%in%list])*-1
 
-#######################
-# 1.2 The Celtic Seas #
-#######################
-##############################################################
-# 1.2.1 The First Quarter Scottish West Coast IBTS (CSScoOT1)#
-##############################################################
-# In figure 1.2.1.2 there are a few door spread values that look like 
-# outliers, can you check them please.
-# Unique ID: 2000/1/SCO3/54/GOV: Depth 90m, Doorspread 113m
-# F.B: (this was 84 in FMD so will reupload to DATRAS) 
-# CHECK HAS CHANGE OCCURED ON DATRAS
-check<-HH1[HH1$UniqueIDP=="SWC-IBTS/2000/1/SCO3/54/GOV"]
-# doorspread changed at source
-# In figure 1.2.1.4 Warp length has got a generally linear 
-# relationship with depth. Can you check if the outlying values likely to 
-# be correct?
-# F.B: See table 1.2.1.1 below, erroneous values in red but many of the others
-# I have left as they are within what we may consider reasonable.
-# Check changes
-plot(HH1$Depth[HH1$Survey=="SCOWCGFS"], HH1$Warplngt[HH1$Survey=="SCOWCGFS"],)
-# points(430, 450, col="red", pch=16)
-# points(550,180, col="red", pch=16)
-check<-HH1[HH1$UniqueIDP=="SCOWCGFS/2012/4/SCO3/49/GOV",] ### appears to have been changed in datras RK
-# the correction was that depth was 175m adnd warp was 550 - values mixed up
-HH1$Depth[HH1$UniqueIDP=="SCOWCGFS/2012/4/SCO3/49/GOV"]#<-175
-HH1$Warplngt[HH1$UniqueIDP=="SCOWCGFS/2012/4/SCO3/49/GOV"]#<-550
-# station with unique ID SWC-IBTS/2009/4/SCO3/15/GOV
-# check Depth is plausable
-check<-HH1[HH1$UniqueIDP=="SWC-IBTS/2009/4/SCO3/15/GOV",]
-# given the location of this sample the depth is likely to be incorrect 
-# should be about 130 m depth which will make warp good
-# make depth NA and retain warp
-HH1$Depth[HH1$UniqueIDP=="SWC-IBTS/2009/4/SCO3/15/GOV"]#<-NA ### data changed on datras 2021
 
-################################################################
-# 1.2.3.	The Fourth Quarter Irish Groundfish Survey (CSIreOT4)#
-################################################################
-# remove duplicate hauls 
-# no longer required - new data upload
-# HH1<-subset(HH1, !Quater==3&Survey=="IE-IGFS",)
-######################################################################
+# 1.2 The Celtic Seas  --------------
+
 ##1.2.4 The First Quarter Northern Irish Groundfish Survey (CSNIrOT1)#
-######################################################################
-# At the station with the unique ID 2010/1/COR/44/ROT the haul duration
-# is recorded as 891 mins. Is this correct? 
-# M.L: haul duration corrected to 61min.
-check<-HH1[HH1$UniqueIDP=="NIGFS/2010/1/COR/44/ROT",]
-check
-# changed at source no action needed
 
 # In figure 1.2.4.1 there are outliers in the following door spread values:
-# •	Unique ID: 2008/1/COR/15/ROT, Depth 48 m Door spread 26.2 m
-# •	Unique ID: 2009/1/COR/37/ROT, Depth 62 m Door spread 31.3 m
+# •	Unique ID: 2008_1_COR_15_ROT, Depth 48 m Door spread 26.2 m
+# •	Unique ID: 2009_1_COR_37_ROT, Depth 62 m Door spread 31.3 m
 # Can you check these please?
-# M.L: Unique ID: 2008/1/COR/15/ROT, Door spread corrected to 34.2 m 
-# and Unique ID: 2009/1/COR/37/ROT, Door spread corrected to 38.3 m
-check<-HH1[HH1$UniqueIDP=="NIGFS/2009/1/COR/37/ROT",]
-#######################################################################
-# 1.2.5 The Fourth Quarter Northern Irish Groundfish Survey (CSNIrOT4)#
-#######################################################################
-# Country: Northern Ireland, Data Provider: Mathieu Lundy, File Type: HH
-# At the station with unique ID 2014/4/COR/50/ROT no depth value has been 
-# recorded, is this available? 
-# M.L: Yes, the depth should be 39m.
-HH1$Depth[HH1$UniqueIDP=="NIGFS/2014/4/COR/50/ROT"]
+# M.L: Unique ID: 2008_1_COR_15_ROT, Door spread corrected to 34.2 m 
+# and Unique ID: 2009_1_COR_37_ROT, Door spread corrected to 38.3 m
+check<-HH1[HH1$UniqueIDP=="NIGFS_2009_1_COR_15_ROT",]
+## these values are now 37.1 and 38.5 repectively ....CM
 
-#######################################################################
-# 1.3.5 The Fourth Quarter Portuguese Groundfish Survey (BBICPorOT4) ##
-#######################################################################
-# 2005/4/NOR/32/NCT Depth: 131m Warp length: 1500m. 
-# Can you check if this outlier is the correct value. 
-# C.C: Error this should be 500m 
-HH1$Warplngt[HH1$UniqueIDP=="PT-IBTS/2005/4/NOR/32/NCT"]<-500
-##################################################################
-##  1.4.1 The Third Quarter Scottish Rockall Survey (WAScoOT3)  ##
-##################################################################
-# In figure 1.4.1.1 the station with the unique ID 2013/3/SCO3/17/GOV has a depth 
-# of 195m and a door spread of 72m. Can you check if this outlier is correct please.
-# F.B: This was for haul 307 and after having looked at the RADOS file for this 
-# haul I have decided to remove the doors spread value as the unit was faulty 
-# midway through and so cannot trust the reading which looked suspect from the 
-# start. I will re-upload this survey to DATRAS.
-check<-HH1[HH1$UniqueIDP=="ROCKALL/2013/3/SCO3/307/GOV",]
 
-# In figure 1.4.1.3 at station with unique ID 1999/3/SCO3/43/GOV, the net opening
-# is 2.7m and the depth is 234m, Can you check this outlier please. 
-# F.B: Haul 446. With no RADOS file to interrogate and no wing spread reading
-# it is very hard to know whether this was a case of overspreading of the net 
-# (in which case it is genuine). I have removed and re-uploaded to DATRAS.
-check<-HH1[HH1$UniqueIDP=="SCOROC/1999/3/SCO3/43/GOV",] ## gone from Datras 2021
 
-# In figure 1.4.1.4 at station with unique ID 2011/3/SCO3/46/GOV, the warp length 
-# is 480m at a depth of 480 m, is this correct?
-# F.B: Haul 442, Depth had been incorrectly recorded as 480 and should been 150m.
-# Has been corrected on FMD and have re-uploaded to DATRAS.
-check<-HH1[HH1$UniqueIDP=="ROCKALL/2011/3/SCO3/46/GOV",]
-##############################
-## 1.2 The Beam Trawl Surveys#
-##############################
-#############################
-# The Greater North Sea BTS #
-#############################
-#######################
-# The Celtic Seas BTS #
-#######################
+# The Celtic Seas BTS --------------
+
 cols<-rainbow(19)
 summary(as.factor(HH1$Year[HH1$Ship=="74RY"]))
 summary(as.factor(HH1$Country))
 plot(HH1$ShootLong[HH1$Ship=="74RY"], HH1$ShootLat[HH1$Ship=="74RY"],
      col=cols[as.factor(HH1$Year[HH1$Ship=="74RY"])], pch=19)
 # some beams not being used at this stage 
-# Belgium survey not long enough in previous versions 6 years of data now added 
-belgium<-subset(HH1, Country=="BE",)
-# table(belgium$Year)
-# write.csv(belgium, "samples_removed_time_series_not_sufficent.csv")
-#HH1<-subset(HH1, !Country=="BEL",)
-
-### Keep Belguim as more Data now on Datras - 2021
 
 # the inshore survey which normally occured on the CAR was on the COR 
 # on a couple of occasions, this needs to be removed - not a full survey series.
@@ -680,231 +580,74 @@ points(HH1$ShootLong[HH1$StatRec%in%list],
 names(HH1)
 summary(as.factor(HH1$Survey))
 
-remove_stations<-subset(HH1, StatRec%in%list & Ship=="74RY" & Survey=="BTS",) ### this needs to be double checked, as time series for 
-### "BTS-VII" is no longer separate from "BTS" - RK 2021
+# remove_stations<-subset(HH1, StatRec%in%list & Ship=="74RY" & Survey=="BTS",) ### this needs to be double checked, as time series for 
+# ### "BTS-VII" is no longer separate from "BTS" - RK 2021 .... CM needs to check
 
-list<-(remove_stations$UniqueID)
-HH2<-subset(HH1, !UniqueID%in%list,)
-nrow(HH1)-nrow(HH2)
+HH2 <- HH1
+# list<-(remove_stations$UniqueID)
+# HH2<-subset(HH1, !UniqueID%in%list,)
+# nrow(HH1)-nrow(HH2)
 #removes 2 hauls from time series
 plot(HH2$ShootLong, HH2$ShootLat,
      col=cols[as.factor(HH2$Ship)], pch=19)
-# One point on land
-find<-HH2[HH2$UniqueID=="BTS/2002/3/74RY/133/BT4A",] ### no longer in raw dataset - 2021
-# Shoot lat shoul be 50 not 54 so that put the haul into the ices boxes
-# we have just removed so delete haul
-#HH2<-subset(HH2, !HH2$UniqueID=="BTS-VIIa/2002/3/COR/133/BT4A",)
 
-######################
-# Additional Tweaks ##
-######################
-# Ship CAR which is used on in the BTS isn't suitable as the biodiversity of fish 
-# not adequately sampled - delete from product
-summary(as.factor(HH2$Ship))
-Car_ship<-subset(HH2, Ship=="74OJ",) ### no longer in the database - 2021
-#HH2<-subset(HH2, !Ship=="CAR", )
-#write.csv(Car_ship, "Samples_removed_unsuitable.csv")
-# Ship SOL when used on in the IBTS isn't suitable as GOV was not standard 
-SOL_ship<-subset(HH2, Ship=="06S1"&Year==1992,) ### No longer in database - 2021
-# list<-SOL_ship$UniqueID
-# hauls<-subset(HH2, !UniqueID%in%list, )
-# write.csv(SOL_ship, "Samples_removed_unsuitable_boat.csv")
 
-##############################################
-# ALL HAUL CORRECTION CHECKED AND COMPELTED  # 
-# NOW HAVE BEST AVAILABLE DATA ACCORDING TO  #
-# NATIONAL DATA PROVIDERS ACROSS ALL SURVEYS #
-##############################################
+# ALL HAUL CORRECTION CHECKED AND COMPELTED  
+# NOW HAVE BEST AVAILABLE DATA ACCORDING TO  
+# NATIONAL DATA PROVIDERS ACROSS ALL SURVEYS 
 
-######################################################
+
+## end haul checks --------------------
+
+
+
 # Check out all biological data to insure corrections#
 # are in datras/fix for product only base on answers #
-######################################################
 
 HL2$UniqueIDP<-paste(HL2$Survey,HL2$Year,HL2$Quarter,HL2$Ship_old, 
-                     HL2$HaulNo, HL2$Gear, sep="/")
+                     HL2$HaulNo, HL2$Gear, sep="_")
 
 
-####################################
-## Appendix Error Trapping Q and A #
-####################################
+
+## Appendix Error Trapping Q and A --------------
+
 # To check that each error/question raised is addressed, everything 
 # listed in the Appendix must be rechecked and verified as corrected at 
 # source(already on DATRAS)
 # or alternatively fixed here with a line of code
-#########################################################################
-# 1.1.1	The First Quarter International Bottom Trawl Survey (GNSIntOT1) #
-#########################################################################
+
+# 1.1.1	The First Quarter International Bottom Trawl Survey (GNSIntOT1) ------------
+
 # Bathyraja brachyurops (Fowler, 1910) # AphiaID: 271509 
 # mismapped  should be Raja brachyura (Lafont, 1871) # AphiaID: 367297  
-HL2$ValidAphiaID[HL2$ValidAphiaID=="271509"]<-"367297"
+HL2$Valid_Aphia[HL2$Valid_Aphia=="271509"]<-"367297"
+
 # Scomber japonicus Houttuyn, 1782 # AphiaID: 127022 
 # mis id of Scomber colias Gmelin, 1789 # AphiaID: 151174 
-HL2$ValidAphiaID[HL2$ValidAphiaID=="127022"]<-"151174"
+HL2$Valid_Aphia[HL2$Valid_Aphia=="127022"]<-"151174"
 names(HL2)
-summary(as.factor(HL2$ValidAphiaID))
-#########################
-### NORWAY NS-IBTS Q1 ###
-#########################
-check<-subset(HL2, ValidAphiaID==271564,)
-##############################
-# Check: Scotland NS-IBTS Q1 #
-##############################
-# Figure 1.1.1.X shows that at the station with the unique id 
-# 2003/1/SCO3/46/GOV, Acentronura shows up, (Aphia Code 159441)
-# this pygmy pipehorse is native to the Indian and Pacific oceans: 
-# Don’t think this is found in the North Sea. Can you check this record is 
-# correct please? And if so is there a photo to back up the entry?
-check<-subset(HL2, ValidAphiaID==159441,)
-#gone
+summary(as.factor(HL2$Valid_Aphia))
 
-# Figure 1.1.1.X shows 2 records of Bairds smoothhead’s (Aphia Code 126682, 
-# species name Alepocephalus bairdii) this is a deep water species, 
-# the Unique ID 2009/1/SCO3/19/GOV (red) and 2009/1/SCO3/31/GOV(blue). 
-# This is not a North Sea species, can you check that this is the correct 
-# species identification please. 
-check<-subset(HL2, ValidAphiaID==126682,)
 
-#### this is back!!! ? REMOVE 2021!
-table(check$Year)
 
-#gone
-###########################
-# Check: EnglandNS-IBTS Q1#
-###########################
+# EnglandNS-IBTS Q1 --------------
+
 # Figure 1.1.1.40 shows a record of the gulper shark (Valid Aphid: 105899,
 #Species: Centrophorus granulosus) station with unique ID 2006/3/END/106/GOV 
 # The gulper shark is not traditionally found in North Sea, can you confirm
 # this record please.
-summary(as.factor(HL2$ValidAphiaID))
+summary(as.factor(HL2$Valid_Aphia))
         
-check<-subset(HL2, ValidAphiaID==105899,)
+check<-subset(HL2, Valid_Aphia==105899,)
 check
 # still there as an observed only record!
-###################### 
-# Denmark NS-IBTS Q1 #
-######################
-# Three records with unique ID’s 2007/3/DAN2/19/GOV, 2008/3/DAN2/17/GOV
-# and 2008/3/DAN2/20/GOV contain Sarpa salpa (figure 1.1.1.43).
-# Sarpa salpa is outside native range, is there any photographs that can 
-# verify this species identification? 
 
-# K.W: Can’t confirm ID is correct. It is a possible error, no 
-# photographs to confirm
+rm(landlocked, den, belgium, Car_ship, check, delete_ship, find, funnysweep, HH1)
 
+# ALL BIOLOGICAL CORRECTIONS ADDRESSED        
+# NOW HAVE BEST AVAILABLE DATA ACCORDING TO  
+# NATIONAL DATA PROVIDERS ACROSS ALL SURVEYS 
 
-# The broadnosed skate has not been previously recorded in this habitat 
-# (figure 1.1.1.44), and no other country has recorded this species. 
-# See records 2005/3/DAN2/33/GOV, 2006/3/DAN2/14/GOV, 2006/3/DAN2/14/GOV, 
-# 2006/3/DAN2/18/GOV, 2011/3/DAN2/13/GOV, 2012/1/DAN2/16/GOV, 
-# 2012/1/DAN2/10/GOV and 2012/3/DAN2/18/GOV. 
-# This there any photographs to back up these species ID’s? 
-# K.W: No confirmation but believe it is correct at least from 2009 onwards
-
-# The following hauls contain species with SpecVal 0 – 
-# if one species has invalid information how is the rest of the 
-# information considered valid?
-check<-subset(HL2, UniqueIDP=="2011/1/DAN2/16/GOV"&ValidAphiaID==127143,)
-check<-subset(HL2, UniqueIDP=="2015/1/DAN2/18/GOV"&ValidAphiaID==126436,)
-check<-subset(HL2, UniqueIDP=="2015/1/DAN2/22/GOV"&ValidAphiaID==126436,)
-#gone
-############################
-# Netherlands IBTS Q1      #
-############################
-# If a fish is measures to a length code of “5” has it also been 
-# measured to a length code of “1”?  5cm length classes are normally 
-# taken for stomach content analyses "25" represents a fish 25-29cm long. 
-# But has this fish also been measured using length code “1”, to the cm below?
-# If so should all length code “5” be removed as they are duplicates of 
-# effort?
-# List of Valid Aphia Codes measured in the length code “5” by Netherlands
-#•	105814 •	105820 •	105887 •	105883 •	126436 •	126555 •	105732
-#•	105821 •	105822 •	105865 •	105865 •	105869 •	105874 •	105876
-#•	105923 •	125546 •	126281 •	126281 •	126375 •	126437 •	126440
-#•	126441 •	126447 •	126461 •	126484 •	126758 •	126977 •	127138
-#•	127143 •	127149 •	127186 •	223866 •	367297 
-# IdB: I assume length code=5 only occurs on older data and only applies to
-# larger length classes. In those days in the Netherlands the larger fish
-# (>= 60 cm?) was measured in 5 cm classes. 
-# So it can well be (and should) that a species in a certain haul is 
-# measured to the cm below (all fish < 60 cm) as well as to the 5 cm 
-# below (>= 60 cm). 
-# If they are not duplicated measurements is the mean length per class 
-# an acceptable measurement? E.g. a fish in class 25-29 will be called a 
-# 27.5cm fish. 
-# IdB: I would say yes. That’s what I normally tend to do when turning 
-# length measurements into weight by using a length-weight relationship;
-# W=a*(length+0.5*measurementunit)b ; a and b being constant values per 
-# species. 
-# okay so all lenght codes can be standardised - i will do this all together
-
-# From 2000-2015 See Table 2, Appendix 1: SpecVal 0, when a haul contains 
-# invalid information on a given species. How does the rest of the haul 
-# contain valid information if one species is listed as having invalid 
-# information?
-# IdB: These HL records contain ‘dummy’ fish –no numbers, no subfact, 
-# specval=0. The records have been created for CA records to which no 
-# length can be connected. We measure the fish twice: once for lf 
-# distribution, once for the biological parameters. Sometimes a fish 
-# is 30.1 cm and measured as 30 in the lf and for biological measurements 
-# it is 29.9 cm. The 30 cm length class in HL does then not link up to the
-# 29 cm class in CA. For your analysis: delete all records where specval=0
-HL2<-subset(HL2, !SpecVal=="0", )
-####################### 
-### GERMANY NS-IBTS ###
-####################### 
-# Lmax
-####################
-#Sweden NS-IBTS Q1 # 
-####################
-# Lmax
-#####################
-# France NS-IBTS Q1 #
-#####################
-# Lmax
-
-#########################################################################
-# 1.1.3	The Fourth Quarter French Channel Groundfish Survey  (GNSFraOT4)#
-#########################################################################
-
-#######################
-# 1.2 The Celtic Seas #
-#######################
-##############################################################
-# 1.2.1 The First Quarter Scottish West Coast IBTS (CSScoOT1)#
-##############################################################
-# There is an issue with several fish exceeding the maximum length 
-# recorded, can you check and verify these records. Again due to the size, 
-# see “Lmax_issues_sco.xls” file.
-# F.B: Cross checks completed and corrections made where required.
-
-######################################################################
-##1.2.4 The First Quarter Northern Irish Groundfish Survey (CSNIrOT1)#
-######################################################################
-# Lmax
-
-#######################################################################
-# 1.2.5 The Fourth Quarter Northern Irish Groundfish Survey (CSNIrOT4)#
-#######################################################################
-# Several rounding errors are found in the HL file where total number 
-# of fish is not equal to sum of HL at length*Subfactor. Due to the size 
-# of the file please see “EVHOE_Rounding_Errors.xls file. 
-# M.S: Cross checks completed and corrections made where required.
-
-#######################################################################
-# 1.3.5 The Fourth Quarter Portuguese Groundfish Survey (BBICPorOT4) ##
-#######################################################################gc()
-
-##################################################################
-##  1.4.1 The Third Quarter Scottish Rockall Survey (WAScoOT3)  ##
-##################################################################
-
-##############################################
-# ALL BIOLOGICAL CORRECTIONS ADDRESSED       # 
-# NOW HAVE BEST AVAILABLE DATA ACCORDING TO  #
-# NATIONAL DATA PROVIDERS ACROSS ALL SURVEYS #
-##############################################
-# Some extra things I've come across that needs fixing
 
 save(list=ls(all=T), file = "./script4_output.rda")
 #load("./script4_output.rda")

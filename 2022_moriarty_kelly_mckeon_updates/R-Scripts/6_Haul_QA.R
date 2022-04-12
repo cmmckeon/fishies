@@ -1,44 +1,38 @@
-###################
-# Version Control #
-###################
-# R version 3.2.2 (2015-08-14): Fire Safety 
-# platform       x86_64-w64-mingw32 (64-bit)
-###############
-# Script Info #
-###############
+# title: "6_Haul_QA.R"
+# last updated: "08/04/2022"
+
+
+
 # This is Script 6 of X
 # This Script follows the guidlines outlined in Section 4.1 HH Data - Haul Summary Information
 # from: Moriarty and Greenstreet 2016 
 # The next step is to model missing data in the haul data of the surveys, and plot 
 # lots of graphs to check all the haul stuff is believable now!
 
-# AUTHOR: Meadhbh Moriarty, 2016
-# REVIEWED BY: Nicola Walker (Cefas) Jonas Hentati Sundberg (SLU)
-# Edits - Ruth Kelly (AFBI)- R version 4.0.4 (2021-02-15) -- "Lost Library Book"
-
 # load("./script5_output.rda")
 
-##########################
-# Load Data Frame Again  #
-##########################
-HH<-read.csv("Diagnostic_data/Working_HH_file.csv", row.names = "X")
-HL<-read.csv("Diagnostic_data/Working_HL_file.csv", row.names = "X")
+require(rgdal)
+library(marmap)
 
-# rm(HL3, hauls) - if present from preivous script - RK
+# Load Data Frame Again -----------------------
+
+HH<-read.csv("Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_HH_file.csv", row.names = "X")
+HL<-read.csv("Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_HL_file.csv", row.names = "X")
+
+rm(HL3, hauls) 
 
 hauls<-(HH) 
 summary(hauls)
 
-### remove SP-ARSA
 
-##########################
-# 4.1.1 Sample Location #
-#########################
+
+# 4.1.1 Sample Location ------------------
+
 
 # check shoot and haul match ICES Stat Rec
 summary(as.factor(hauls$DepthStratum))
-# set -9's to NA
 
+# set -9's to NA
 hauls$DepthStratum[which(hauls$DepthStratum == -9)] <- NA
 summary(as.factor(hauls$DepthStratum)) ## many NAs
 
@@ -54,8 +48,8 @@ summary(hauls$ShootLong)
 
 table(hauls$Survey[is.na(hauls$ShootLong)])
 
-# PT-IBTS SWC-IBTS 
-# 5       20 
+#  SWC-IBTS 
+#  20 
 
 
 # check haul positions match ICES Stats
@@ -81,21 +75,27 @@ hauls$check_StatRec[is.na(hauls$ShootLong)] <- hauls$StatRec[is.na(hauls$ShootLo
 # need maps
 # New BaseMap
 
-require(rgdal)
-#load in basemap files for all maps
+
+#load maps -------------
+
 #set directory to working folder and insure subfolders are availible
 europe<-readOGR("./Regional Boundaries Maps and Data/shapes//europe.dbf","europe")
 contour_1000m<-readOGR("./Regional Boundaries Maps and Data/shapes//1000m.dbf","1000m")
 NWW_boundary<-readOGR("./Regional Boundaries Maps and Data/shapes//NWW_boundary.dbf","NWW_boundary")
+gc()
 contour_200m<-readOGR(".//Regional Boundaries Maps and Data/shapes//200m.dbf","200m")
 ospar<-readOGR("./Regional Boundaries Maps and Data/ospar_boundaries//OSPAR_Inner_Boundary.dbf", "OSPAR_Inner_Boundary") ## capitalised "Inner" in file path. CM feb 2022
 sco1<-readOGR("./Regional Boundaries Maps and Data/SWCQ1.WGS84//SWC_Q1.dbf", "SWC_Q1")
 sco3<-readOGR("./Regional Boundaries Maps and Data/SWCQ4.WGS84//SWC_Q4.dbf", "SWC_Q4")
+gc()
 ices<-readOGR("./Regional Boundaries Maps and Data/ICES_rectangles_statistics/ICES_rectangles_statistics.dbf", "ICES_rectangles_statistics")
 ire<-readOGR("./Regional Boundaries Maps and Data/IGFS.WGS84//IGFS.WGS84.dbf", "IGFS.WGS84")
+gc()
 ni<-readOGR("./Regional Boundaries Maps and Data/NI-IBTS.WGS84//NI_IBTS.WGS84.dbf", "NI_IBTS.WGS84")
 evhoe<-readOGR("./Regional Boundaries Maps and Data/Fr-EVHOE.WGS84//EVHOE.WGS84.dbf", "EVHOE.WGS84")
 rock<-readOGR("./Regional Boundaries Maps and Data/SWC-RockQ3.WGS84//SWC_Q3.dbf", "SWC_Q3")
+gc()
+
 
 summary(hauls$ShootLong)
 par(mai=c(0,0,0,0),bg='white' )
@@ -122,22 +122,22 @@ check<-subset(hauls, !(hauls$check_StatRec%in%hauls$StatRec))
 points(check$ShootLong, check$ShootLat, col="red")
 points(hauls$ShootLong, hauls$ShootLat, pch=19, col="black")
 unique(check$Survey)
-### issues are with SP-ARSA
+### issues are with SWC-IBTS
 
 
+## start
 
-################
-# 4.1.2  Depth #
-################
+# 4.1.2  Depth -----------------------
+
 hauls$EstDepth<-hauls$Depth
-summary(hauls$Depth)
+
 
 summary(hauls$ShootLat[is.na(hauls$Depth)])
 summary(hauls$ShootLong[is.na(hauls$Depth)])
 
 # All observations with no depth have no haul positional data 
 # estimate depth on shoot position is the best we can do
-library(marmap)
+
 summary(hauls$ShootLat)
 summary(as.numeric(hauls$ShootLong))
 
