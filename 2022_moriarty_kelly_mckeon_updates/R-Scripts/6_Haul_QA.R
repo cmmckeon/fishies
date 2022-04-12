@@ -125,7 +125,7 @@ unique(check$Survey)
 ### issues are with SWC-IBTS
 
 
-## start
+## start --------------------
 
 # 4.1.2  Depth -----------------------
 
@@ -233,9 +233,11 @@ plot(hauls$Survey,hauls$Diff_dep, col=cols[hauls$Survey], pch=19)
 dev.off()
 
 find<-subset(hauls, hauls$DepthNew<5,)
-######################
-# 4.1.3 Sweep Length #
-######################
+
+
+
+# 4.1.3 Sweep Length ----------------
+
 summary(as.factor(hauls$SweepLngt))
 
 # Sweep Lenght Values are sometimes incorrect or missing, 
@@ -362,15 +364,15 @@ sweepcatsummary<-ddply(hauls, c("Survey","Country", "Year", "Quarter", "EstSweep
                        summarise, N=length(EstSweepCat))
 
 
-#######################
-# 4.1.4 Haul Duration #
-#######################
+
+# 4.1.4 Haul Duration ------------------------
+
 # Check range >66 and <13 not within bounds
 summary(hauls$HaulDur)
 
-######################
-# 4.1.5 Ground Speed #
-######################
+
+# 4.1.5 Ground Speed --------------------------
+
 ### Draw some plots to look at data
 #make a plot to look at the current groundspeed*time against distance 
 # if perfect we expect an intercept of 0 and a slope of 1
@@ -544,9 +546,9 @@ points(predict1, gs$GroundSpeed, pch=19, col="lightgrey")
 abline(0,1, col="red")
 dev.off()
 
-########################
-# 4.1.6 Towed Distance #
-########################
+
+# 4.1.6 Towed Distance -----------------------
+
 ## Calculate haversine distance with shoot and haul coordinates ##
 names(hauls)
 hauls$LatLongDistance<-(earth.dist(long1 = hauls$ShootLong,
@@ -601,7 +603,7 @@ abline(a=0, b=1, col="lightgrey", lwd=2)
 abline(a=0, b=.5, col="red", lwd=2, lty=2)
 abline(a=0, b=1.5, col="red", lwd=2, lty=2)
 dev.off()
-############################
+
 
 plot(hauls1$HaulDur, hauls1$newDist, pch=19, cex=0.5, xlab="Time", ylab="Distance")
 # perfect speed - 4 knots, bounds 2- 6 knots
@@ -689,16 +691,12 @@ dev.off()
 write.csv(hauls1, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_hauls_12-06-2021.csv")
 # remove all the intermediate files 
 summary(as.factor(hauls1$qualityDistance))
-#############################################
-# 4.1.7 Otter Trawl Net Geometry Parameters #
-#############################################
-#######################
-# 4.1.7.1 Wing Spread #
-#######################
 
-###########################################
-# 4.1.7.1.1 The GOV Otter Trawl (Model 1) #
-###########################################
+
+
+
+# 4.1.7.1.1 The GOV Otter Trawl (Model 1) ------------------------
+
 hauls<-hauls1
 # remove outlier from irish data
 summary(hauls$WingSpread[hauls$Country=="IE"])
@@ -815,19 +813,17 @@ formula(ws_model1)
 summary(ws_model1)
 coeffs=(coefficients(ws_model1))
 
-##########################
-# 4.1.7.1.4 The NCT Gear #
-##########################
+
+# 4.1.7.1.4 The NCT Gear --------------------------
+
 # WingSpread = 15.1
 hauls$WingSpread[hauls$Gear=="NCT"]<-15.1
 hauls$Use_WingSpread[hauls$Gear=="NCT"]<-15.1
 hauls$QualityWing[hauls$Gear=="NCT"]<-"mean_wingspread"
-#######################
-# 4.1.8.1 Door Spread #
-#######################
-###########################################
-# 4.1.8.1.1 The GOV Otter Trawl (Model 1) #
-###########################################
+
+
+# 4.1.8.1.1 The GOV Otter Trawl (Model 1) -----------------------
+
 # for model election set up training data set
 train<-subset(hauls, Gear=="GOV"& (!is.na(WingSpread)) & (!is.na(DoorSpread))
               &(!is.na(Netopening)),)
@@ -879,9 +875,9 @@ summary(hauls$Use_DoorSpread)
 summary(model1_ds)
 coeffs=coefficients(model1_ds);coeffs
 
-#####################################
-# 4.1.8.1.2 The ROT Trawl (Model 2) #
-#####################################
+
+# 4.1.8.1.2 The ROT Trawl (Model 2) --------------------------------
+
 summary(hauls$DoorSpread[hauls$Gear=="ROT"])
 # Doorspread can be sorted first
 # DoorSpread only has 955 missing values to be estimated
@@ -940,9 +936,9 @@ summary(hauls$Use_DoorSpread[hauls$Gear=="ROT"])
 summary(hauls$Use_DoorSpread)
 summary(as.factor(hauls$QualityDoor))
 
-#####################################
-# 4.1.7.1.2 The ROT Trawl (Model 2) #
-#####################################
+
+# 4.1.7.1.2 The ROT Trawl (Model 2) -------------------------------
+
 summary(hauls$WingSpread[hauls$Gear=="ROT"])
 # 2333 estimated values needed # 2842 in 2021
 # Matt sent me some trail wingspreads to help to model these data
@@ -974,24 +970,19 @@ hauls$QualityWing[is.na(hauls$WingSpread)&hauls$Gear=="ROT"]<-"model_wingspread_
 summary(hauls$mod2_wingspread_rot[hauls$Gear=="ROT"])
 summary(hauls$Use_WingSpread[hauls$Gear=="ROT"])
 
-##########################
-# 4.1.8.1.4 The NCT Gear #
-##########################
+
+# 4.1.8.1.4 The NCT Gear ------------------------------------
+
 # No sensors on this gear so mean is applied as supplied by ICES 2010
 # DoorSpread 45.7m
 hauls$DoorSpread[hauls$Gear=="NCT"]<- 45.7
 # set up user values
 hauls$Use_DoorSpread[hauls$Gear=="NCT"]<-45.7
 hauls$QualityDoor[hauls$Gear=="NCT"]<-"mean_doorspread"
-#######################
-# 4.1.9.1 Net Opening #
-#######################
-###########################################
-# 4.1.9.1.1 The GOV Otter Trawl (Model 1) #
-###########################################
-###################
-# Net Opening GOV #
-###################
+
+
+# Net Opening GOV -----------------------
+
 plot(train$DepthNew,train$Netopening )
 plot(train$WingSpread,train$Netopening )
 
@@ -1050,9 +1041,11 @@ summary((hauls$Use_DoorSpread))
 summary(as.factor(hauls$QualityDoor))
 summary((hauls$Use_WingSpread))
 summary(as.factor(hauls$QualityWing))
-#####################################
-# 4.1.9.1.2 The ROT Trawl (Model 2) #
-#####################################
+
+
+
+# 4.1.9.1.2 The ROT Trawl (Model 2) --------------------------
+
 # Not enough data to model this attribute - either use mean value or don't do 
 # vol estimates with ROT gear - similar to Beam gears!
 # Matt sent me the Standard Gear Specs- IBTS Report 2013
@@ -1064,17 +1057,19 @@ hauls$QualityNet[!is.na(hauls$Netopening)&
 hauls$Use_Netopening[is.na(hauls$Netopening)&hauls$Gear=="ROT"]<-3
 hauls$QualityNet[is.na(hauls$Netopening)&hauls$Gear=="ROT"]<-"mean_netopening"
 summary(hauls$Use_Netopening[hauls$Gear=="ROT"])
-##########################
-# 4.1.9.1.4 The NCT Gear #
-##########################
+
+
+# 4.1.9.1.4 The NCT Gear -------------------------------
+
 # netopening 4.6m
 hauls$Netopening[hauls$Gear=="NCT"]<-4.6
 hauls$Use_Netopening[hauls$Gear=="NCT"]<-4.6
 hauls$QualityNet[hauls$Gear=="NCT"]<-"mean_netopening"
 summary(hauls$Use_Netopening[hauls$Gear=="NCT"])
-#####################################################
-# Beam Trawl DoorSpread, WingSpread, and Netopening #
-#####################################################
+
+
+# Beam Trawl DoorSpread, WingSpread, and Netopening ----------------------
+
 # Beams have a set "wing spread" so set wing and door as the set width
 # net opening will be set to NA
 summary(as.factor(hauls$Gear))
@@ -1139,222 +1134,11 @@ summary(hauls$GroundSpeed_Used)
 
 hauls <- hauls[hauls$Gear != "BAK",]
 
-# ###### Dealing with BAK - code from 29-09-2016 code files
-# 
-# #########################################
-# # 4.1.7.1.3 The BAK Trawl (Model 3 & 4) #
-# #########################################
-# # set up data set for model selection
-# spain<-hauls[!is.na(hauls$DoorSpread) & !is.na(hauls$WingSpread)
-#              & !is.na(hauls$Netopening)&hauls$Country=="ES", ]
-# plot(spain$WingSpread, spain$DoorSpread, pch=19, col=cols[as.factor(spain$Gear)])
-# plot(spain$DepthNew, spain$WingSpread, pch=19,col=cols[as.factor(spain$Gear)])
-# 
-# # 355 observations in dataset.
-# door_dat<-hauls[!is.na(hauls$DoorSpread),]
-# wing_dat<-spain[!is.na(spain$WingSpread),]
-# summary(wing_dat$DoorSpread)
-# 
-# model3<-lm(log(WingSpread) ~ LogDoorSpreadCenter:SweepCat,data=wing_dat)
-# summary(model3)
-# predict<-exp(predict(model3))
-# col1<-c( "darkred","darkgreen")
-# points(wing_dat$DepthNew, predict, col=col1[as.factor(wing_dat$Gear)], pch=19)
-# # first I need all the centered and logged data for hauls
-# str(hauls)
-# #Get Means
-# hauls$meanDepth<-mean(hauls$DepthNew)
-# mean(hauls$WingSpread[!is.na(hauls$WingSpread)])
-# hauls$meanWingSpread[!is.na(hauls$WingSpread)]<-15.10081
-# mean(hauls$Netopening[!is.na(hauls$Netopening)])
-# hauls$meanNetopening[!is.na(hauls$Netopening)]<-3.696181
-# mean(hauls$DoorSpread[!is.na(hauls$DoorSpread)])
-# hauls$meanDoorSpread[!is.na(hauls$DoorSpread)]<-61.43747
-# # Get Centered data
-# hauls$DepthCenter<-hauls$DepthNew-hauls$meanDepth
-# hauls$WingSpreadCenter<-hauls$WingSpread-hauls$meanWingSpread
-# hauls$DoorSpreadCenter<-hauls$DoorSpread-hauls$meanDoorSpread
-# hauls$LogDoorSpreadCenter<-hauls$Netopening-hauls$meanNetopening
-# # Log and Center the Data
-# hauls$LogDepthCenter<-log(hauls$DepthNew)-log(hauls$meanDepth)
-# hauls$LogWingSpreadCenter<-log(hauls$WingSpread)-log(hauls$meanWingSpread)
-# hauls$LogDoorSpreadCenter<-log(hauls$DoorSpread)-log(hauls$meanDoorSpread)
-# hauls$LogNetopeningCenter<-log(hauls$Netopening)-log(hauls$meanNetopening)
-# hauls$SweepCat<-as.factor(hauls$SweepLngt)
-# summary(as.factor(hauls$Ship))
-# 
-# # model3: model3<-lm(log(WingSpread) ~ LogDoorSpreadCenter:SweepCat,data=alldat)
-# wing_dat<-subset(hauls, Country=="ES" & !is.na(DoorSpread))
-# model3<-lm(log(WingSpread) ~ LogDoorSpreadCenter:SweepCat,
-#            data=wing_dat)
-# summary(model3)
-# wing_dat_len <- nrow(wing_dat)
-# wing_dat$predict_lm_wing_dat<-exp(predict(model3, wing_dat, allow.new.levels=T))
-# summary(wing_dat$predict_lm_wing_dat)
-# plot(wing_dat$DepthNew,wing_dat$predict_lm_wing_dat,
-#      pch=19, col=cols[as.factor(wing_dat$Gear)])
-# # model2: fm2<-lm(log(WingSpread) ~ LogDepthCenter:SweepCat:Gear,data=alldat)
-# wing_dat2<-subset(hauls, Country=="ES",)
-# model4<-lm(log(WingSpread) ~ LogDepthCenter:SweepCat,data=wing_dat2)
-# 
-# summary(model4)
-# wing_dat_len <- nrow(wing_dat2)
-# wing_dat2$predict_lm_wing_dat<-exp(predict(model4, wing_dat2, allow.new.levels=T))
-# summary(wing_dat2$predict_lm_wing_dat)
-# plot(wing_dat2$DepthNew,wing_dat2$predict_lm_wing_dat,
-#      pch=19, col=cols[as.factor(wing_dat2$Gear)])
-# list<-wing_dat2$NewUniqueID2
-# formula(model4)
-# summary(model4)
-# coeffs=(coefficients(model4))
-# # predict results for spains wing spread data
-# hauls$Use_WingSpread[!is.na(hauls$WingSpread)&hauls$Country=="ES"] <-hauls$WingSpread[!is.na(hauls$WingSpread)&hauls$Country=="ES"]
-# hauls$QualityWing[!is.na(hauls$WingSpread)&hauls$Country=="ES"]<-"raw_wingspread"
-# 
-# list<-wing_dat$NewUniqueID2
-# hauls$mod1_wingspread_spa[hauls$NewUniqueID2%in%list]<-wing_dat$predict_lm_wing_dat[wing_dat$NewUniqueID2%in%list]
-# list<-wing_dat2$NewUniqueID2
-# hauls$mod2_wingspread_spa[hauls$Country=="ES"]<-wing_dat2$predict_lm_wing_dat[wing_dat$NewUniqueID2%in%list]
-# 
-# hauls$Use_WingSpread[is.na(hauls$WingSpread)&hauls$Country=="ES"]<-hauls$mod1_wingspread_spa[is.na(hauls$WingSpread)&hauls$Country=="ES"]
-# hauls$QualityWing[is.na(hauls$WingSpread)&!is.na(hauls$mod1_wingspread_spa)&
-#                     hauls$Country=="ES"]<-"mod3_wingspread_spa"
-# 
-# hauls$Use_WingSpread[is.na(hauls$Use_WingSpread)&
-#                        hauls$Country=="ES"]<-hauls$mod2_wingspread_spa[is.na(hauls$Use_WingSpread)&hauls$Country=="ES"]
-# hauls$QualityWing[is.na(hauls$QualityWing)&
-#                     hauls$Country=="ES"]<-"mod4_wingspread_spa"
-# summary(hauls$Use_WingSpread[hauls$Country=="ES"])
-# summary(as.factor(hauls$QualityWing[hauls$Country=="ES"]))
-# png(file="Data_QA_Process_V5_2022/Diagnostics/WingSpread_data_spain_col.png", bg="transparent")
-# cols<- rainbow(3)
-# plot(hauls$DepthNew[hauls$Country=="ES"], hauls$Use_WingSpread[hauls$Country=="ES"],
-#      col=cols[as.factor(hauls$QualityWing[hauls$Country=="ES"])], pch=19,
-#      xlab="Depth (m)", ylab="WingSpread (m)")
-# 
-# legend(5, 30, levels(as.factor(hauls$QualityWing[hauls$Country=="ES"])), 
-#        col=cols, 
-#        pch=15, ncol=1, cex=1, bty="n")
-# dev.off()
-# 
-# ###
-# 
-# #########################################
-# # 4.1.8.1.3 The BAK Trawl (Model 3 & 4) #
-# #########################################
-# # 2 models selected - model 3 and model 4
-# 
-# # model3: dm3<-lm(log(DoorSpread) ~ LogWingSpreadCenter:SweepCat:Gear,data=spain)
-# door_dat<-subset(hauls, Country=="ES"& !is.na(WingSpread),)
-# dm3<-lm(log(DoorSpread) ~ LogWingSpreadCenter:SweepCat,data=door_dat)
-# summary(dm3)
-# door_dat_len <- nrow(door_dat)
-# door_dat$predict_lm_door_dat<-exp(predict(dm3, door_dat, allow.new.levels=T))
-# plot(door_dat$DepthNew,(door_dat$predict_lm_door_dat),
-#      pch=19, col=cols[as.factor(door_dat$Gear)])
-# 
-# 
-# # model2: dm4<-lm(log(DoorSpread) ~ LogDepthCenter:SweepCat:Gear,data=spain)
-# door_dat2<-subset(hauls, Country=="ES",)
-# dm4<-lm(log(DoorSpread) ~ LogDepthCenter:SweepCat, data=door_dat2)
-# summary(dm4)
-# door_dat_len <- nrow(door_dat2)
-# door_dat2$predict_lm_door_dat<-exp(predict(dm4, door_dat2, allow.new.levels=T))
-# summary(door_dat2$predict_lm_door_dat)
-# plot(door_dat2$DepthNew,door_dat2$predict_lm_door_dat,
-#      pch=19, col=cols[as.factor(door_dat2$Gear)])
-# formula(dm4)
-# summary(dm4)
-# coeffs=(coefficients(dm4))
-# coeffs
-# # predict results for spains door spread data
-# hauls$Use_DoorSpread[!is.na(hauls$Doorspread)&hauls$Country=="ES"] <-hauls$DoorSpread[!is.na(hauls$DoorSpread)&hauls$Country=="ES"]
-# hauls$QualityWing[!is.na(hauls$DoorSpread)&hauls$Country=="ES"]<-"raw_doorSpread"
-# 
-# 
-# 
-# list<-door_dat2$NewUniqueID2
-# hauls$mod2_doorspread_spa[hauls$NewUniqueID2%in%list]<-door_dat2$predict_lm_door_dat[door_dat2$NewUniqueID2%in%list]
-# list<-door_dat$NewUniqueID2
-# hauls$mod1_doorspread_spa[hauls$NewUniqueID2%in%list]<-door_dat$predict_lm_door_dat[door_dat$NewUniqueID2%in%list]
-# 
-# 
-# hauls$Use_DoorSpread[is.na(hauls$DoorSpread)&
-#                        hauls$Country=="ES"]<-hauls$mod1_doorspread_spa[is.na(hauls$DoorSpread)&
-#                                                                           hauls$Country=="ES"]
-# hauls$QualityDoor[is.na(hauls$DoorSpread)&!is.na(hauls$mod1_doorspread_spa)]<-"mod1_doorpread_spa"
-# 
-# hauls$Use_DoorSpread[is.na(hauls$Use_DoorSpread)&
-#                        hauls$Country=="ES"]<-hauls$mod2_doorspread_spa[is.na(hauls$Use_DoorSpread)&hauls$Country=="ES"]
-# hauls$QualityDoor[is.na(hauls$DoorSpread)&is.na(hauls$mod1_doorspread_spa)&
-#                     hauls$Country=="ES"]<-"mod2_doorpread_spa"
-# 
-# summary(hauls$Use_DoorSpread[hauls$Country=="ES"])
-# summary(as.factor(hauls$QualityDoor[hauls$Country=="ES"]))
-# png(file="Data_QA_Process_V5_2022/Diagnostics/DoorSpread_data_spain_col.png", bg="transparent")
-# plot(hauls$DepthNew[hauls$Country=="ES"], hauls$Use_DoorSpread[hauls$Country=="ES"],
-#      col=cols[as.factor(hauls$QualityDoor[hauls$Country=="ES"])], pch=19,
-#      xlab="Depth (m)", ylab="DoorSpread (m)")
-# legend(400, 75, levels(as.factor(hauls$QualityDoor[hauls$Country=="ES"])), 
-#        col=cols, 
-#        pch=15, ncol=1, cex=1, bty="n")
-# dev.off()
-# 
-# ### net opening ## 
-# 
-# #########################################
-# # 4.1.9.1.3 The BAK Trawl (Model 3 & 4) #
-# #########################################
-# # door with no net 43 obs and wing 148 obs - less than 5% of the data needing estimated
-# # use model 3 it explains about 21 % of variation - poor in comparsion to Wing
-# # and Door but better than using a straight mean.
-# spain<-hauls[hauls$Country=="ES", ]
-# 
-# net_model3<-lm(log(Netopening) ~ LogDepthCenter:SweepCat, data=spain)
-# summary(net_model3)
-# formula(net_model3)
-# coeffs=(coefficients(net_model3))
-# 
-# spain_len <- nrow(spain)
-# spain$predict_lm_net_dat<-exp(predict(net_model3, spain, allow.new.levels=T))
-# plot(spain$DepthNew,(spain$predict_lm_net_dat),
-#      pch=19, col=cols[as.factor(spain$Gear)])
-# # predict results for spains net opening data
-# hauls$Use_Netopening[!is.na(hauls$Netopening)&
-#                        hauls$Country=="ES"]<-hauls$Netopening[!is.na(hauls$Netopening)&
-#                                                                  hauls$Country=="ES"]
-# hauls$QualityNet[!is.na(hauls$Netopening)]<-"raw_netopening"
-# 
-# list<-spain$NewUniqueID2
-# hauls$mod1_netopening_spa[hauls$NewUniqueID2%in%list]<-spain$predict_lm_net_dat[spain$NewUniqueID2%in%list]
-# summary(hauls$mod1_netopening_spa[hauls$Country=="ES"])
-# hauls$Use_Netopening[is.na(hauls$Netopening)&
-#                        hauls$Country=="ES"]<-hauls$mod1_netopening_spa[is.na(hauls$Netopening)&
-#                                                                           hauls$Country=="ES"]
-# hauls$QualityNet[is.na(hauls$Netopening)&!is.na(hauls$mod1_netopening_spa)]<-"mod1_net_spa"
-# 
-# summary(hauls$Use_Netopening[hauls$Country=="ES"])
-# summary(as.factor(hauls$QualityNet[hauls$Country=="ES"]))
-# png(file="Data_QA_Process_V5_2022/Diagnostics/NetOpening_data_spain_col.png", bg="transparent")
-# plot(hauls$DepthNew[hauls$Country=="ES"], hauls$Use_Netopening[hauls$Country=="ES"],
-#      col=cols[as.factor(hauls$QualityNet[hauls$Country=="ES"])], pch=19,
-#      xlab="Depth (m)", ylab="Net Opening (m)")
-# legend(0, 4, levels(as.factor(hauls$QualityNet[hauls$Country=="ES"])), 
-#        col=cols, 
-#        pch=15, ncol=1, cex=1, bty="n")
-# dev.off()
-# summary(hauls$Use_Netopening[hauls$Country=="ES"])
-# summary(hauls$Use_Netopening)
-
-########################################
-# so at this point some of the results haven't transfered over - code reviewed
-# and changes made
-
 write.csv(hauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/hauls_monster_file_17-04-2017.csv")
 
-###########################################################
-# 4.1.8 Calculation of the Area/Volume Swept by the Trawl #
-###########################################################
+
+# 4.1.8 Calculation of the Area/Volume Swept by the Trawl --------------
+
 summary(hauls$Use_WingSpread)
 summary(hauls$Use_DoorSpread)
 summary(hauls$Use_Netopening)
