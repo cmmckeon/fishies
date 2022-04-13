@@ -125,17 +125,22 @@ unique(check$Survey)
 ### issues are with SWC-IBTS
 
 
-## start --------------------
 
 # 4.1.2  Depth -----------------------
 
-hauls$EstDepth<-hauls$Depth
+hauls$EstDepth<-NA
 
+check <- hauls[is.na(hauls$Depth),]
+
+length(check$ShootLat[is.na(check$ShootLat)])
+length(check$ShootLong[is.na(check$ShootLong)])
+length(check$HaulLat[is.na(check$HaulLat)])
+length(check$HaulLong[is.na(check$HaulLong)])
 
 summary(hauls$ShootLat[is.na(hauls$Depth)])
 summary(hauls$ShootLong[is.na(hauls$Depth)])
 
-# All observations with no depth have no haul positional data 
+# For observations with no depth AND no haul positional data 
 # estimate depth on shoot position is the best we can do
 
 summary(hauls$ShootLat)
@@ -143,15 +148,11 @@ summary(as.numeric(hauls$ShootLong))
 
 
 # use NOAA website to get bathy map
-# papoue <- getNOAA.bathy(lon1 = -16, lon2 = 13,
-#                         lat1 = 36, lat2 = 62, resolution = .5)
-
-### in 2021 run through I get this error - RK
-# Error in getNOAA.bathy(lon1 = -16, lon2 = 13, lat1 = 36, lat2 = 62, resolution = 0.5) : 
-#   The resolution must be equal to or greater than 1
-
- papoue <- getNOAA.bathy(lon1 = -16, lon2 = 13,
-                         lat1 = 36, lat2 = 62, resolution = 1)
+ # papoue <- getNOAA.bathy(lon1 = -16, lon2 = 13,
+ #                         lat1 = 36, lat2 = 62, resolution = 1)
+ # saveRDS(papoue, "./Regional Boundaries Maps and Data/papoue_bathy_map.rds")
+ 
+papoue <- readRDS("./Regional Boundaries Maps and Data/papoue_bathy_map.rds")
 summary(papoue)
 
 # make a pretty map of all the stations
@@ -159,30 +160,24 @@ png(file="Data_QA_Process_V5_2022/surveydepthmap.png")
 blues <- c("lightsteelblue4", "lightsteelblue3",
            "lightsteelblue2", "lightsteelblue1")
 greys <- c(grey(0.99), grey(0.95), grey(0.85))
-plot(papoue, image = TRUE, land = FALSE, lwd = 0.03,
+plot(papoue, image = TRUE, land = FALSE, lwd = 0.05,
      bpal = list(c(0, max(papoue), greys),
                  c(min(papoue), 0, blues)))
-plot(papoue, n = 1, lwd = 0.04, add = TRUE)
 cols<-heat_hcl(13, c = c(80, 30), l=c(30,90), power=c(1/5, 1.5))
 hauls$Survey<-(as.factor(hauls$Survey))
 points(hauls$ShootLong, hauls$ShootLat, pch=19, 
        cex=0.3, col=cols[hauls$Survey])
 dev.off()
 
-# get 
-
-hauls$HaulLong[is.na(hauls$ShootLong)]
-hauls$Depth[is.na(hauls$ShootLong)] ## all hauls without ShootLongs have depths
+check <- hauls[is.na(hauls$ShootLong),]
+check <- hauls[is.na(hauls$Depth),]
+## all hauls without ShootLongs have depths
 ### calculate Depths only for hauls where Shoot Longs are known RK
 
 
 NOAA_Depth<-get.depth(papoue, x=hauls$ShootLong[!is.na(hauls$ShootLong)], y=hauls$ShootLat[!is.na(hauls$ShootLong)], locator=FALSE)
 
-# hauls$HaulLong[hauls$UniqueID=="BTS-VIIa/2006/3/COR/80/BT4A"]<--5.368430
-# hauls$HaulLong[hauls$UniqueIDP=="BTS/2006/3/COR/80/BT4A"]#<--5.368430 ## haul is not in 2021 data
-
 hauls$EstDepth[!is.na(hauls$ShootLong)] <- NOAA_Depth$depth*-1
-hauls$EstDepth[is.na(hauls$ShootLong)] <- NA ### can't estimate in instances with no longitude 
 
 hauls$DepthNew<-hauls$Depth
 hauls$DepthNew[is.na(hauls$Depth)]<-hauls$EstDepth[is.na(hauls$Depth)] 
@@ -200,17 +195,16 @@ plot(hauls$Depth, hauls$EstDepth, pch=19, xlab="Recorded Depth (m)",
 abline(a=0, b=1, col="red")
 dev.off()
 dev.new()
-write.csv(papoue, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Bathy_map_12-06-2021.csv")
+write.csv(papoue, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Bathy_map_13_04_22.csv")
 
 # add some diagnostics to check if the differences in depth are acceptable 
 png(file = "Data_QA_Process_V5_2022/Diagnostics/map_depth_differences.png", bg = "transparent")
-plot(papoue, image = TRUE, land = FALSE, lwd = 0.03,
+plot(papoue, image = TRUE, land = FALSE, lwd = 0.05,
      bpal = list(c(0, max(papoue), greys),
                  c(min(papoue), 0, blues)))
-plot(papoue, n = 1, lwd = 0.04, add = TRUE)
 cols<-heat_hcl(13, c = c(80, 30), l=c(30,90), power=c(1/5, 1.5))
-hauls$Survey<-(as.factor(hauls$Survey))
-hauls$Diff_dep<-sqrt((hauls$Depth-hauls$EstDepth)^2)
+hauls$Survey<-factor(hauls$Survey)
+hauls$Diff_dep <-sqrt((hauls$Depth- hauls$EstDepth)^2)
 summary(hauls$Diff_dep)
 radius<-sqrt(hauls$Diff_dep/pi)
 symbols(hauls$ShootLong, hauls$ShootLat, circles=radius, inches=0.2, fg="white",
@@ -229,40 +223,38 @@ dev.off()
 dev.new()
 
 png(file = "Data_QA_Process_V5_2022/Diagnostics/box_plot_depth_differences_survey.png", bg = "transparent")
-plot(hauls$Survey,hauls$Diff_dep, col=cols[hauls$Survey], pch=19)
+plot(hauls$Survey,hauls$Diff_dep, col=cols[hauls$Survey], pch=19, main = "Difference in depth")
 dev.off()
 
 find<-subset(hauls, hauls$DepthNew<5,)
 
+hist(sqrt((hauls$Depth- hauls$DepthNew)^2))
+## there a problems - a couple of depth differences over 1000, many over 200, a few negative depths.
 
 
 # 4.1.3 Sweep Length ----------------
 
-summary(as.factor(hauls$SweepLngt))
+summary(factor(hauls$SweepLngt)) ##
 
 # Sweep Lenght Values are sometimes incorrect or missing, 
 # delete incorrect values 
 hauls$EstSweepLngt<-hauls$SweepLngt
-#hauls$EstSweepLngt[hauls$SweepLngt>121&hauls$Gear=="GOV"]<-"-9"
 hauls$EstSweepLngt[hauls$SweepLngt>121&hauls$Gear=="GOV"]<-NA #RK edit - i don't like -9's!
-#hauls$EstSweepLngt[is.na(hauls$SweepLngt)]<-"-9"
 summary(as.factor(hauls$EstSweepLngt))
 
 hauls$Gear[which(hauls$SweepLngt == 0)] ## There should not be 0's in GOV gear sweep lengths.. RK
-
 hauls$EstSweepLngt[which(hauls$EstSweepLngt == 0)]  <-NA # RK 2021
 
 # find out extent of issue
 sweepsummary<-ddply(hauls, c("Survey","Country", "Year", "Quarter", "EstSweepLngt"),
                     summarise, N=length(EstSweepLngt))
-summary(as.factor(hauls$Survey))
+summary(factor(hauls$Survey))
 # BTS Surveys don't record a sweep - should be NA
 # ROT surveys - no sweep - should be NA
 # NCT surveys - no sweeps 
 hauls$EstSweepLngt[hauls$Survey=="BTS"]<-NA
 #hauls$EstSweepLngt[hauls$Survey=="BTS-VIIa"]<-NA
 hauls$EstSweepLngt[hauls$Survey=="NIGFS"]<-NA
-hauls$EstSweepLngt[hauls$Survey=="PT-IBTS"]<-NA
 
 # in 1983/1984 no country recorded sweep, but in 1985+ countries 
 # reported using "Recommended Sweeps" so gonna apply the 60/110 rule to these 
