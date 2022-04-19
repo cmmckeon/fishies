@@ -1,17 +1,13 @@
-###################
-# Version Control #
-###################
-# R version 3.2.2 (2015-08-14): Fire Safety 
-# platform       x86_64-w64-mingw32 (64-bit)
-###############
-# Script Info #
-###############
+# title: "8_Haul_DP.R"
+# last updated: "08/04/2022"
+
+
+
 # This is Script 8 of 9 
 # The purpose of this script is to seperate the surveys and 
 # define the final data products structure for the haul files
 # Then select the Standard Survey Area using the agreed criteria 
-# AUTHOR: Meadhbh Moriarty, 2016
-# Edits by: Ruth Kelly (AFBI), 2021 for reruns, Standard Sample Area not applied. 
+
 
 ### Notes on June 2021 version. 
 # Script 7 cleaning of HL data has not been run, 
@@ -21,15 +17,11 @@
 
 # load("./script6_output.rda")
 
-#############
-# Prep Data #
-#############
+
+# Prep Data --------------
+
 # Here we assign the column names to the values that will appear in the top end 
 # of the data product to insure transparency and it is user friendly
-
-## to run without running previous scripts load
-# setwd("C:/R/OSPAR_IBTS_dc")
-# hauls <- read.csv("Data_QA_Process_V5_2022/final_full_cleaned_hauls-end-haul-QA.csv")
 
 h<-hauls
 # check that the final list of hauls match in both groups
@@ -70,7 +62,7 @@ h$Survey_Acronym[h$Survey=="EVHOE"&h$Quarter=="4"]<-"CSBBFraOT4"
 # h$Survey_Acronym[h$Survey=="SP-ARSA"&h$Quarter=="1"]<-"BBIC(s)SpaOT1"
 # h$Survey_Acronym[h$Survey=="SP-ARSA"&h$Quarter=="4"]<-"BBIC(s)SpaOT4"
 
-h$Survey_Acronym[h$Survey=="PT-IBTS"&h$Quarter=="4"]<-"BBICPorOT4"
+
 h$Survey_Acronym[h$Survey=="ROCKALL"&h$Quarter=="3"]<-"WAScoOT3"
 h$Survey_Acronym[h$Survey=="SCOROC"&h$Quarter=="3"]<-"WAScoOT3"
 #h$Survey_Acronym[h$Survey=="SP_PORC"&h$Quarter=="3"]<-"WASpaOT3"
@@ -157,27 +149,27 @@ list<-h[duplicated(h$date_time_check),]
 
 check1 <- length(unique(h$HaulID))
 
-h$TimeShot[h$UniqueIDP=="IE-IGFS/2003/4/CEXP/73/GOV"&h$TimeShot=="1651"]<-1851
-h$TimeShot[h$UniqueIDP=="IE-IGFS/2004/4/CEXP/11/GOV"&h$TimeShot=="813"]<-2013
-h$TimeShot[h$UniqueIDP=="IE-IGFS/2004/4/CEXP/6/GOV"&h$TimeShot=="802"]<-1000
-h$TimeShot[h$UniqueIDP=="IE-IGFS/2015/4/CEXP/102/GOV"&h$TimeShot=="745"]<-1400
-h$TimeShot[h$UniqueIDP=="NS-IBTS/1995/1/WAH3/4/GOV"&h$TimeShot=="801"]<-2001
-h$TimeShot[h$UniqueIDP=="NS-IBTS/1998/1/THA2/9/GOV"&h$TimeShot=="754"]<-1954
-h$TimeShot[h$UniqueIDP=="NS-IBTS/2013/1/DAN2/37/GOV"&h$TimeShot=="632"]<-932
-h$TimeShot[h$UniqueIDP=="NS-IBTS/2013/3/SCO3/243/GOV"&h$TimeShot=="1130"]<-1430
-h$TimeShot[h$UniqueIDP=="NS-IBTS/2016/1/SCO3/38/GOV"&h$TimeShot=="1244"]<-1444
-h$TimeShot[h$UniqueIDP=="ROCKALL/2015/3/SCO3/328/GOV"&h$TimeShot=="1054"]<-1300
-h$TimeShot[h$UniqueIDP=="ROCKALL/2015/3/SCO3/346/GOV"&h$TimeShot=="926"]<-1130
-h$TimeShot[h$UniqueIDP=="SWC-IBTS/2015/1/SCO3/62/GOV"&h$TimeShot=="1010"]<-1320
-h$TimeShot[h$UniqueIDP=="SPNGFS/2006/4/CDS/78/BAK"&h$TimeShot=="614"]<-1814
-h$TimeShot[h$UniqueIDP=="BTS/2003/3/ISI/11/BT8" &h$TimeShot=="925"]<-1125
+h$TimeShot[h$UniqueIDP=="IE-IGFS_2003_4_CEXP_73_GOV"&h$TimeShot=="1651"]<-1851
+h$TimeShot[h$UniqueIDP=="IE-IGFS_2004_4_CEXP_11_GOV"&h$TimeShot=="813"]<-2013
+h$TimeShot[h$UniqueIDP=="IE-IGFS_2004_4_CEXP_6_GOV"&h$TimeShot=="802"]<-1000
+h$TimeShot[h$UniqueIDP=="IE-IGFS_2015_4_CEXP_102_GOV"&h$TimeShot=="745"]<-1400
+h$TimeShot[h$UniqueIDP=="NS-IBTS_1995_1_WAH3_4_GOV"&h$TimeShot=="801"]<-2001
+h$TimeShot[h$UniqueIDP=="NS-IBTS_1998_1_THA2_9_GOV"&h$TimeShot=="754"]<-1954
+h$TimeShot[h$UniqueIDP=="NS-IBTS_2013_1_DAN2_37_GOV"&h$TimeShot=="632"]<-932
+h$TimeShot[h$UniqueIDP=="NS-IBTS_2013_3_SCO3_243_GOV"&h$TimeShot=="1130"]<-1430
+h$TimeShot[h$UniqueIDP=="NS-IBTS_2016_1_SCO3_38_GOV"&h$TimeShot=="1244"]<-1444
+h$TimeShot[h$UniqueIDP=="ROCKALL_2015_3_SCO3_328_GOV"&h$TimeShot=="1054"]<-1300
+h$TimeShot[h$UniqueIDP=="ROCKALL_2015_3_SCO3_346_GOV"&h$TimeShot=="926"]<-1130
+h$TimeShot[h$UniqueIDP=="SWC-IBTS_2015_1_SCO3_62_GOV"&h$TimeShot=="1010"]<-1320
+h$TimeShot[h$UniqueIDP=="SPNGFS_2006_4_CDS_78_BAK"&h$TimeShot=="614"]<-1814
+h$TimeShot[h$UniqueIDP=="BTS_2003_3_ISI_11_BT8" &h$TimeShot=="925"]<-1125
 
-h$TimeShot[h$UniqueIDP=="NS-IBTS/2016/3/SCO3/281/GOV" &h$TimeShot=="1424"]<-1705
+h$TimeShot[h$UniqueIDP=="NS-IBTS_2016_3_SCO3_281_GOV" &h$TimeShot=="1424"]<-1705
 find<-subset(h, h$Ship=="EZA", ) ## not present
 summary(as.factor(find$TimeShot))
 #h$TimeShot[h$Ship=="EZA"]<-100*as.numeric(h$TimeShot[h$Ship=="EZA"])
 # wash and repeat
-h$date_time_check<-paste(h$Ship, h$Year, h$Quarter, h$Month, h$Day, h$TimeShot, sep="/")
+h$date_time_check<-paste(h$Ship, h$Year, h$Quarter, h$Month, h$Day, h$TimeShot, sep="_")
 list<-(unique(h$date_time_check))
 # 0 combos are the same
 list<-h[duplicated(h$date_time_check),]

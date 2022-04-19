@@ -19,17 +19,16 @@ library(marmap)
 HH<-read.csv("Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_HH_file.csv", row.names = "X")
 HL<-read.csv("Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_HL_file.csv", row.names = "X")
 
+HH <- rem_na_df(HH)
+HL <- rem_na_df(HL)
+
 rm(HL3, hauls) 
 
 hauls<-(HH) 
 summary(hauls)
 
 
-
-
-
-
-# 4.1.1 Sample Location ------------------
+# Sample Location ------------------
 
 
 # check shoot and haul match ICES Stat Rec
@@ -129,7 +128,7 @@ unique(check$Survey)
 
 
 
-# 4.1.2  Depth -----------------------
+# Depth -----------------------
 
 hauls$EstDepth<-NA
 
@@ -208,6 +207,7 @@ plot(papoue, image = TRUE, land = FALSE, lwd = 0.05,
 cols<-heat_hcl(13, c = c(80, 30), l=c(30,90), power=c(1/5, 1.5))
 hauls$Survey<-factor(hauls$Survey)
 hauls$Diff_dep <-sqrt((hauls$Depth- hauls$EstDepth)^2)
+#hauls$Diff_dep[which(is.na(hauls$Diff_dep))] <- 0
 summary(hauls$Diff_dep)
 radius<-sqrt(hauls$Diff_dep/pi)
 symbols(hauls$ShootLong, hauls$ShootLat, circles=radius, inches=0.2, fg="white",
@@ -235,7 +235,7 @@ hist(sqrt((hauls$Depth- hauls$DepthNew)^2))
 ## there a problems - a couple of depth differences over 1000, many over 200, a few negative depths.
 
 
-# 4.1.3 Sweep Length ----------------
+# Sweep Length ----------------
 
 summary(factor(hauls$SweepLngt)) ##
 
@@ -245,18 +245,19 @@ hauls$EstSweepLngt<-hauls$SweepLngt
 hauls$EstSweepLngt[hauls$SweepLngt>121&hauls$Gear=="GOV"]<-NA #RK edit - i don't like -9's!
 summary(as.factor(hauls$EstSweepLngt))
 
-hauls$Gear[which(hauls$SweepLngt == 0)] ## There should not be 0's in GOV gear sweep lengths.. RK
+
+hauls$Gear[which(hauls$SweepLngt == 0)] ## There should not be 0's in GOV gear sweep lengths.. RK #BT3 BT4A BT4AI BT4P BT4S BT6 BT7 BT8 GOV H18 ROT
 hauls$EstSweepLngt[which(hauls$EstSweepLngt == 0)]  <-NA # RK 2021
 
 # find out extent of issue
 sweepsummary<-ddply(hauls, c("Survey","Country", "Year", "Quarter", "EstSweepLngt"),
                     summarise, N=length(EstSweepLngt))
+sum(sweepsummary$N[which(is.na(sweepsummary$EstSweepLngt))])
 summary(factor(hauls$Survey))
 # BTS Surveys don't record a sweep - should be NA
 # ROT surveys - no sweep - should be NA
 # NCT surveys - no sweeps 
 hauls$EstSweepLngt[hauls$Survey=="BTS"]<-NA
-#hauls$EstSweepLngt[hauls$Survey=="BTS-VIIa"]<-NA
 hauls$EstSweepLngt[hauls$Survey=="NIGFS"]<-NA
 
 # in 1983/1984 no country recorded sweep, but in 1985+ countries 
@@ -344,6 +345,7 @@ hauls$EstSweepLngt[hauls$Survey=="ROCKALL"&
 # Check all new sweeps
 sweepsummary<-ddply(hauls, c("Survey","Country", "Year", "Quarter", "EstSweepLngt"),
                     summarise, N=length(EstSweepLngt))
+sum(sweepsummary$N[which(is.na(sweepsummary$EstSweepLngt))])
 
 #Assign cat of short or long to sweep length
 summary(as.factor(hauls$EstSweepLngt))
@@ -352,25 +354,24 @@ hauls$EstSweepCat[hauls$EstSweepLngt<61]<-"short"
 hauls$EstSweepCat[hauls$EstSweepLngt==97|hauls$EstSweepLngt==110|
                     hauls$EstSweepLngt==100|hauls$EstSweepLngt==120]<-"long"
 
-hauls$EstSweepCat[hauls$EstSweepLngt==200]<-"long" ## Added by RK for long sweeps in SP-ARSA BAK trawls
-
-
 sweepcatsummary<-ddply(hauls, c("Survey","Country", "Year", "Quarter", "EstSweepCat"),
                        summarise, N=length(EstSweepCat))
 
 
 
-# 4.1.4 Haul Duration ------------------------
+# Haul Duration ------------------------
 
 # Check range >66 and <13 not within bounds
 summary(hauls$HaulDur)
 
 
-# 4.1.5 Ground Speed --------------------------
+# Ground Speed --------------------------
 
 ### Draw some plots to look at data
 #make a plot to look at the current groundspeed*time against distance 
 # if perfect we expect an intercept of 0 and a slope of 1
+
+hist(hauls$Distance)
 
 hauls[which(hauls$Distance == 45074),] ## belgian BTS being off!
 png(file = "Data_QA_Process_V5_2022/Diagnostics/distance_speed_time_differences.png", bg = "transparent")
@@ -400,10 +401,13 @@ plot(hauls$Survey, hauls$GroundSpeed, pch=19, xlab="Survey",
 dev.off()
 dev.new()
 # outliers in Groundspeed found
-check<-hauls[hauls$GroundSpeed<3|hauls$GroundSpeed>5, ]
+check <- hauls[which(!is.na(hauls$GroundSpeed)),]
+check<-check[check$GroundSpeed<3|check$GroundSpeed>5, ]
+
 png(file="Data_QA_Process_V5_2022/Diagnostics/groundspeed_distance_comparision.png", bg="transparent")
 plot(check$GroundSpeed*check$HaulDur*1852/60, check$Distance, pch=19, col="black")
 dev.off()
+
 # In Ns-IBTS 1995 it seems some of the french ground speeds are in the Speed Water Column
 # and the Speed water is in the Ground Speed Col.
 hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/2/GOV"]<-4
@@ -416,13 +420,8 @@ hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/9/GOV"]<-1.9
 hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/11/GOV"]<-3.9
 hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/11/GOV"]<-1.9
 
-# really fast ground speed check outlat long distance matches but in others it was way out
-check<-hauls[hauls$GroundSpeed<3|hauls$GroundSpeed>5 ,]
-
-
 # GROUNDSPEED NOT RECORDED BUT DISTANCE AND DURATION RECORDED
 hauls$Realised_groundspeed<-hauls$Distance/hauls$HaulDur/1852*60
-##summary(hauls$Estimated_groundspeed) # variable doesn't exist - RK
 dev.new()
 png(file="Data_QA_Process_V5_2022/Diagnostics/groundspeed_predictedVdistance_divided_by_time.png", bg="transparent")
 plot(hauls$Realised_groundspeed, hauls$GroundSpeed, 
@@ -443,86 +442,106 @@ abline(h=1, col="lightgrey", lwd=1, lty=2)
 draw.circle(8.4, 8.4, 0.1, border="red", lty=4, lwd=2)
 dev.off()
 
-##
-levels(hauls$Gear)
-hauls <- droplevels(hauls)
-levels(canSpeed$Gear)
-canSpeed <- droplevels(canSpeed)
+## predict groound speed --------------
+hist(hauls$GroundSpeed, breaks = 1000)
 
-gs_model1<-lm(GroundSpeed~Quarter:Ship:Gear, hauls)
-# pretty decent model here - problem is it won't work for all ships as I have some 
-# ships with no data at all on Ground speed to inform model
+plot(hauls$GroundSpeed ~ hauls$Ship)
+plot(hauls$GroundSpeed ~ hauls$Quarter)
+plot(hauls$GroundSpeed ~ hauls$Gear)
+
+## zero groundspeed data for some ships and gears 
+
 summary(hauls$GroundSpeed)
-needSpeed <- hauls[is.na(hauls$GroundSpeed),]
-needSpeedShip <- unique(needSpeed$Ship)
-withSpeedShip <- unique(hauls$Ship[!is.na(hauls$GroundSpeed)])
-needSpeedGear<-unique(needSpeed$Gear)
+needSpeed <- droplevels(hauls[is.na(hauls$GroundSpeed),])
+
+needSpeedGear <- factor(levels(droplevels(needSpeed$Gear[is.na(needSpeed$GroundSpeed)]))) ## gear with missing ground speed
+needSpeedShip <- factor(levels(droplevels(needSpeed$Ship[is.na(needSpeed$GroundSpeed)]))) ## ships with missing ground speed
+withSpeedShip <- factor(levels(droplevels(hauls$Ship[!is.na(hauls$GroundSpeed)]))) ## ships with some ground speed
+speed_none <- factor(setdiff(speed_missing, speed_some)) ## ships with no ground speed at all
+
 # ID ships that have some missing GroundSpeed records
-canSpeedShip <- needSpeedShip[needSpeedShip %in% withSpeedShip]
-canSpeed <- hauls[hauls$Ship %in% canSpeedShip, ]
-# Split the data into the two types: only a few missing and completely missing
-canSpeedNA <- canSpeed[is.na(canSpeed$GroundSpeed) & is.na(canSpeed$Distance),]
-canSpeedOK <- canSpeed[!is.na(canSpeed$GroundSpeed),]
+canSpeedShip <- droplevels(needSpeedShip[needSpeedShip %in% withSpeedShip]) ## all ships with both missing and recorded ground speed
+canSpeed <- droplevels(hauls[hauls$Ship %in% canSpeedShip, ])
 
-gs_model2<-lm(GroundSpeed~Quarter:Gear, data=hauls)
+gs_model1<-lm(GroundSpeed~Quarter:Ship:Gear, data= droplevels(hauls))
+gs_model2<-lm(GroundSpeed~Quarter:Gear, data= droplevels(hauls))
 
+par(mfrow = c(2,2))
+plot(gs_model1)
+plot(gs_model2)
 AIC(gs_model1, gs_model2)
 anova(gs_model1,gs_model2)
-#predictedGS<-predict(gs_model2, hauls, allow.new.levels=F)
+
 # allmissing observations
-canSpeed<-subset(canSpeed, !canSpeed$Gear=="ROT",)
+#pred_ship <- droplevels(subset(hauls, hauls$Ship %nin% speed_none)) ## why can't I do this?
+pred_ship <- droplevels(subset(canSpeed, canSpeed$Ship %nin% speed_none))
+pred_ship <- droplevels(subset(pred_ship, pred_ship$Gear %nin% c("ROT", "BT8", "H18")))
 
-canSpeed<-subset(canSpeed, !canSpeed$Gear=="BT8",) ## CM Feb 2022
+hist(pred_ship$GroundSpeed, breaks = 100)
+summary((pred_ship$GroundSpeed))
 
-canSpeed$predicted_groundspeed_gs1<-predict(gs_model1, canSpeed, allow.new.levels=T)
-summary(canSpeed$predicted_groundspeed_gs1)
-plot(canSpeed$predicted_groundspeed_gs1,canSpeed$GroundSpeed, pch=19, col='grey' )
-gs5_dat<-subset(hauls, !hauls$Gear %in% c("ROT", "BT8")) ## add BT8 to the levels removed from this subset CM Feb 2022
-gs5_dat$predicted_groundspeed_gs2<-predict(gs_model2, gs5_dat , allow.new.levels=T)
-summary(gs5_dat$predicted_groundspeed_gs2)
-summary(canSpeed$predicted_groundspeed_gs1)
+pred_ship$predicted_groundspeed_gs1 <- predict(gs_model1, pred_ship, allow.new.levels=T)
+
+summary(pred_ship$predicted_groundspeed_gs1)
+plot(pred_ship$predicted_groundspeed_gs1, pred_ship$GroundSpeed, pch=19, col='grey' )
+pred_gear <- subset(hauls, hauls$Gear %nin% c("ROT", "BT8", "H18")) 
+
+pred_gear$predicted_groundspeed_gs2 <- predict(gs_model2, pred_gear, allow.new.levels=T)
+
+summary(pred_gear$predicted_groundspeed_gs2)
+summary(pred_ship$predicted_groundspeed_gs1)
+
 # attach predictions to the hauls dataset
-list<-canSpeed$UniqueID
+list<-pred_ship$NewUniqueID2
+hauls$predicted_groundspeed_gs1[hauls$NewUniqueID2%in%list] <- pred_ship$predicted_groundspeed_gs1[hauls$NewUniqueID2%in%list]
 
-hauls$predicted_groundspeed_gs1[hauls$UniqueID%in%list]<-canSpeed$predicted_groundspeed_gs1[hauls$UniqueID%in%list]
-list<-gs5_dat$UniqueID
-hauls$predicted_groundspeed_gs2[hauls$UniqueID%in%list]<-gs5_dat$predicted_groundspeed_gs2[hauls$UniqueID%in%list]
+list<-pred_gear$NewUniqueID2
+hauls$predicted_groundspeed_gs2[hauls$NewUniqueID2%in%list] <- pred_gear$predicted_groundspeed_gs2[hauls$NewUniqueID2%in%list]
 
 # If real data available use that
 hauls$GroundSpeed_Used<-hauls$GroundSpeed
-hauls$GroundSpeed_Used[hauls$GroundSpeed_Used<2]<-NA
-hauls$GroundSpeed_Used[hauls$GroundSpeed_Used>6]<-NA
-hauls$GroundSpeed_Used[hauls$UniqueIDP=="IE-IGFS/2015/4/CEXP/100/GOV"]<-NA
+hauls$GroundSpeed_Used[hauls$GroundSpeed_Used < 2] <- NA
+hauls$GroundSpeed_Used[hauls$GroundSpeed_Used > 6] <- NA
+hauls$GroundSpeed_Used[hauls$UniqueIDP=="IE-IGFS_2015_4_CEXP_100_GOV"] <- NA
 hauls$GroundSpeed_Quality_Code[!is.na(hauls$GroundSpeed_Used)]<-"Recorded_Groundspeed"
+
 # If gear is ROT then no data ever available
-hauls$GroundSpeed_Quality_Code[hauls$Gear=="ROT"]<-"Manual_Speed"
-hauls$GroundSpeed_Used[hauls$Gear=="ROT"]<-4
+hauls$GroundSpeed_Quality_Code[hauls$Gear=="ROT"] <- "Manual_Speed"
+hauls$GroundSpeed_Used[hauls$Gear=="ROT"] <- 4
+
 # If ground speed available for Ship and Gear - use that
-hauls$GroundSpeed_Quality_Code[is.na(hauls$GroundSpeed_Used)]<-"model_1"
-hauls$GroundSpeed_Used[is.na(hauls$GroundSpeed_Used)]<-hauls$predicted_groundspeed_gs1[is.na(hauls$GroundSpeed_Used)]
+hauls$GroundSpeed_Quality_Code[is.na(hauls$GroundSpeed_Used)] <- "model_1"
+hauls$GroundSpeed_Used[is.na(hauls$GroundSpeed_Used)] <- hauls$predicted_groundspeed_gs1[is.na(hauls$GroundSpeed_Used)]
+
 # if ground speed available for Gear
 summary(hauls$predicted_groundspeed_gs2)
-hauls$GroundSpeed_Quality_Code[is.na(hauls$GroundSpeed_Used)]<-"model_2"
-hauls$GroundSpeed_Used[is.na(hauls$GroundSpeed_Used)]<-hauls$predicted_groundspeed_gs2[is.na(hauls$GroundSpeed_Used)]
+hauls$GroundSpeed_Quality_Code[is.na(hauls$GroundSpeed_Used)] <- "model_2"
+hauls$GroundSpeed_Used[is.na(hauls$GroundSpeed_Used)] <- hauls$predicted_groundspeed_gs2[is.na(hauls$GroundSpeed_Used)]
+
 # If no model fits use Manual speed
-hauls$GroundSpeed_Quality_Code[is.na(hauls$GroundSpeed_Used)]<-"Manual_Speed"
+hauls$GroundSpeed_Quality_Code[is.na(hauls$GroundSpeed_Used)] <- "Manual_Speed"
 hauls$GroundSpeed_Used[is.na(hauls$GroundSpeed_Used)]<-4
 
 summary(hauls$GroundSpeed_Used)
 summary(as.factor(hauls$GroundSpeed_Quality_Code))
 
-hauls$GroundSpeed_meters_per_min<-hauls$GroundSpeed_Used * 1852 / 60
+hauls$GroundSpeed_meters_per_min <- hauls$GroundSpeed_Used * 1852 / 60
 summary(hauls$GroundSpeed_meters_per_min)
-# Spain within expected bounds
-summary(hauls$GroundSpeed_Used[hauls$Country=="PT"])
-# Portugal within expected bounds
+
+
 summary(hauls$GroundSpeed_Used[hauls$Gear=="BT7"])
 summary(hauls$GroundSpeed_Used[hauls$Gear=="BT8"])
 summary(hauls$GroundSpeed_Used[hauls$Gear=="BT4A"])
 summary(hauls$GroundSpeed_Used[hauls$Gear=="GOV"])
+summary(hauls$GroundSpeed_Used[hauls$Gear=="BT3"])
+summary(hauls$GroundSpeed_Used[hauls$Gear=="BT4A"])
 summary(hauls$GroundSpeed_Used[hauls$Gear=="ROT"])
-summary(hauls$GroundSpeed_Used[hauls$Gear=="BAK"]) # RK
-summary(hauls$GroundSpeed_Used[hauls$Gear=="NCT"]) # RK
+summary(hauls$GroundSpeed_Used[hauls$Gear=="BT4AI"])
+summary(hauls$GroundSpeed_Used[hauls$Gear=="BT4P"])
+summary(hauls$GroundSpeed_Used[hauls$Gear=="BT4S"])
+summary(hauls$GroundSpeed_Used[hauls$Gear=="BT6"])
+summary(hauls$GroundSpeed_Used[hauls$Gear=="GOV"])
+summary(hauls$GroundSpeed_Used[hauls$Gear=="H18"])
 
 #get equation for gs1
 formula(gs_model1)
@@ -530,29 +549,32 @@ summary(gs_model1)
 coeffs=(coefficients(gs_model1))
 formula(gs_model2)
 coeffs=(coefficients(gs_model2))
+
 # draw a graph showing predicted v actual ground speeds.
 png(file="groundspeed_predictedVactual.png", bg="transparent")
-predict<-predict(gs_model1)
+predict1 <- predict(gs_model1)
 gs<-subset(hauls, !is.na(hauls$GroundSpeed),)
-plot(predict, gs$GroundSpeed, xlab="Predicted GroundSpeed (knots)",
+plot(predict1, gs$GroundSpeed, xlab="Predicted GroundSpeed (knots)",
      ylab="Recorded Groundspeed (knots)", pch=19)
-predict1<-predict(gs_model2)
-points(predict1, gs$GroundSpeed, pch=19, col="lightgrey")
+predict2 <- predict(gs_model2)
+points(predict2, gs$GroundSpeed, pch=19, col="lightgrey")
 abline(0,1, col="red")
 dev.off()
 
 
-# 4.1.6 Towed Distance -----------------------
+
+# Towed Distance -----------------------
 
 ## Calculate haversine distance with shoot and haul coordinates ##
 names(hauls)
-hauls$LatLongDistance<-(earth.dist(long1 = hauls$ShootLong,
+hauls$LatLongDistance <- (earth.dist(long1 = hauls$ShootLong,
                                       lat1 = hauls$ShootLat,
                                       long2 = hauls$HaulLong,
                                       lat2 = hauls$HaulLat) * 1000)
 summary(hauls$LatLongDistance)
 
-hauls1<-as.data.table(hauls)
+hauls1 <- as.data.table(hauls)
+
 ## RAW DISTANCE ##
 hauls1[!is.na(Distance), c("newDist", "qualityDistance") :=
         list(Distance, "rawDistance")]
@@ -599,35 +621,45 @@ abline(a=0, b=.5, col="red", lwd=2, lty=2)
 abline(a=0, b=1.5, col="red", lwd=2, lty=2)
 dev.off()
 
-
 plot(hauls1$HaulDur, hauls1$newDist, pch=19, cex=0.5, xlab="Time", ylab="Distance")
 # perfect speed - 4 knots, bounds 2- 6 knots
+
+dist <- hauls[hauls$Distance > 10000,]
+dist <- dist[!is.na(dist$Distance),]
+
 x<-c(13:66)
 points(x, x*4*1852/60, type="l", col="red", lwd=3)
 points(x, x*2*1852/60, type="l", col="red", lty=2, lwd=2)
 points(x, x*6*1852/60, type="l", col="red", lty=2, lwd=2)
+
 # Set up extra check col
 hauls1$manual_speed_distance<-hauls1$HaulDur*4*1852/60
 # distance checks required as some of them are really odd.
-hauls1$LatLongDistance[hauls1$LatLongDistance==0]<-NA
-outside_bounds<-subset(hauls1, hauls1$newDist/hauls1$manual_speed_distance>1.50|
-                         hauls1$newDist/hauls1$manual_speed_distance<.5, )
+hauls1$LatLongDistance[hauls1$LatLongDistance==0] <- NA
+outside_bounds<-subset(hauls1, hauls1$newDist/hauls1$manual_speed_distance > 1.50|
+                         hauls1$newDist/hauls1$manual_speed_distance < 0.5, )
 
 points(outside_bounds$HaulDur,outside_bounds$newDist, col="red", pch=19)
 # only 177 to check :) - RK - Meadhbh had 127
+# now 293
+
+
 # if haversine is available use that
-list<-outside_bounds$NewUniqueID2
-hauls1$newDist[hauls1$NewUniqueID2%in%list]<-hauls1$LatLongDistance[hauls1$NewUniqueID2%in%list]
-hauls1$qualityDistance[hauls1$NewUniqueID2%in%list]<-"LatLongDistance"
+list <- outside_bounds$NewUniqueID2
+hauls1$newDist[hauls1$NewUniqueID2%in%list] < -hauls1$LatLongDistance[hauls1$NewUniqueID2%in%list]
+hauls1$qualityDistance[hauls1$NewUniqueID2%in%list] <- "LatLongDistance"
+
 # recheck 
 outside_bounds<-subset(hauls1, hauls1$newDist/hauls1$manual_speed_distance>1.50|
                          hauls1$newDist/hauls1$manual_speed_distance<.5, )
 
 points(outside_bounds$HaulDur,outside_bounds$newDist, col="blue", pch=19)
+
 # still not gone, use speed*time
-list<-outside_bounds$NewUniqueID2
+list <- outside_bounds$NewUniqueID2
 hauls1$newDist[hauls1$NewUniqueID2%in%list]<-hauls1$SpeedTimeDist[hauls1$NewUniqueID2%in%list]
 hauls1$qualityDistance[hauls1$NewUniqueID2%in%list]<-"SpeedHaulDur"
+
 # recheck
 outside_bounds<-subset(hauls1, hauls1$newDist/hauls1$manual_speed_distance>1.50|
                          hauls1$newDist/hauls1$manual_speed_distance<.5, )
@@ -636,20 +668,20 @@ outside_bounds<-subset(hauls1, hauls1$newDist/hauls1$manual_speed_distance>1.50|
 
 # next refine estimates
 # is distance used within 20% of lat long distance 
-check__dist_haversine_match<-subset(hauls1, hauls1$newDist/hauls1$LatLongDistance>1.2|
+check__dist_haversine_match <- subset(hauls1, hauls1$newDist/hauls1$LatLongDistance>1.2|
                                       hauls1$newDist/hauls1$LatLongDistance<.8,)
-points(check__dist_haversine_match$HaulDur,check__dist_haversine_match$newDist, col="green", pch=19)
-# so 1436 points more than 20% away - all rest are fine
+points(check__dist_haversine_match$HaulDur, check__dist_haversine_match$newDist, col="green", pch=19)
+# so 1743 points more than 20% away - all rest are fine
 check_dist_speed_match<-subset(check__dist_haversine_match, 
                                check__dist_haversine_match$newDist/check__dist_haversine_match$SpeedTimeDist>1.2|
                                  check__dist_haversine_match$newDist/check__dist_haversine_match$SpeedTimeDist<.8,)
-# 121 not okay with speed
+# 245 not okay with speed
 points(check_dist_speed_match$HaulDur,check_dist_speed_match$newDist, col="yellow", pch=19)
 
 check_lat_speed_match<-subset(check_dist_speed_match, 
                               check_dist_speed_match$LatLongDistance/check_dist_speed_match$SpeedTimeDist<1.2&
                                 check_dist_speed_match$LatLongDistance/check_dist_speed_match$SpeedTimeDist>.8,)
-# so 45 of the haversine and speed X time are within 20% - use the lat long rather than the 
+# so 97 of the haversine and speed X time are within 20% - use the lat long rather than the 
 # recorded distance
 list<-check_lat_speed_match$NewUniqueID2
 hauls1$newDist[hauls1$NewUniqueID2%in%list]<-hauls1$LatLongDistance[hauls1$NewUniqueID2%in%list]
@@ -690,7 +722,7 @@ summary(as.factor(hauls1$qualityDistance))
 
 
 
-# 4.1.7.1.1 The GOV Otter Trawl (Model 1) ------------------------
+# The GOV Otter Trawl (Model 1) ------------------------
 
 hauls<-hauls1
 # remove outlier from irish data
@@ -720,6 +752,7 @@ hauls[!is.na(Ship), "Shipfac":=
 summary(as.factor(hauls$EstSweepCat[hauls$Gear=="GOV"]))
 options(show.signif.stars = T)
 library(lmerTest)
+
 #Center data to give model stability 
 hauls[!is.na(DepthNew), c("meanDepth") :=
         mean(DepthNew)]
@@ -731,8 +764,14 @@ hauls[!is.na(DoorSpread), c("meanDoorSpread"):=
         mean(DoorSpread)]
 hauls[!is.na(Depth), c("DepthCenter") :=
         Depth-meanDepth]
+
+## DepthNew causing problems as there are a couple of negative estimated depths.
+#temporary subset to get around this before talking to Ruth
+hauls <- hauls[hauls$DepthNew >= 0,]
+
 hauls[!is.na(DepthNew), c("LogDepthCenter") :=
-        log(DepthNew)-log(meanDepth)]
+        log(DepthNew)-log(meanDepth)] 
+
 hauls[!is.na(WingSpread), c("WingSpreadCenter") :=
         WingSpread-meanWingSpread]
 hauls[!is.na(DoorSpread), c("DoorSpreadCenter") :=
@@ -748,7 +787,7 @@ hauls[!is.na(Netopening), c("LogNetopeningCenter") :=
 hauls$SweepCat<-as.factor(hauls$SweepLngt)
 summary(as.factor(hauls$Ship))
 summary(hauls)
-train<-subset(hauls, Gear=="GOV"& (!is.na(WingSpread)) & (!is.na(DoorSpread))
+train <- subset(hauls, Gear=="GOV"& (!is.na(WingSpread)) & (!is.na(DoorSpread))
               &(!is.na(Netopening)),)
 
 library(lme4)
@@ -775,32 +814,34 @@ lines(lowess(exp(data)~train$DepthNew), col="red", lwd=3, lty=2)
 legend(300, 40, levels(as.factor(hauls$Survey[hauls$Gear=="GOV"])), 
        col=cols, pch=15, ncol=3, cex=1, bty="o")
 dev.off()
+
 # set up user data using selected model
 # subset all GOV gear
 hauls$EstSweepCat<-as.factor(hauls$EstSweepCat)
 hauls$Ship<-as.factor(hauls$Ship)
-the_gov<-subset(hauls, Gear=="GOV")
+the_gov <- subset(hauls, Gear=="GOV")
 summary(the_gov$WingSpread)
 summary(the_gov$LogDoorSpreadCenter)
-str(the_gov)
-# 30442 obs
-the_gov$mod1_wingspread_gov<-exp(predict(ws_model1, the_gov, allow.new.levels=T))
+str(the_gov) # 38963 obs
+
+the_gov$mod1_wingspread_gov <- exp(predict(ws_model1, the_gov, allow.new.levels=T))
 summary(the_gov$mod1_wingspread_gov)
 # If real values are available use these
 hauls$Use_WingSpread[!is.na(hauls$WingSpread)&
                        hauls$Gear=="GOV"]<-hauls$WingSpread[!is.na(hauls$WingSpread)&
                                                               hauls$Gear=="GOV"]
-hauls$QualityWing[!is.na(hauls$WingSpread)]<-"raw_wingspread"
+hauls$QualityWing[!is.na(hauls$WingSpread)] <- "raw_wingspread"
 
-list<-the_gov$UniqueID
+list <- the_gov$UniqueID
 hauls$mod1_wingspread_gov[hauls$UniqueID%in%list]<-the_gov$mod1_wingspread_gov[the_gov$UniqueID%in%list]
 
 hauls$Use_WingSpread[is.na(hauls$WingSpread)&
                        hauls$Gear=="GOV"]<-hauls$mod1_wingspread_gov[is.na(hauls$WingSpread)&
                                                                        hauls$Gear=="GOV"]
 hauls$QualityWing[is.na(hauls$WingSpread)&!is.na(hauls$mod1_wingspread_gov)&
-                    hauls$Gear=="GOV"]<-"mod1_wing_gov"
-#check wing speads 
+                    hauls$Gear=="GOV"] <- "mod1_wing_gov"
+
+#check wing spreads 
 summary((hauls$Use_WingSpread[hauls$Gear=="GOV"]))
 summary(hauls$Use_WingSpread)
 # get model outputs
@@ -809,7 +850,7 @@ summary(ws_model1)
 coeffs=(coefficients(ws_model1))
 
 
-# 4.1.7.1.4 The NCT Gear --------------------------
+# The NCT Gear --------------------------
 
 # WingSpread = 15.1
 hauls$WingSpread[hauls$Gear=="NCT"]<-15.1
@@ -817,13 +858,13 @@ hauls$Use_WingSpread[hauls$Gear=="NCT"]<-15.1
 hauls$QualityWing[hauls$Gear=="NCT"]<-"mean_wingspread"
 
 
-# 4.1.8.1.1 The GOV Otter Trawl (Model 1) -----------------------
+# The GOV Otter Trawl (Model 1) -----------------------
 
 # for model election set up training data set
-train<-subset(hauls, Gear=="GOV"& (!is.na(WingSpread)) & (!is.na(DoorSpread))
+train <- subset(hauls, Gear=="GOV"& (!is.na(WingSpread)) & (!is.na(DoorSpread))
               &(!is.na(Netopening)),)
 
-model1_ds<- lmer(log(DoorSpread) ~ LogDepthCenter:EstSweepCat
+model1_ds <- lmer(log(DoorSpread) ~ LogDepthCenter:EstSweepCat
            + (1|Ship:EstSweepCat), 
            data=train, REML=FALSE)
 summary(model1_ds)
@@ -841,11 +882,12 @@ lines(lowess(exp(data)~train$DepthNew), col="lightgrey", lwd=3, lty=2)
 legend(530, 80, levels(as.factor(hauls$Survey[hauls$Gear=="GOV"])), 
        col=cols, pch=15, ncol=2, cex=.9, bty="o")
 dev.off()
+
 # note - less compex limear model can't explain as much variance as mixed model
 # the random effects are accounting for quite a lot of variance
 # set up user data using selected mode # subset all GOV gear
-the_gov<-subset(hauls, Gear=="GOV")
-# 30538 obs
+the_gov<-subset(hauls, Gear=="GOV") # 38973 obs
+
 the_gov$mod1_doorspread_gov<-exp(predict(model1_ds, the_gov, allow.new.levels=T))
 summary(the_gov$mod1_doorspread_gov)
 # If real values are available use these
@@ -855,7 +897,7 @@ hauls$Use_DoorSpread[!is.na(hauls$DoorSpread)&
                                                               hauls$Gear=="GOV"]
 hauls$QualityDoor[!is.na(hauls$DoorSpread)]<-"raw_doorspread"
 
-list<-the_gov$UniqueID
+list < -the_gov$UniqueID
 hauls$mod1_doorspread_gov[hauls$UniqueID%in%list]<-the_gov$mod1_doorspread_gov[the_gov$UniqueID%in%list]
 
 hauls$Use_DoorSpread[is.na(hauls$DoorSpread)&
@@ -871,11 +913,13 @@ summary(model1_ds)
 coeffs=coefficients(model1_ds);coeffs
 
 
-# 4.1.8.1.2 The ROT Trawl (Model 2) --------------------------------
+# The ROT Trawl (Model 2) --------------------------------
 
 summary(hauls$DoorSpread[hauls$Gear=="ROT"])
 # Doorspread can be sorted first
 # DoorSpread only has 955 missing values to be estimated
+
+length(hauls$DoorSpread[is.na(hauls$DoorSpread)]) ## now 40308....?
 
 png(file = "Data_QA_Process_V5_2022/Diagnostics/doorspread_ROT.png", bg = "transparent")
 plot(hauls$Depth[hauls$Gear=="ROT"], hauls$DoorSpread[hauls$Gear=="ROT"], 
@@ -894,6 +938,7 @@ lines(new.x,pred[,"fit"],lwd=2)
 lines(new.x,pred[,"lwr"],lty=3)
 lines(new.x,pred[,"upr"],lty=3)
 points(x,y,pch=16,col="steelblue")
+
 # raw data looks good - no worrying outliers
 corrhaul_rot<-subset(hauls, Gear=="ROT",
                      select=c(Year, Depth, Distance,
@@ -905,6 +950,7 @@ corrgram(corrhaul_rot, order="PCA", lower.panel=panel.shade,
          upper.panel=panel.pie, text.panel=panel.txt,
          main="Hauls Data NI") 
 dev.off()
+
 # the only variable available to estimate doorspread is depth for ROT ship
 # no sweep, no changes in gear , no wing or netopening
 model2<-lm(log(DoorSpread[hauls$Gear=="ROT"])~log(Depth[hauls$Gear=="ROT"]), data=hauls)
@@ -917,7 +963,7 @@ plot(log(hauls$DepthNew[hauls$Gear=="ROT"]), log(hauls$DoorSpread[hauls$Gear=="R
 abline(a=(2.558093), b=(0.261106) , col="red", lwd=2)
 dev.off()
 
-hauls$mod_doorspread_rot[hauls$Gear=="ROT"]<-exp(coeff[1]+coeff[2]*log(hauls$DepthNew[hauls$Gear=="ROT"]))
+hauls$mod_doorspread_rot[hauls$Gear=="ROT"] <- exp(coeff[1]+coeff[2]*log(hauls$DepthNew[hauls$Gear=="ROT"]))
 # set up user values for doorspread
 hauls$Use_DoorSpread[!is.na(hauls$DoorSpread)&
                        hauls$Gear=="ROT"]<-hauls$DoorSpread[!is.na(hauls$DoorSpread)&
@@ -932,10 +978,10 @@ summary(hauls$Use_DoorSpread)
 summary(as.factor(hauls$QualityDoor))
 
 
-# 4.1.7.1.2 The ROT Trawl (Model 2) -------------------------------
+# The ROT Trawl (Model 2) -------------------------------
 
 summary(hauls$WingSpread[hauls$Gear=="ROT"])
-# 2333 estimated values needed # 2842 in 2021
+# 2333 estimated values needed # 2842 in 2021 #4327 in 2022
 # Matt sent me some trail wingspreads to help to model these data
 # but data now available in DATRAS file 20 values available
 # lets look at these data first
@@ -954,19 +1000,20 @@ summary(ws_dat)
 # Great we can keep this really simple and have a really strong
 # Adjusted R sqd of 0.952
 # has the best AIC score (-153.47.6)
-hauls$mod2_wingspread_rot[hauls$Gear=="ROT"]<-exp(0.3798356+0.6489731*log(hauls$Use_DoorSpread[hauls$Gear=="ROT"]))
+hauls$mod2_wingspread_rot[hauls$Gear=="ROT"] <- exp(0.3798356+0.6489731*log(hauls$Use_DoorSpread[hauls$Gear=="ROT"]))
+
 # set up user values for doorspread
 #RAW WINGSPREAD
-hauls$Use_WingSpread[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"]<-hauls$WingSpread[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"]
-hauls$QualityWing[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"]<-"raw_wingspread"
-hauls$Use_WingSpread[is.na(hauls$WingSpread)&hauls$Gear=="ROT"]<-hauls$mod2_wingspread_rot[is.na(hauls$WingSpread)&hauls$Gear=="ROT"]
-hauls$QualityWing[is.na(hauls$WingSpread)&hauls$Gear=="ROT"]<-"model_wingspread_rot"
+hauls$Use_WingSpread[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"] <- hauls$WingSpread[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"]
+hauls$QualityWing[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"] <- "raw_wingspread"
+hauls$Use_WingSpread[is.na(hauls$WingSpread)&hauls$Gear=="ROT"] < -hauls$mod2_wingspread_rot[is.na(hauls$WingSpread)&hauls$Gear=="ROT"]
+hauls$QualityWing[is.na(hauls$WingSpread)&hauls$Gear=="ROT"] <- "model_wingspread_rot"
 
 summary(hauls$mod2_wingspread_rot[hauls$Gear=="ROT"])
 summary(hauls$Use_WingSpread[hauls$Gear=="ROT"])
 
 
-# 4.1.8.1.4 The NCT Gear ------------------------------------
+# The NCT Gear ------------------------------------
 
 # No sensors on this gear so mean is applied as supplied by ICES 2010
 # DoorSpread 45.7m
@@ -982,7 +1029,6 @@ plot(train$DepthNew,train$Netopening )
 plot(train$WingSpread,train$Netopening )
 
 cols<-rainbow(6)
-data<-predict(lm5)
 summary(as.factor(train$Survey))
 png(file="Data_QA_Process_V5_2022/Diagnostics/GOV_Netopening_model1.png", bg="transparent")
 plot(train$DepthNew, train$Netopening, col=cols[as.factor(train$Survey)], 
@@ -1039,7 +1085,7 @@ summary(as.factor(hauls$QualityWing))
 
 
 
-# 4.1.9.1.2 The ROT Trawl (Model 2) --------------------------
+# The ROT Trawl (Model 2) --------------------------
 
 # Not enough data to model this attribute - either use mean value or don't do 
 # vol estimates with ROT gear - similar to Beam gears!
@@ -1054,7 +1100,7 @@ hauls$QualityNet[is.na(hauls$Netopening)&hauls$Gear=="ROT"]<-"mean_netopening"
 summary(hauls$Use_Netopening[hauls$Gear=="ROT"])
 
 
-# 4.1.9.1.4 The NCT Gear -------------------------------
+# The NCT Gear -------------------------------
 
 # netopening 4.6m
 hauls$Netopening[hauls$Gear=="NCT"]<-4.6
@@ -1127,12 +1173,10 @@ summary(hauls$GroundSpeed_Used)
 ### ommitting BAK because there are odd outliers in 
 # wingspread and doorspread plots when calculated
 
-hauls <- hauls[hauls$Gear != "BAK",]
-
-write.csv(hauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/hauls_monster_file_17-04-2017.csv")
+write.csv(hauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/hauls_monster_file_04_2022.csv")
 
 
-# 4.1.8 Calculation of the Area/Volume Swept by the Trawl --------------
+# Calculation of the Area/Volume Swept by the Trawl --------------
 
 summary(hauls$Use_WingSpread)
 summary(hauls$Use_DoorSpread)
@@ -1141,8 +1185,8 @@ summary(hauls$newDist)
 
 plot(hauls$DepthNew[hauls$Country=="IE"], hauls$Use_WingSpread[hauls$Country=="IE"])
 
-hauls$SweptArea_wing_m_sqrd<-hauls$Use_WingSpread*hauls$newDist
-hauls$SweptArea_wing_km_sqrd<-hauls$SweptArea_wing_m_sqrd/1000/1000
+hauls$SweptArea_wing_m_sqrd <- hauls$Use_WingSpread*hauls$newDist
+hauls$SweptArea_wing_km_sqrd <- hauls$SweptArea_wing_m_sqrd/1000/1000
 summary(hauls$SweptArea_wing_km_sqrd)
 summary(hauls$Survey)
 cols<-topo.colors(13)
@@ -1153,7 +1197,7 @@ plot(hauls$HaulDur,hauls$SweptArea_wing_km_sqrd, pch=19, col=cols[hauls$Survey])
 16.05/68.12
 16.05/0.23
 hauls[, c("QualityWing_SweptArea") := list(paste0(qualityDistance, hauls$QualityWing)),]  
-check_speed<-hauls$newDist/hauls$HaulDur
+check_speed <- hauls$newDist/hauls$HaulDur
 
 summary(check_speed)
 185.20/1854*60
@@ -1173,7 +1217,7 @@ setdiff(list1, list)
 setdiff( list, list1) ### these are due to removing 'BAK'
 
 
-HL1<-subset(HL, NewUniqueID2%in%list)
+HL1 <- subset(HL, NewUniqueID2%in%list)
 
 save(list=ls(all=T), file = "./script6_output.rda")
 
