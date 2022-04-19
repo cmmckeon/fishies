@@ -26,6 +26,9 @@ summary(hauls)
 
 
 
+
+
+
 # 4.1.1 Sample Location ------------------
 
 

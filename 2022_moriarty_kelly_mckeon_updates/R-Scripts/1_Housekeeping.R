@@ -18,7 +18,7 @@ rm(list = ls())
 ### library packages ---------------
 list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "lme4", "plyr",
         "marmap", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
-        "mapplots", "class", "gridExtra", "ggmap")
+        "mapplots", "class", "gridExtra", "ggmap", "tidyverse")
 lapply(list, require, character.only=T)
 lapply(list, citation)
 
@@ -82,6 +82,23 @@ rand_vect <- function(N, M, sd = 1, pos.only = TRUE) {
     vec[pos][i]  <- vec[pos ][i <- sample(sum(pos ), 1)] - 1
   }
   vec
+}
+
+## Ruth's function for removing rows where all values are NA. CM
+rem_na_df <- function(dat_fr = mydata) {
+  
+  # Create function which counts the number of NA's in each row.
+  countNAs <- function(x) {length(which(is.na(x)))}
+  numNAs <- apply(dat_fr,1,countNAs)
+  # apply this function to each row (2nd argument = 1) in the dataset using apply,
+  # and store this in a new vector called numNAs
+  
+  nrow(dat_fr[numNAs == ncol(dat_fr),])
+  
+  #  Delete all blank rows by Deleting rows where all cells are NA's
+  #  These will be rows where numNAs is equal to the number col of the dataframe
+  dat_fr <- dat_fr[numNAs != ncol(dat_fr),]
+  
 }
 
 # If FALSE, mostly suppress CI computation
