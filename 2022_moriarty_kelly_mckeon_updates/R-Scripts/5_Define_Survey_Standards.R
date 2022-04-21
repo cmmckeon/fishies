@@ -1,7 +1,7 @@
 # title: "5_Define_Survey_Standards.R"
 # last updated: "08/04/2022"
 
-# This is Script 5 of X
+# This is Script 5 of 7
 # The next step is to 'define' the surveys - after the genuine errors have been 
 # checked/changes e.g. a haul recorded as 90mins but was actually 30mins would be
 # deleted if this step occurred befor the checks are done.
@@ -24,7 +24,7 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 # note numeric cols are correct
 
 
-## 1.2 Overview of the M & A Process##
+## Overview of the M & A Process
 
 # In section 1.2  (Moriarty & Greenstreet, 2016)
 # We show the processes undertaken to standardise/exclude hauls from the data set
@@ -112,8 +112,6 @@ check <- hauls[hauls$Survey == "NS-IBTS" & hauls$Quarter %in% c("2", "4") & haul
 hauls <- hauls[hauls$NewUniqueID2 %nin% check$NewUniqueID2,]
 
 
-
-
 # check quaters by survey
 cols<-rainbow(13)
 plot(hauls$Quarter, col=cols[as.factor(hauls$Survey)], pch=20)
@@ -167,7 +165,7 @@ write.csv(hauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_HH
 check<-unique(hauls$NewUniqueID2)
 
 ### remove hauls no longer in the header data from the HL data
-HL2$NewUniqueID2<-paste(HL2$Survey,HL2$Year, HL2$Quarter,HL2$Ship, 
+HL2$NewUniqueID2 <- paste(HL2$Survey,HL2$Year, HL2$Quarter,HL2$Ship, 
                         HL2$HaulNo, HL2$Gear, HL2$StNo, HL2$Country,
                         sep="_")
 
@@ -196,7 +194,7 @@ table(HHcheck$Survey, HHcheck$Year)
 
 
 # now select the hauls and HL files that match up given the new unique IDS
-HL3<- HL2[HL2$NewUniqueID2 %in% hauls$NewUniqueID2, ]
+HL3 <- HL2[HL2$NewUniqueID2 %in% hauls$NewUniqueID2, ]
 checkhl1<-unique(HL3$NewUniqueID2)
 
 ### 
@@ -218,10 +216,10 @@ setdiff(check, checkhl1)
 
 
 # difference in Valid_Aphia
-Valid_AphiaHL<-unique(HL3$Valid_Aphia)
+Valid_AphiaHL <- unique(HL3$Valid_Aphia)
 names(HL3)
 
-Valid_AphiaHL2<-unique(HL2$Valid_Aphia)
+Valid_AphiaHL2 <- unique(HL2$Valid_Aphia)
 setdiff(Valid_AphiaHL, Valid_AphiaHL2)
 write.csv(Valid_AphiaHL2, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Standard_Survey_Species_list.csv")
 write.csv(Valid_AphiaHL, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Full_Species_list.csv")

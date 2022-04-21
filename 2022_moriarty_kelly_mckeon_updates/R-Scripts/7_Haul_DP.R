@@ -1,47 +1,32 @@
-# title: "8_Haul_DP.R"
+# title: "7_Haul_DP.R"
 # last updated: "08/04/2022"
 
 
 
-# This is Script 8 of 9 
+# This is Script 7 of 7 
 # The purpose of this script is to seperate the surveys and 
 # define the final data products structure for the haul files
-# Then select the Standard Survey Area using the agreed criteria 
-
-
-### Notes on June 2021 version. 
-# Script 7 cleaning of HL data has not been run, 
-#  Standard Sample Area not applied. 
-# Script parts relating to the Biological Product and Standard Sample Area are 
-# deleted for simplicity. 
 
 # load("./script6_output.rda")
-
 
 # Prep Data --------------
 
 # Here we assign the column names to the values that will appear in the top end 
 # of the data product to insure transparency and it is user friendly
 
-h<-hauls
+h <- hauls
 # check that the final list of hauls match in both groups
-list<-unique(h$New_UniqueID)
-#list<-unique(dat8$New_UniqueID)
-# fix time
-summary(as.numeric(h$TimeShot))
-h$TimeShot_numeric<-(as.numeric(h$TimeShot))
-h$TimeShot_numeric[h$TimeShot_numeric>2359]<-h$TimeShot_numeric[h$TimeShot_numeric>2459]/100
-find<-subset(h, TimeShot_numeric>2359,)
-summary(as.numeric(h$TimeShot_numeric))
-h$TimeShot<-h$TimeShot_numeric
+list <- unique(h$NewUniqueID2)
 
 
-#  Add Survey Acronyms from Data products
+#  Add Survey Acronyms from Data products -----------------------
 # See table 2.1 in Moriarty et al (in prep) for details 
 names(h)
 
-#h$Survey <- droplevels(h$Survey)
+h$Survey <- droplevels(h$Survey)
 unique(h$Survey)
+
+h$Survey_Acronym <- as.character(h$Survey)
 
 h$Survey_Acronym[h$Survey=="NS-IBTS"&h$Quarter=="1"]<-"GNSIntOT1"
 h$Survey_Acronym[h$Survey=="NS-IBTS"&h$Quarter=="3"]<-"GNSIntOT3"
@@ -50,39 +35,20 @@ h$Survey_Acronym[h$Survey=="SWC-IBTS"&h$Quarter=="1"]<-"CSScoOT1"
 h$Survey_Acronym[h$Survey=="SWC-IBTS"&h$Quarter=="4"]<-"CSScoOT4"
 h$Survey_Acronym[h$Survey=="SCOWCGFS"&h$Quarter=="1"]<-"CSScoOT1"
 h$Survey_Acronym[h$Survey=="SCOWCGFS"&h$Quarter=="4"]<-"CSScoOT4"
-
 h$Survey_Acronym[h$Survey=="IE-IGFS"&h$Quarter=="4"]<-"CSIreOT4"
-
 h$Survey_Acronym[h$Survey=="NIGFS"&h$Quarter=="1"]<-"CSNIrOT1"
-
-h$Survey_Acronym[h$Survey=="NIGFS"&h$Quarter=="2"]<-"CSNIrOT2" ## CM Feb 2022
-
+h$Survey_Acronym[h$Survey=="NIGFS"&h$Quarter=="2"]<-"CSNIrOT2" 
 h$Survey_Acronym[h$Survey=="NIGFS"&h$Quarter=="4"]<-"CSNIrOT4"
 h$Survey_Acronym[h$Survey=="EVHOE"&h$Quarter=="4"]<-"CSBBFraOT4"
-# h$Survey_Acronym[h$Survey=="SP-ARSA"&h$Quarter=="1"]<-"BBIC(s)SpaOT1"
-# h$Survey_Acronym[h$Survey=="SP-ARSA"&h$Quarter=="4"]<-"BBIC(s)SpaOT4"
-
-
 h$Survey_Acronym[h$Survey=="ROCKALL"&h$Quarter=="3"]<-"WAScoOT3"
 h$Survey_Acronym[h$Survey=="SCOROC"&h$Quarter=="3"]<-"WAScoOT3"
-#h$Survey_Acronym[h$Survey=="SP_PORC"&h$Quarter=="3"]<-"WASpaOT3"
-h$Survey_Acronym[h$Survey=="BTS"&h$Quarter=="3"&
-                   h$Country=="NL"]<-"GNSNetBT3"
-h$Survey_Acronym[h$Survey=="BTS"&h$Quarter=="3"&
-                   h$Country=="DE"]<-"GNSGerBT3"
-h$Survey_Acronym[h$Survey=="BTS"&h$Quarter=="3"&
-                   h$Country=="GB"]<-"GNSEngBT3"
-# h$Survey_Acronym[h$Survey=="BTS-VIIa"&h$Quarter=="3"&
-#                    h$Country=="ENG"]<-"CSEngBT3"
+h$Survey_Acronym[h$Survey=="BTS"&h$Quarter=="3"&h$Country=="NL"]<-"GNSNetBT3"
+h$Survey_Acronym[h$Survey=="BTS"&h$Quarter=="3"&h$Country=="DE"]<-"GNSGerBT3"
+h$Survey_Acronym[h$Survey=="BTS"&h$Quarter=="3"&h$Country=="GB"]<-"GNSEngBT3"
+
 summary(as.factor(h$Survey_Acronym))
 
-table(h$Survey[is.na(h$Survey_Acronym) ], h$Country[is.na(h$Survey_Acronym) ])
-### Belgian BTS survey.. this wasn't in original product give it a name
-
-h$Survey_Acronym[h$Survey=="BTS"& h$Country=="BE"]<-"BEBTS_not_in_previous"
-
-
-# add a gear type filer column
+# add a gear type filer column -------------------
 h$GearType[h$Survey=="BTS"]<-"BT"
 h$GearType[is.na(h$GearType)]<-"OT"
 # new haul unique identifer Survey Acronym/ship/year/haul No
@@ -93,61 +59,87 @@ h$Ship_old <- ships$TS_Ship[match(h$Ship,ships$ShipC)]
 
 table(h$Ship, h$Ship_old)
 
-h$HaulID<-paste(h$Survey_Acronym,h$Ship_old,h$Year,h$HaulNo, h$Country, h$StNo, sep="/")
+h$HaulID<-paste(h$Survey_Acronym,h$Quarter, h$Ship_old,h$Year,h$HaulNo, h$Country, h$StNo, sep="_")
 length(which(duplicated(h$HaulID)))
+
+list <- h$HaulID[which(duplicated(h$HaulID))]
+check <- h[which(h$HaulID %in% list),] ## why are the GB surveys from two different days? Does this matter?
+
 h$YearShot<-h$Year                
 h$MonthShot<-h$Month                  
 h$DayShot<-h$Day
-#h$HourShot
-#h$MinShot
+
 names(hauls)
 summary(as.factor(hauls$Month))
-h$HaulDur_min<-h$HaulDur
-h$ICESStSq<-h$check_StatRec
-h$SurvStratum<-h$DepthStratum
+h$HaulDur_min <- h$HaulDur
+h$ICESStSq <- h$check_StatRec
+h$SurvStratum <- h$DepthStratum
 summary(as.factor(h$SurvStratum))
-# Sort out strata 
+
+# Sort out strata ---------------------
 names(h)
 h$SurvStratum <- as.character(h$SurvStratum)
-h$SurvStratum[h$Survey_Acronym=="GNSIntOT1"]<-h$ICESStSq[h$Survey_Acronym=="GNSIntOT1"]
-h$SurvStratum[h$Survey_Acronym=="GNSIntOT3"]<-h$ICESStSq[h$Survey_Acronym=="GNSIntOT3"]
-h$SurvStratum[h$Survey_Acronym=="GNSGerBT3"]<-h$ICESStSq[h$Survey_Acronym=="GNSGerBT3"]
-h$SurvStratum[h$Survey_Acronym=="GNSNetBT3"]<-h$ICESStSq[h$Survey_Acronym=="GNSNetBT3"]
-h$SurvStratum[h$Survey_Acronym=="GNSEngBT3"]<-h$ICESStSq[h$Survey_Acronym=="GNSEngBT3"]
+h$SurvStratum[h$Survey_Acronym=="GNSIntOT1"] <- h$ICESStSq[h$Survey_Acronym=="GNSIntOT1"]
+h$SurvStratum[h$Survey_Acronym=="GNSIntOT3"] <- h$ICESStSq[h$Survey_Acronym=="GNSIntOT3"]
+h$SurvStratum[h$Survey_Acronym=="GNSGerBT3"] <- h$ICESStSq[h$Survey_Acronym=="GNSGerBT3"]
+h$SurvStratum[h$Survey_Acronym=="GNSNetBT3"] <- h$ICESStSq[h$Survey_Acronym=="GNSNetBT3"]
+h$SurvStratum[h$Survey_Acronym=="GNSEngBT3"] <- h$ICESStSq[h$Survey_Acronym=="GNSEngBT3"]
 find<-subset(h, is.na(SurvStratum),)
 summary(as.factor(find$Survey_Acronym))
-h$SurvStratum[is.na(h$SurvStratum)]<-"not_recorded"
+h$SurvStratum[is.na(h$SurvStratum)] <- "not_recorded"
 # we don't believe the recorded wingspreads of 10 on the 
 # CGFS - using modelled data instead. 
-h$Use_WingSpread[h$Survey_Acronym=="GNSFraOT4"&h$Year=="2014"]<-h$mod1_wingspread_gov[h$Survey_Acronym=="GNSFraOT4"&h$Year=="2014"]
+
+h <- as.data.frame(h)
+## Quick look at dataframe
+par(mfrow = c(3,3))
+# Factors
+for (i in names(Filter(is.factor, h))) {
+  plot(h[,i],
+       main = paste(i))
+}
+
+## Numeric variables
+for (i in names(Filter(is.numeric, h))) {
+  hist(h[,i],
+       breaks = 3000,
+       main = paste(i),
+       xlab = paste(i))
+}
+
+h$Use_WingSpread[h$Survey_Acronym=="GNSFraOT4"&h$Year=="2014"] <- h$mod1_wingspread_gov[h$Survey_Acronym=="GNSFraOT4"&h$Year=="2014"]
 h$QualityWing[h$Survey_Acronym=="GNSFraOT4"&h$Year=="2014"]<-"mod1_wing_gov"
-h$Depth_m<-h$DepthNew
-h$Distance_km<-h$newDist/1000
-h$WingSpread_m<-h$Use_WingSpread
-h$DoorSpread_m<-h$Use_DoorSpread
-h$NetOpen_m<-h$Use_Netopening
-summary(h$SweptArea_wing_km_sqrd)
-h$SweptArea_wing_m_sqrd<-h$Use_WingSpread*h$newDist
-h$SweptArea_wing_km_sqrd<-h$SweptArea_wing_m_sqrd/1000/1000
-h$WingSwpArea_sqkm<-h$SweptArea_wing_km_sqrd
-h$WingSwpVol_CorF<-1/(h$Use_Netopening/1000)
-h$DoorSwptArea_CorF<-(h$Use_WingSpread/1000)/(h$Use_DoorSpread/1000)
-h$DoorSwptVol_CorF<-(h$Use_WingSpread/1000)/((h$Use_DoorSpread/1000)*(h$Use_Netopening/1000))
+h$Depth_m <- h$DepthNew
+h$Distance_km <- h$newDist/1000
+h$WingSpread_m <- h$Use_WingSpread
+h$DoorSpread_m <- h$Use_DoorSpread
+h$NetOpen_m <- h$Use_Netopening
+summary(h$SweptArea_wing_km_sqrd) ## 18841 NAs!!
+
+h$SweptArea_wing_m_sqrd <- h$Use_WingSpread*h$newDist
+h$SweptArea_wing_km_sqrd <- h$SweptArea_wing_m_sqrd/1000/1000
+h$WingSwpArea_sqkm <- h$SweptArea_wing_km_sqrd
+h$WingSwpVol_CorF <- 1/(h$Use_Netopening/1000)
+h$DoorSwptArea_CorF <- (h$Use_WingSpread/1000)/(h$Use_DoorSpread/1000)
+h$DoorSwptVol_CorF <- (h$Use_WingSpread/1000)/((h$Use_DoorSpread/1000)*(h$Use_Netopening/1000))
 summary(h$WingSwpVol_CorF)
 summary(h$DoorSwptArea_CorF)
 summary(h$DoorSwptVol_CorF)
-h$ShootLat_degdec<-h$ShootLat
-h$ShootLong_degdec<-h$ShootLong
+h$ShootLat_degdec <- h$ShootLat
+h$ShootLong_degdec <- h$ShootLong
+
+check <- droplevels(h[which(is.na(h$SweptArea_wing_m_sqrd)),])
+levels(check$Survey) ## "BTS" "DYFS" "NS-IBTS" "SNS" 
+check <- check[check$Survey %nin% c("DYFS", "SNS"),] ## 10829 missing swept areas from DYFS and SNS
+
 
 #check duplicate times in h file
-h$date_time_check<-paste(h$Ship, h$Year, h$Quarter, h$month, h$Day, h$TimeShot, sep="/")
-list<-(unique(h$date_time_check))
-# 44 combos are the same now
-list<-h[duplicated(h$date_time_check),]
-# this is a case of time not been updated on from the previous haul.
+h$date_time_check <- paste(h$Ship, h$Year, h$Quarter, h$month, h$Day, h$TimeShot, sep="_")
+list <- h[duplicated(h$date_time_check),] # 2120 ids are duplicate 
+# Meadhbh says this is a case of time not been updated on from the previous haul.
 # an estimated time will be added into the dataset
 
-check1 <- length(unique(h$HaulID))
+check <- length(unique(h$HaulID))
 
 h$TimeShot[h$UniqueIDP=="IE-IGFS_2003_4_CEXP_73_GOV"&h$TimeShot=="1651"]<-1851
 h$TimeShot[h$UniqueIDP=="IE-IGFS_2004_4_CEXP_11_GOV"&h$TimeShot=="813"]<-2013
@@ -163,46 +155,44 @@ h$TimeShot[h$UniqueIDP=="ROCKALL_2015_3_SCO3_346_GOV"&h$TimeShot=="926"]<-1130
 h$TimeShot[h$UniqueIDP=="SWC-IBTS_2015_1_SCO3_62_GOV"&h$TimeShot=="1010"]<-1320
 h$TimeShot[h$UniqueIDP=="SPNGFS_2006_4_CDS_78_BAK"&h$TimeShot=="614"]<-1814
 h$TimeShot[h$UniqueIDP=="BTS_2003_3_ISI_11_BT8" &h$TimeShot=="925"]<-1125
-
 h$TimeShot[h$UniqueIDP=="NS-IBTS_2016_3_SCO3_281_GOV" &h$TimeShot=="1424"]<-1705
-find<-subset(h, h$Ship=="EZA", ) ## not present
-summary(as.factor(find$TimeShot))
-#h$TimeShot[h$Ship=="EZA"]<-100*as.numeric(h$TimeShot[h$Ship=="EZA"])
+
+
 # wash and repeat
-h$date_time_check<-paste(h$Ship, h$Year, h$Quarter, h$Month, h$Day, h$TimeShot, sep="_")
-list<-(unique(h$date_time_check))
-# 0 combos are the same
-list<-h[duplicated(h$date_time_check),]
+h$date_time_check <- paste(h$Ship, h$Year, h$Quarter, h$Month, h$Day, h$TimeShot, sep="_")
+list<-h[duplicated(h$date_time_check),] ## 2063 ids are the same...
 
-### RK - 12 left not going to update these now. To be checked further later
+check <- droplevels(h[duplicated(h$date_time_check),])
+levels(check$Survey) ## offending surveys = "BTS" "DYFS" "IE-IGFS"  "NS-IBTS"  "SCOROC"   "SCOWCGFS"
+table(check$Survey) ## 2023 from BTS
 
-table(list$Survey, list$Year)
+table(h$Survey, h$Year)
 
 
-
-# recheck
-list<-(unique(h$HaulID))
-list<-h[duplicated(h$HaulID),]
+list < -(unique(h$HaulID))
+list <- h[duplicated(h$HaulID),]
 summary(h$WingSwpArea_sqkm)
 summary(h$Depth_m)
 summary(h$DoorSwptVol_CorF)
 
 h$SurveyDATRAS <- h$Survey
 
-haul_dat<-subset(h, 
+haul_dat <- unique(subset(h, 
                  select=c(HaulID,Survey_Acronym,Ship,GearType,Gear, 
                           YearShot,MonthShot,DayShot,TimeShot, 
                           HaulDur_min,ShootLat_degdec,ShootLong_degdec,ICESStSq,
                           SurvStratum,Depth_m,Distance_km,WingSpread_m, 
                           DoorSpread_m, NetOpen_m,WingSwpArea_sqkm,
                           WingSwpVol_CorF, DoorSwptArea_CorF,DoorSwptVol_CorF,
-                          SurveyDATRAS))
+                          SurveyDATRAS)))
 
 require(rgdal)
-europe<-readOGR("./Regional Boundaries Maps and Data/shapes//europe.dbf","europe") ## CM Feb 2022
+europe<-readOGR("./Regional Boundaries Maps and Data/shapes//europe.dbf","europe") 
 
 
-for (cat in unique(haul_dat$Survey_Acronym)){
+check <- haul_dat[which(!is.na(haul_dat$WingSwpArea_sqkm)),]
+
+for (cat in unique(check$Survey_Acronym)){
   mypath <- file.path(paste("Data_QA_Process_V5_2022/Diagnostics/Haul Diagnostics", cat, ".jpeg", sep = ""))
   jpeg(file=mypath)
   par(mfrow=c(2,3))
@@ -235,11 +225,11 @@ write.csv(haul_dat, "Data_QA_Process_V5_2022/Sampling_info_all_surveysV5.txt",  
 
 write.csv(table(haul_dat$YearShot,haul_dat$SurveyDATRAS), "Data_QA_Process_V5_2022/Hauls_per_year_final_prod.csv")
 
-# ## Looking at which varibles still contain NAs
-# list <- c()
-# for (i in names(h)){
-#   list[i] <-length(which(is.na(h[,i])))
-# }
-# 
-# print(list)  
+## Looking at which varibles still contain NAs
+list <- c()
+for (i in names(haul_dat)){
+  list[i] <-length(which(is.na(haul_dat[,i])))
+}
+
+print(list)
 

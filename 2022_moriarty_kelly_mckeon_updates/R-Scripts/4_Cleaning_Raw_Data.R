@@ -1,7 +1,7 @@
 # title: "4_Cleaning_Raw_Data.R"
 # last updated: "08/04/2022"
 
-# This is Script 4 of X 
+# This is Script 4 of 7
 # The purpose of this script is to check the merged datasets and insure all changes  
 # mentioned in the error trapping documentation are transfered into the data product
 
@@ -449,7 +449,7 @@ HH1$DoorSpread[HH1$UniqueIDP%in%list] <- NA
 HH1$Netopening[HH1$UniqueIDP=='NS-IBTS_2011_1_THA2_74_GOV']<-NA
 
 
-## 1.1.2 The Third Quarter International Bottom Trawl Survey (GNSIntOT3) ------------------
+## Third Quarter International Bottom Trawl Survey (GNSIntOT3) ------------------
 
 ## NORWAY NS-IBTS Q3 --------------------
 
@@ -491,7 +491,7 @@ check<-HH1[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV",]
  HH1$HaulLat[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-54.641
  HH1$HaulLong[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-5.564
  
-## 1.1.3 The Fourth Quarter French Channel Groundfish Survey  (GNSFraOT4) ------------
+## Fourth Quarter French Channel Groundfish Survey  (GNSFraOT4) ------------
 
 # quick check from Appendix 1 Figure 1.1.3.3 which highlights a haul duration of
 # 90 minutes in the haul with unique ID 1995/4/GWD/49/GOV. Is this correct?
@@ -543,9 +543,9 @@ HH1$HaulLong[HH1$UniqueIDP%in%list]<-as.numeric(HH1$HaulLong[HH1$UniqueIDP%in%li
 HH1$ShootLong[HH1$UniqueIDP%in%list]<-as.numeric(HH1$ShootLong[HH1$UniqueIDP%in%list])*-1
 
 
-# 1.2 The Celtic Seas  --------------
+# The Celtic Seas  --------------
 
-##1.2.4 The First Quarter Northern Irish Groundfish Survey (CSNIrOT1)#
+## First Quarter Northern Irish Groundfish Survey (CSNIrOT1)#
 
 # In figure 1.2.4.1 there are outliers in the following door spread values:
 # •	Unique ID: 2008_1_COR_15_ROT, Depth 48 m Door spread 26.2 m
@@ -616,7 +616,7 @@ HL2$UniqueIDP<-paste(HL2$Survey,HL2$Year,HL2$Quarter,HL2$Ship_old,
 # source(already on DATRAS)
 # or alternatively fixed here with a line of code
 
-# 1.1.1	The First Quarter International Bottom Trawl Survey (GNSIntOT1) ------------
+# First Quarter International Bottom Trawl Survey (GNSIntOT1) ------------
 
 # Bathyraja brachyurops (Fowler, 1910) # AphiaID: 271509 
 # mismapped  should be Raja brachyura (Lafont, 1871) # AphiaID: 367297  

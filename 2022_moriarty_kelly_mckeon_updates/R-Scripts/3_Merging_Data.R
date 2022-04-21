@@ -1,7 +1,7 @@
 # title: "3_Merging_Data.R"
 # last updated: "08/04/2022"
 
-# This is Script 3 of x 
+# This is Script 3 of 7
 # The purpose of this script is to merge the data into appropriate groupings for 
 # data checking and processing
 

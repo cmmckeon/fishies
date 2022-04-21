@@ -1,7 +1,7 @@
 # title: "2_Load_Data.R"
 # last updated: "08/04/2022"
 
-# This is Script 2 of X 
+# This is Script 2 of 7
 # The purpose of this script is to load the raw data into R from the various folders.
 
 ## set up

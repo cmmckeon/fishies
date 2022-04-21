@@ -3,7 +3,7 @@
 
 
 
-# This is Script 6 of X
+# This is Script 6 of 7
 # This Script follows the guidlines outlined in Section 4.1 HH Data - Haul Summary Information
 # from: Moriarty and Greenstreet 2016 
 # The next step is to model missing data in the haul data of the surveys, and plot 

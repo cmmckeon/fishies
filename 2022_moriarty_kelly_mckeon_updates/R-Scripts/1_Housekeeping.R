@@ -3,7 +3,7 @@
 # last updated: "07/04/2022"
 
 
-# This is Script 1 of X 
+# This is Script 1 of 7
 # The purpose of this script is to set up the working directory for this project,
 # do general house keeping, insure all functions and packages are uploaded.
 
