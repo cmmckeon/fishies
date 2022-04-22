@@ -41,12 +41,7 @@ summary(as.factor(hauls$DepthStratum)) ## many NAs
 table(hauls$StatRec, useNA = "ifany") ## some NAs
 # ices<-read.csv("./Regional Boundaries Maps and Data/ICES_rectangles_statistics/Ices_rect_table.csv")
 # names(ices)
-# shoot longs that are NA should be -9 , silly DATRAS -9 thing messing stuff up here!
 summary(hauls$ShootLong)
-### not changing these as making them -9 seems like telling R it's a real location... RK 2021
-# long_error<-hauls[is.na(hauls$ShootLong),]
-# list<-long_error$UniqueID
-# hauls$ShootLong[hauls$UniqueID%in%list]<--9
 
 table(hauls$Survey[is.na(hauls$ShootLong)])
 
@@ -57,19 +52,24 @@ table(hauls$Survey[is.na(hauls$ShootLong)])
 # check haul positions match ICES Stats
 names(hauls)
 summary(hauls$ShootLat)
-lat<-hauls$ShootLat
-hauls$check_StatRec<- ices.rect2(hauls$ShootLong, hauls$ShootLat)
-summary(as.factor(hauls$check_StatRec))
+lat <- hauls$ShootLat
+hauls$check_StatRec <- ices.rect2(hauls$ShootLong, hauls$ShootLat)
+summary(as.factor(hauls$check_StatRec)) ## 31494!
 summary(as.factor(hauls$Survey))
-check<-subset(hauls, !(hauls$check_StatRec%in%hauls$StatRec))
-check<-hauls[which(hauls$check_StatRec!=hauls$StatRec),]
-check<-subset(hauls, is.na(hauls$DepthStratum))
-summary(as.factor(check$Survey))
-summary(as.factor(hauls$check_StatRec))
+check <- subset(hauls, !(hauls$check_StatRec%in%hauls$StatRec)) ## 20
+check <- hauls[which(hauls$check_StatRec!=hauls$StatRec),] # 2383 differences
+check <- subset(hauls, is.na(hauls$DepthStratum)) ## 52527 NAs in depthstratum
+
 
 hauls$StatRec[is.na(hauls$ShootLong)] ### those with ShootLats did have statistical rectangles use these - RK
 
 hauls$check_StatRec[is.na(hauls$ShootLong)] <- hauls$StatRec[is.na(hauls$ShootLong)]
+
+table(hauls$StatRec)
+table(is.na(hauls$StatRec))
+table(hauls$check_StatRec)
+
+check <- hauls[hauls$StatRec != hauls$check_StatRec,]
 
 # use Check StatRec col = mistakes in actual Stat Rec.
 # some mis-matches - use check_StatRec for correct Stat Rec
@@ -120,7 +120,7 @@ plot(europe,add=TRUE, xlim = c(-16, 13), ylim = c(36, 62), asp = 1, col=c('gray8
      border='gray3')
 #text(ices$Centr_X, ices$Centr_Y, ices$ICESNAME)
 plot(ospar, col="red", add=T, lwd=4)
-check<-subset(hauls, !(hauls$check_StatRec%in%hauls$StatRec))
+check <- subset(hauls, !(hauls$check_StatRec%in%hauls$StatRec))
 points(check$ShootLong, check$ShootLat, col="red")
 points(hauls$ShootLong, hauls$ShootLat, pch=19, col="black")
 unique(check$Survey)
@@ -130,7 +130,7 @@ unique(check$Survey)
 
 # Depth -----------------------
 
-hauls$EstDepth<-NA
+hauls$EstDepth <- NA
 
 check <- hauls[is.na(hauls$Depth),]
 
@@ -177,16 +177,18 @@ check <- hauls[is.na(hauls$Depth),]
 ### calculate Depths only for hauls where Shoot Longs are known RK
 
 
-NOAA_Depth<-get.depth(papoue, x=hauls$ShootLong[!is.na(hauls$ShootLong)], y=hauls$ShootLat[!is.na(hauls$ShootLong)], locator=FALSE)
+NOAA_Depth <- get.depth(papoue, x=hauls$ShootLong[!is.na(hauls$ShootLong)], y=hauls$ShootLat[!is.na(hauls$ShootLong)], locator=FALSE)
 
 hauls$EstDepth[!is.na(hauls$ShootLong)] <- NOAA_Depth$depth*-1
 
-hauls$DepthNew<-hauls$Depth
-hauls$DepthNew[is.na(hauls$Depth)]<-hauls$EstDepth[is.na(hauls$Depth)] 
+hauls$DepthNew <- hauls$Depth
+hauls$DepthNew[is.na(hauls$Depth)] <- hauls$EstDepth[is.na(hauls$Depth)] 
+summary(hauls$DepthNew) ## try depth at station in previous year(average over 5 years).... also see how many rows affected
+# hauls$DepthNew[hauls$Depth==4] <- 18
+# hauls$DepthNew[hauls$Depth==-9] <- 37
 summary(hauls$DepthNew)
-hauls$DepthNew[hauls$Depth==4]<-18
-hauls$DepthNew[hauls$Depth==-9]<-37
-summary(hauls$DepthNew)
+
+# need to drop negative depths - get average depths from stations as above
 
 dev.new()
 
@@ -225,11 +227,13 @@ text(9.9, 47.5, "2000m")
 dev.off()
 dev.new()
 
+## start
+
 png(file = "Data_QA_Process_V5_2022/Diagnostics/box_plot_depth_differences_survey.png", bg = "transparent")
 plot(hauls$Survey,hauls$Diff_dep, col=cols[hauls$Survey], pch=19, main = "Difference in depth")
 dev.off()
 
-find<-subset(hauls, hauls$DepthNew<5,)
+find<-subset(hauls, hauls$DepthNew<5,) ## 680 - surely drop? check mannual
 
 hist(sqrt((hauls$Depth- hauls$DepthNew)^2))
 ## there a problems - a couple of depth differences over 1000, many over 200, a few negative depths.
@@ -241,8 +245,8 @@ summary(factor(hauls$SweepLngt)) ##
 
 # Sweep Lenght Values are sometimes incorrect or missing, 
 # delete incorrect values 
-hauls$EstSweepLngt<-hauls$SweepLngt
-hauls$EstSweepLngt[hauls$SweepLngt>121&hauls$Gear=="GOV"]<-NA #RK edit - i don't like -9's!
+hauls$EstSweepLngt <- hauls$SweepLngt
+hauls$EstSweepLngt[hauls$SweepLngt>121&hauls$Gear=="GOV"] <-NA #RK edit - i don't like -9's!
 summary(as.factor(hauls$EstSweepLngt))
 
 
@@ -250,15 +254,15 @@ hauls$Gear[which(hauls$SweepLngt == 0)] ## There should not be 0's in GOV gear s
 hauls$EstSweepLngt[which(hauls$EstSweepLngt == 0)]  <-NA # RK 2021
 
 # find out extent of issue
-sweepsummary<-ddply(hauls, c("Survey","Country", "Year", "Quarter", "EstSweepLngt"),
+sweepsummary <- ddply(hauls, c("Survey","Country", "Year", "Quarter", "EstSweepLngt"),
                     summarise, N=length(EstSweepLngt))
 sum(sweepsummary$N[which(is.na(sweepsummary$EstSweepLngt))])
 summary(factor(hauls$Survey))
 # BTS Surveys don't record a sweep - should be NA
 # ROT surveys - no sweep - should be NA
 # NCT surveys - no sweeps 
-hauls$EstSweepLngt[hauls$Survey=="BTS"]<-NA
-hauls$EstSweepLngt[hauls$Survey=="NIGFS"]<-NA
+hauls$EstSweepLngt[hauls$Survey=="BTS"] <-NA
+hauls$EstSweepLngt[hauls$Survey=="NIGFS"] <-NA
 
 # in 1983/1984 no country recorded sweep, but in 1985+ countries 
 # reported using "Recommended Sweeps" so gonna apply the 60/110 rule to these 
@@ -401,8 +405,8 @@ plot(hauls$Survey, hauls$GroundSpeed, pch=19, xlab="Survey",
 dev.off()
 dev.new()
 # outliers in Groundspeed found
-check <- hauls[which(!is.na(hauls$GroundSpeed)),]
-check<-check[check$GroundSpeed<3|check$GroundSpeed>5, ]
+check <- hauls[which(!is.na(hauls$GroundSpeed)),] ## 37525
+check <- check[check$GroundSpeed<3|check$GroundSpeed>5, ] #1284 recorded ground speeds outside of 3-5 range
 
 png(file="Data_QA_Process_V5_2022/Diagnostics/groundspeed_distance_comparision.png", bg="transparent")
 plot(check$GroundSpeed*check$HaulDur*1852/60, check$Distance, pch=19, col="black")
@@ -457,7 +461,7 @@ needSpeed <- droplevels(hauls[is.na(hauls$GroundSpeed),])
 needSpeedGear <- factor(levels(droplevels(needSpeed$Gear[is.na(needSpeed$GroundSpeed)]))) ## gear with missing ground speed
 needSpeedShip <- factor(levels(droplevels(needSpeed$Ship[is.na(needSpeed$GroundSpeed)]))) ## ships with missing ground speed
 withSpeedShip <- factor(levels(droplevels(hauls$Ship[!is.na(hauls$GroundSpeed)]))) ## ships with some ground speed
-speed_none <- factor(setdiff(speed_missing, speed_some)) ## ships with no ground speed at all
+speed_none <- factor(setdiff(needSpeedShip, withSpeedShip)) ## ships with no ground speed at all
 
 # ID ships that have some missing GroundSpeed records
 canSpeedShip <- droplevels(needSpeedShip[needSpeedShip %in% withSpeedShip]) ## all ships with both missing and recorded ground speed
@@ -499,11 +503,11 @@ list<-pred_gear$NewUniqueID2
 hauls$predicted_groundspeed_gs2[hauls$NewUniqueID2%in%list] <- pred_gear$predicted_groundspeed_gs2[hauls$NewUniqueID2%in%list]
 
 # If real data available use that
-hauls$GroundSpeed_Used<-hauls$GroundSpeed
+hauls$GroundSpeed_Used <- hauls$GroundSpeed
 hauls$GroundSpeed_Used[hauls$GroundSpeed_Used < 2] <- NA
 hauls$GroundSpeed_Used[hauls$GroundSpeed_Used > 6] <- NA
 hauls$GroundSpeed_Used[hauls$UniqueIDP=="IE-IGFS_2015_4_CEXP_100_GOV"] <- NA
-hauls$GroundSpeed_Quality_Code[!is.na(hauls$GroundSpeed_Used)]<-"Recorded_Groundspeed"
+hauls$GroundSpeed_Quality_Code[!is.na(hauls$GroundSpeed_Used)] <-"Recorded_Groundspeed"
 
 # If gear is ROT then no data ever available
 hauls$GroundSpeed_Quality_Code[hauls$Gear=="ROT"] <- "Manual_Speed"
@@ -642,16 +646,18 @@ outside_bounds<-subset(hauls1, hauls1$newDist/hauls1$manual_speed_distance > 1.5
 points(outside_bounds$HaulDur,outside_bounds$newDist, col="red", pch=19)
 # only 177 to check :) - RK - Meadhbh had 127
 # now 293
+table(outside_bounds$Survey) ## all surveys have some
 
 
 # if haversine is available use that
 list <- outside_bounds$NewUniqueID2
-hauls1$newDist[hauls1$NewUniqueID2%in%list] < -hauls1$LatLongDistance[hauls1$NewUniqueID2%in%list]
+hauls1$newDist[hauls1$NewUniqueID2%in%list] <- hauls1$LatLongDistance[hauls1$NewUniqueID2%in%list]
 hauls1$qualityDistance[hauls1$NewUniqueID2%in%list] <- "LatLongDistance"
 
 # recheck 
 outside_bounds<-subset(hauls1, hauls1$newDist/hauls1$manual_speed_distance>1.50|
                          hauls1$newDist/hauls1$manual_speed_distance<.5, )
+## now 242
 
 points(outside_bounds$HaulDur,outside_bounds$newDist, col="blue", pch=19)
 
@@ -692,6 +698,8 @@ check_no_match<-subset(check_dist_speed_match,
                          check_dist_speed_match$LatLongDistance/check_dist_speed_match$SpeedTimeDist<.8,)
 
 points(check_no_match$HaulDur,check_no_match$newDist, col="black", pch=19)
+## 159 obs
+
 # Does value lie within +/- 25% of Man Speed
 check_within_bounds<-subset(check_no_match, 
                             check_no_match$newDist/check_no_match$manual_speed_distance>1.25|
@@ -897,7 +905,7 @@ hauls$Use_DoorSpread[!is.na(hauls$DoorSpread)&
                                                               hauls$Gear=="GOV"]
 hauls$QualityDoor[!is.na(hauls$DoorSpread)]<-"raw_doorspread"
 
-list < -the_gov$UniqueID
+list <- the_gov$UniqueID
 hauls$mod1_doorspread_gov[hauls$UniqueID%in%list]<-the_gov$mod1_doorspread_gov[the_gov$UniqueID%in%list]
 
 hauls$Use_DoorSpread[is.na(hauls$DoorSpread)&
@@ -940,7 +948,7 @@ lines(new.x,pred[,"upr"],lty=3)
 points(x,y,pch=16,col="steelblue")
 
 # raw data looks good - no worrying outliers
-corrhaul_rot<-subset(hauls, Gear=="ROT",
+corrhaul_rot <- subset(hauls, Gear=="ROT",
                      select=c(Year, Depth, Distance,
                               DoorSpread))
 summary(corrhaul_rot)
@@ -1017,7 +1025,7 @@ summary(hauls$Use_WingSpread[hauls$Gear=="ROT"])
 
 # No sensors on this gear so mean is applied as supplied by ICES 2010
 # DoorSpread 45.7m
-hauls$DoorSpread[hauls$Gear=="NCT"]<- 45.7
+hauls$DoorSpread[hauls$Gear=="NCT"] <- 45.7
 # set up user values
 hauls$Use_DoorSpread[hauls$Gear=="NCT"]<-45.7
 hauls$QualityDoor[hauls$Gear=="NCT"]<-"mean_doorspread"
@@ -1159,7 +1167,10 @@ hauls$QualityNet[hauls$Gear=="BT8"]<-"raw_netopening"
 
 summary(hauls$Use_WingSpread[hauls$Gear=="BT4A"])
 
-### RK 2021 I still have NA's in key fields.. bound to be the BAK gear
+### CM 2022 I still have NA's in key fields - gear from new surveys?
+
+check <- hauls[hauls$Gear %nin% c("BT3", "BT4A1", "BT4P", "BT4S", "BT6", "H18"),]
+table(droplevels(check$Survey))
 
 table(hauls$Gear[is.na(hauls$Use_WingSpread)])
 table(hauls$Gear[is.na(hauls$Use_DoorSpread)])
@@ -1194,8 +1205,7 @@ plot(hauls$HaulDur,hauls$newDist, pch=19, col=cols[hauls$Survey])
 
 plot(hauls$HaulDur,hauls$SweptArea_wing_km_sqrd, pch=19, col=cols[hauls$Survey])
 
-16.05/68.12
-16.05/0.23
+
 hauls[, c("QualityWing_SweptArea") := list(paste0(qualityDistance, hauls$QualityWing)),]  
 check_speed <- hauls$newDist/hauls$HaulDur
 

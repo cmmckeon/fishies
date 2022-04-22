@@ -18,7 +18,7 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 # see script 3_merge_datasets for details on how this is done 
 # check data table names
 
-# 2 data tables 1 HH and 1 HL, 
+# 2 data tables: HH and  HL, 
 # we will focus on HH for the moment
 ## check the structure of these data tables
 # note numeric cols are correct
@@ -31,7 +31,7 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 # Is the haul valid? yes retain, no remove
 
 
-invalidhauls<-subset(HH2, HaulVal=="I", ) # 1477 obs
+invalidhauls <- subset(HH2, HaulVal=="I", ) # 1575 obs
 write.csv(invalidhauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/invalid_removed.csv")
 
 names(HH2)
@@ -88,11 +88,11 @@ summary(hauls$Gear)
 
 # What is the standard tow duration
 # Delete hauls that are outside of the standard time 
-hauls$HaulDur<-(as.numeric(hauls$HaulDur))
+hauls$HaulDur <- (as.numeric(hauls$HaulDur))
 hist(hauls$HaulDur)
 summary(hauls$HaulDur)
 smallhauls<- subset(hauls, HaulDur<12 , ) ## how are these values decided?
-hauls<-subset(hauls, HaulDur>12 , )
+hauls <- subset(hauls, HaulDur>12 , )
 write.csv(smallhauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/deleted_too_short_hauls.csv")
 largehauls<- subset(hauls, HaulDur>67 ,)
 hauls<- subset(hauls, HaulDur<67 , )
@@ -174,11 +174,11 @@ HL2$NewUniqueID2 <- paste(HL2$Survey,HL2$Year, HL2$Quarter,HL2$Ship,
 nrow(hauls[duplicated(hauls$New_UniqueID2),]) ## should return 0
 
 
-checkhl<-unique(HL2$NewUniqueID2)
+checkhl <- unique(HL2$NewUniqueID2)
 check <- unique(hauls$NewUniqueID2)
 
-length(setdiff(checkhl, check)) ## expected records attached to hauls no longer in HH
-length(setdiff(check, checkhl)) ## odd ids in the HH not in the HL 
+length(setdiff(checkhl, check)) ## expected records attached to hauls no longer in HH - 2525
+length(setdiff(check, checkhl)) ## odd ids in the HH not in the HL - 296
 
 HHcheck <- hauls[hauls$NewUniqueID2 %in% setdiff(check, checkhl),]
 
@@ -195,21 +195,21 @@ table(HHcheck$Survey, HHcheck$Year)
 
 # now select the hauls and HL files that match up given the new unique IDS
 HL3 <- HL2[HL2$NewUniqueID2 %in% hauls$NewUniqueID2, ]
-checkhl1<-unique(HL3$NewUniqueID2)
+checkhl1 <- unique(HL3$NewUniqueID2)
 
 ### 
 setdiff(checkhl1, check)
-length(setdiff(check, checkhl1))
+length(setdiff(check, checkhl1)) # 296
 
 ### Following Moriarty et al. I will also drop any Hauls info header info and no
 # HL data - there are not very many and they may be invalid for unknown reasons..
 # RK - June 2021
 
-hauls<-subset(hauls, NewUniqueID2%in% HL3$NewUniqueID2)
+hauls <- subset(hauls, NewUniqueID2%in% HL3$NewUniqueID2)
 
-check<-unique(hauls$NewUniqueID2)
+check <- unique(hauls$NewUniqueID2)
 
-checkhl1<-unique(HL3$NewUniqueID2)
+checkhl1 <- unique(HL3$NewUniqueID2)
 setdiff(checkhl1, check)
 setdiff(check, checkhl1)
 # hopefully this solves some problems of the not so unique ids :)

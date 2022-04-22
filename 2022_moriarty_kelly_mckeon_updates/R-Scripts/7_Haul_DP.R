@@ -49,7 +49,8 @@ h$Survey_Acronym[h$Survey=="BTS"&h$Quarter=="3"&h$Country=="GB"]<-"GNSEngBT3"
 summary(as.factor(h$Survey_Acronym))
 
 # add a gear type filer column -------------------
-h$GearType[h$Survey=="BTS"]<-"BT"
+#h$GearType[h$Survey=="BTS"]<-"BT"
+h$GearType[h$Survey %in% c("BTS", "BT3", "BT4A", "BT4AI", "BT4P", "BT4S", "BY6")] <- "BT"
 h$GearType[is.na(h$GearType)]<-"OT"
 # new haul unique identifer Survey Acronym/ship/year/haul No
 # read ship table
@@ -68,6 +69,8 @@ check <- h[which(h$HaulID %in% list),] ## why are the GB surveys from two differ
 h$YearShot<-h$Year                
 h$MonthShot<-h$Month                  
 h$DayShot<-h$Day
+
+table(h$GearType, h$Gear)
 
 names(hauls)
 summary(as.factor(hauls$Month))

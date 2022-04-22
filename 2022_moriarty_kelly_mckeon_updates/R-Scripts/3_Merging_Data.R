@@ -37,7 +37,7 @@ HH_ROCK<-as.data.table(HH_ROCK)
 table(HH_ROCK$Year)
 
 HH_BTS <- as.data.table(HH_BTS[HH_BTS$Year > 1986,])
-x2 <- which(HH_BTS$Year <2002 & HH_BTS$Country == "DE")
+x2 <- which(HH_BTS$Year <2002 & HH_BTS$Country == "DE") ## do include
 HH_BTS <- HH_BTS[-x2,]
 ## Remove DE prior to 2002 - this wasn't on Datras yet when 
 # Moriarty did there work. It does appear to be the same ship, 

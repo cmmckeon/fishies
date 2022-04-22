@@ -20,8 +20,8 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 # this data is not currently available on DATRAS
 
 # First split HH and HL
-NI_HH<-subset(NI_extra, V1=="HH", )
-NI_HL<-subset(NI_extra, V1=="HL", )
+NI_HH <- subset(NI_extra, V1=="HH", )
+NI_HL <- subset(NI_extra, V1=="HL", )
 
 ## HH ----------------
 
@@ -107,7 +107,7 @@ HL1$Ship[HL1$Ship == "LF"] <- "74LG"
 HL1$Ship <- factor(HL1$Ship)
 
 HL1$UniqueID<-paste(HL1$Survey,HL1$Year,HL1$Quarter,HL1$Ship, 
-                   HL1$HaulNo, HL1$Gear, sep="/")
+                   HL1$HaulNo, HL1$Gear, sep="_")
 
 # remove intermediate datasets
 rm(NI_extra, NI_HH, NI_HL, keepers)
@@ -152,7 +152,7 @@ NS_DEN_add_HH$Ship_old <- "DAN2"
 NS_DEN_add_HH$Ship <-"26D4"
 
 
-setdiff(names(HH), names(NS_DEN_add_HH)) ## new fields in Datras
+setdiff(names(HH), names(NS_DEN_add_HH)) ## new fields in Datras #"CodendMesh" "SecchiDepth" "Turbidity" "TidePhase" "TideSpeed" "PelSampType" "MinTrawlDepth" "MaxTrawlDepth" "UniqueID" 
 setdiff(names(NS_DEN_add_HH),names(HH)) ## nothing that's not in Datras data
 
 ## HL -----------------
@@ -188,10 +188,10 @@ unique(HH1$Survey)
 unique(HH1$Country)
 
 
-Den_ibts<-subset(HH1, Survey=="NS-IBTS"&Country=="DK"&Year<1987&Year>1982,)
-# 168 observations
+Den_ibts <- subset(HH1, Survey=="NS-IBTS" & Country=="DK" & Year<1987&Year>1982,)
 # NS_Den_add_HH has only got 168 obs
-remove<-Den_ibts$UniqueID
+
+remove <- Den_ibts$UniqueID
 # # lets check if they are different
 replace_function(NS_DEN_add_HH)
 test<-compare_function(Den_ibts, NS_DEN_add_HH)
@@ -208,7 +208,7 @@ for(i in names(NS_DEN_add_HH)){
 # and lat long measurements so stick with the DATRAS version of the haul Chron File
 
 # lets look at the HL file too
-Den_ibts_fish<-subset(HL1, UniqueID%in%remove,)
+Den_ibts_fish <- subset(HL1, UniqueID%in%remove,)
 # 12356 obs in Datras file
 # 13822 obs in denmarks file
 # lest see haw they differ
@@ -228,9 +228,9 @@ for(i in names(NS_DEN_add_HL)){
 # remove these to see if the spp list of additiona spp shines through
 
 
-copy1<-subset(Den_ibts_fish,
+copy1 <- subset(Den_ibts_fish,
                  select=c(StNo,  Year, UniqueID))
-copy_den<-subset(NS_DEN_add_HL,
+copy_den <- subset(NS_DEN_add_HL,
                  select=c(StNo, Year, UniqueID))
 list_a <- list()
 list_b <- list()
@@ -248,9 +248,9 @@ test1<-compare_function(copy1, copy_den)
 # neither copy is perfect - retain DATRAS
 # then find the records of species that are missing from DATRAS 
 names(Den_ibts_fish)
-copy1<-subset(Den_ibts_fish,
+copy1 <- subset(Den_ibts_fish,
                  select=c(StNo,  Year, UniqueID, Valid_Aphia))
-copy_den<-subset(NS_DEN_add_HL,
+copy_den <- subset(NS_DEN_add_HL,
                  select=c(StNo, Year, UniqueID, Valid_Aphia))
 test<-compare_function(copy_den, copy1)
 test1<-compare_function(copy1, copy_den)
@@ -265,22 +265,21 @@ summary(as.factor(test$Valid_Aphia))
 summary(as.factor(test1$Valid_Aphia))
 
 setdiff(Den_ibts_fish$Valid_Aphia, NS_DEN_add_HL$Valid_Aphia)
-# 0 in Datras not in supplement
+# 4 in Datras not in supplement
 
 length(setdiff(NS_DEN_add_HL$Valid_Aphia, Den_ibts_fish$Valid_Aphia))
-# 62 in supplement not on Datras
+# 26 in supplement not on Datras
 
-# total mess!
-# Gonna add in the missing records in the Denmark files and flag them
-Den_ibts_fish$match<-paste(Den_ibts_fish$UniqueID,Den_ibts_fish$Valid_Aphia, sep="_")
-NS_DEN_add_HL$match<-paste(NS_DEN_add_HL$UniqueID,NS_DEN_add_HL$Valid_Aphia, sep="_")
-list<-Den_ibts_fish$match
-Den_HL_additions<-subset(NS_DEN_add_HL, match%in%list)
+
+# add in the missing records in the Denmark files and flag them
+Den_ibts_fish$match <- paste(Den_ibts_fish$UniqueID,Den_ibts_fish$Valid_Aphia, sep="_")
+NS_DEN_add_HL$match <- paste(NS_DEN_add_HL$UniqueID,NS_DEN_add_HL$Valid_Aphia, sep="_")
+list <- Den_ibts_fish$match
+Den_HL_additions <- subset(NS_DEN_add_HL, match%in%list)
 
 # these are my additions for the HL-gov file
-# leave the match field as a flag for now - issues with these data that 
-# remain unresolved
-HL2<-rbind.fill(HL1, Den_HL_additions)
+# leave the match field as a flag for now - issues with these data that remain unresolved
+HL2 <- rbind.fill(HL1, Den_HL_additions)
 summary(as.factor(HL2$match))
 
 #remove intermediate datasets
@@ -294,11 +293,10 @@ rm(Den_HL_additions, Den_ibts,Den_ibts_fish, test, copy_den, copy1, test1, remov
 
 table(HH1$Survey, HH1$Country, useNA = "ifany")
 
-HH1[is.na(HH1$Country),] ## Ship code AA36 also refers to unspecified vessel ? Remove?
-
+HH1[is.na(HH1$Country),] ## Ship code AA36 also refers to unspecified vessel - Remove.
+HH1 <- HH1[!is.na(HH1$Country),]
 
 ### add old IDs for reference.. 2021
-
 HH1$UniqueID<-paste(HH1$Survey,HH1$Year,HH1$Quarter,HH1$Ship, 
                     HH1$HaulNo, HH1$Gear, sep="_")
 
@@ -313,7 +311,7 @@ HH1$UniqueIDP<-paste(HH1$Survey,HH1$Year,HH1$Quarter,HH1$Ship_old,
 # Appendix must be rechecked and verified as corrected at source(already on DATRAS)
 # or alternatively fixed here with a line of code
 
-# 1.1.1	The First Quarter International Bottom Trawl Survey (GNSIntOT1) 
+# The First Quarter International Bottom Trawl Survey (GNSIntOT1) 
 
 ## NORWAY NS-IBTS Q1 ------------------
 
@@ -330,7 +328,6 @@ HH1$ShootLat[HH1$UniqueID=="NS-IBTS_1986_1_58EJ_41_GOV"] <-57.24
 # The following stations have outlying net opening values, 
 # can you verify that these outliers are true values (figure 1.1.1.13/14).
 # response was to use all but one - changed below
-HH1$Netopening[HH1$UniqueID=="NS-IBTS_1998_3_CIR_66_GOV"]#<-NA ## no ship with this name
 HH1$Netopening[HH1$UniqueID=="NS-IBTS_1998_3_74CZ_66_GOV"]#  <- NA  
 #value is currently 3.4, doesn't seem like an outlier now
 
@@ -390,7 +387,7 @@ HH1$Netopening[HH1$UniqueID=="NS-IBTS_1984_1_64T0_4_GOV"] <-6
 funnysweep<-subset(HH1, c(HH1$Country=="DE"& HH1$Survey=="NS-IBTS"& Year=="1984" & Gear == "H18"),)
 # no need to worry as H18 gear will be removed in the standard gear type.
 funnysweep$UniqueID
-HH1$SweepLngt[HH1$UniqueID%in%funnysweep$UniqueID]<-NA
+HH1$SweepLngt[HH1$UniqueID%in%funnysweep$UniqueID] <- NA
 
 # Question: Doorspread is not consistent with depth, 
 # can you verify that these outliers are the correct values?
@@ -487,9 +484,9 @@ check<-HH1[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV",]
 
 # need to change all postional data
  HH1$ShootLat[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-54.639
- HH1$ShootLong[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-5.501
- HH1$HaulLat[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-54.641
- HH1$HaulLong[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-5.564
+ HH1$ShootLong[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-5.501 ## 5.5
+ HH1$HaulLat[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-54.641 ## 54.63
+ HH1$HaulLong[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-5.564 ## 5.5
  
 ## Fourth Quarter French Channel Groundfish Survey  (GNSFraOT4) ------------
 
@@ -554,7 +551,7 @@ HH1$ShootLong[HH1$UniqueIDP%in%list]<-as.numeric(HH1$ShootLong[HH1$UniqueIDP%in%
 # M.L: Unique ID: 2008_1_COR_15_ROT, Door spread corrected to 34.2 m 
 # and Unique ID: 2009_1_COR_37_ROT, Door spread corrected to 38.3 m
 check<-HH1[HH1$UniqueIDP=="NIGFS_2009_1_COR_15_ROT",]
-## these values are now 37.1 and 38.5 repectively ....CM
+## these values are now 37.1 and 38.5 repectively ....CM ## keep updated datras value now
 
 
 
@@ -580,8 +577,8 @@ points(HH1$ShootLong[HH1$StatRec%in%list],
 names(HH1)
 summary(as.factor(HH1$Survey))
 
-# remove_stations<-subset(HH1, StatRec%in%list & Ship=="74RY" & Survey=="BTS",) ### this needs to be double checked, as time series for 
-# ### "BTS-VII" is no longer separate from "BTS" - RK 2021 .... CM needs to check
+# remove_stations<-subset(HH1, StatRec%in%list & Ship=="74RY" & Survey=="BTS",) ### this needs to be double checked, 
+# as time series for "BTS-VII" is no longer separate from "BTS" - RK 2021 .... CM needs to check
 
 HH2 <- HH1
 # list<-(remove_stations$UniqueID)
@@ -604,7 +601,7 @@ plot(HH2$ShootLong, HH2$ShootLat,
 # Check out all biological data to insure corrections#
 # are in datras/fix for product only base on answers #
 
-HL2$UniqueIDP<-paste(HL2$Survey,HL2$Year,HL2$Quarter,HL2$Ship_old, 
+HL2$UniqueIDP <- paste(HL2$Survey,HL2$Year,HL2$Quarter,HL2$Ship_old, 
                      HL2$HaulNo, HL2$Gear, sep="_")
 
 
@@ -620,11 +617,11 @@ HL2$UniqueIDP<-paste(HL2$Survey,HL2$Year,HL2$Quarter,HL2$Ship_old,
 
 # Bathyraja brachyurops (Fowler, 1910) # AphiaID: 271509 
 # mismapped  should be Raja brachyura (Lafont, 1871) # AphiaID: 367297  
-HL2$Valid_Aphia[HL2$Valid_Aphia=="271509"]<-"367297"
+HL2$Valid_Aphia[HL2$Valid_Aphia=="271509"] <- "367297"
 
 # Scomber japonicus Houttuyn, 1782 # AphiaID: 127022 
 # mis id of Scomber colias Gmelin, 1789 # AphiaID: 151174 
-HL2$Valid_Aphia[HL2$Valid_Aphia=="127022"]<-"151174"
+HL2$Valid_Aphia[HL2$Valid_Aphia=="127022"] <- "151174"
 names(HL2)
 summary(as.factor(HL2$Valid_Aphia))
 
