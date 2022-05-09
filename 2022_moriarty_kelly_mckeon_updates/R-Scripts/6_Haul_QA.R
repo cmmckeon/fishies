@@ -11,9 +11,6 @@
 
 # load("./script5_output.rda")
 
-require(rgdal)
-library(marmap)
-
 # Load Data Frame Again -----------------------
 
 HH<-read.csv("Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Working_HH_file.csv", row.names = "X")
@@ -24,7 +21,7 @@ HL <- rem_na_df(HL)
 
 rm(HL3, hauls) 
 
-hauls<-(HH) 
+hauls <- (HH) 
 summary(hauls)
 
 
@@ -36,9 +33,9 @@ summary(as.factor(hauls$DepthStratum))
 
 # set -9's to NA
 hauls$DepthStratum[which(hauls$DepthStratum == -9)] <- NA
-summary(as.factor(hauls$DepthStratum)) ## many NAs
+summary(as.factor(hauls$DepthStratum)) ## 51564 NAs
 
-table(hauls$StatRec, useNA = "ifany") ## some NAs
+table(hauls$StatRec, useNA = "ifany") ## 99 NAs
 # ices<-read.csv("./Regional Boundaries Maps and Data/ICES_rectangles_statistics/Ices_rect_table.csv")
 # names(ices)
 summary(hauls$ShootLong)
@@ -54,11 +51,11 @@ names(hauls)
 summary(hauls$ShootLat)
 lat <- hauls$ShootLat
 hauls$check_StatRec <- ices.rect2(hauls$ShootLong, hauls$ShootLat)
-summary(as.factor(hauls$check_StatRec)) ## 31494!
+table(factor(hauls$check_StatRec))
 summary(as.factor(hauls$Survey))
 check <- subset(hauls, !(hauls$check_StatRec%in%hauls$StatRec)) ## 20
 check <- hauls[which(hauls$check_StatRec!=hauls$StatRec),] # 2383 differences
-check <- subset(hauls, is.na(hauls$DepthStratum)) ## 52527 NAs in depthstratum
+check <- subset(hauls, is.na(hauls$DepthStratum)) ## 51564 NAs in depthstratum
 
 
 hauls$StatRec[is.na(hauls$ShootLong)] ### those with ShootLats did have statistical rectangles use these - RK
@@ -124,7 +121,8 @@ check <- subset(hauls, !(hauls$check_StatRec%in%hauls$StatRec))
 points(check$ShootLong, check$ShootLat, col="red")
 points(hauls$ShootLong, hauls$ShootLat, pch=19, col="black")
 unique(check$Survey)
-### issues are with SWC-IBTS
+hauls$check_StatRec <- factor(hauls$check_StatRec)
+hauls$check_StatRec[hauls$NewUniqueID2 %in% check$NewUniqueID2] <- hauls$StatRec[hauls$NewUniqueID2 %in% check$NewUniqueID2]
 
 
 
@@ -149,7 +147,7 @@ summary(hauls$ShootLat)
 summary(as.numeric(hauls$ShootLong))
 
 
-# use NOAA website to get bathy map
+ # use NOAA website to get bathy map
  # papoue <- getNOAA.bathy(lon1 = -16, lon2 = 13,
  #                         lat1 = 36, lat2 = 62, resolution = 1)
  # saveRDS(papoue, "./Regional Boundaries Maps and Data/papoue_bathy_map.rds")
@@ -188,7 +186,14 @@ summary(hauls$DepthNew) ## try depth at station in previous year(average over 5 
 # hauls$DepthNew[hauls$Depth==-9] <- 37
 summary(hauls$DepthNew)
 
-# need to drop negative depths - get average depths from stations as above
+## for DepthNew < 0, replace value with average value for that station.
+h <- hauls[hauls$DepthNew < 0,]
+check <- hauls[hauls$StNo %in% h$StNo & hauls$DepthNew  >= 0,]
+unique(check$StNo)
+
+for(i in unique(check$StNo)){
+  hauls$DepthNew[hauls$DepthNew < 0 & hauls$StNo == i] <- mean(check$DepthNew[check$StNo == i])
+}
 
 dev.new()
 
@@ -233,11 +238,22 @@ png(file = "Data_QA_Process_V5_2022/Diagnostics/box_plot_depth_differences_surve
 plot(hauls$Survey,hauls$Diff_dep, col=cols[hauls$Survey], pch=19, main = "Difference in depth")
 dev.off()
 
-find<-subset(hauls, hauls$DepthNew<5,) ## 680 - surely drop? check mannual
 
-hist(sqrt((hauls$Depth- hauls$DepthNew)^2))
-## there a problems - a couple of depth differences over 1000, many over 200, a few negative depths.
 
+## check large differences in depths based on stations
+x <- rem_na_df(hauls[hauls$Diff_dep > 100,]) ## 502 values (> 0.01% of the data)
+
+check <- rem_na_df(hauls[hauls$StNo %in% x$StNo,])
+# x <- hauls[hauls$Survey == "SWC-IBTS",]
+# unique(check$StNo)
+
+## large differences in depths seem to come from a few extremely deep estimates from the
+## bathy map, recorded depths (shallower values) are all consistent with the range of depths 
+## around the stations from other years. Not concerned about these few outliers, ignore.
+
+find<-subset(hauls, hauls$DepthNew<5,) ## 1298 - surely drop? check mannual
+#x <- find[find$Survey != "DYFS",]
+## all from DYFS
 
 # Sweep Length ----------------
 
@@ -383,6 +399,9 @@ par(xpd=FALSE)
 plot(hauls$GroundSpeed*1852/60*hauls$HaulDur, hauls$Distance, 
      pch=19, col="black", cex=0.5, xlab="Speed X Time", ylab="Distance")
 abline(a=0, b=1, col="lightgrey", lwd=2)
+## dropping 10 records with outlier distances. Drop rows that have only NAs while you're at it.
+hauls <- rem_na_df(hauls[hauls$Distance < 15000 & hauls$Distance > 0,])
+
 dev.off()
 png(file="Data_QA_Process_V5_2022/Diagnostics/groundspeed_diagnostics.png", bg="transparent")
 plot(hauls$HaulDur, hauls$GroundSpeed, pch=19, xlab="Time", ylab="Speed (knots)")
@@ -414,15 +433,15 @@ dev.off()
 
 # In Ns-IBTS 1995 it seems some of the french ground speeds are in the Speed Water Column
 # and the Speed water is in the Ground Speed Col.
-hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/2/GOV"]<-4
-hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/2/GOV"]<-2
-hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/3/GOV"]<-4
-hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/3/GOV"]<-2
-hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/6/GOV"]<-4
-hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/9/GOV"]<-3.8
-hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/9/GOV"]<-1.9
-hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/11/GOV"]<-3.9
-hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS/1995/1/THA/11/GOV"]<-1.9
+hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS_1995_1_THA_2_GOV"]<-4
+hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS_1995_1_THA_2_GOV"]<-2
+hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS_1995_1_THA_3_GOV"]<-4
+hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS_1995_1_THA_3_GOV"]<-2
+hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS_1995_1_THA_6_GOV"]<-4
+hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS_1995_1_THA_9_GOV"]<-3.8
+hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS_1995_1_THA_9_GOV"]<-1.9
+hauls$GroundSpeed[hauls$UniqueIDP=="NS-IBTS_1995_1_THA_11_GOV"]<-3.9
+hauls$SpeedWater[hauls$UniqueIDP=="NS-IBTS_1995_1_THA_11_GOV"]<-1.9
 
 # GROUNDSPEED NOT RECORDED BUT DISTANCE AND DURATION RECORDED
 hauls$Realised_groundspeed<-hauls$Distance/hauls$HaulDur/1852*60
@@ -445,6 +464,8 @@ abline(h=2, col="lightgrey", lwd=1, lty=2)
 abline(h=1, col="lightgrey", lwd=1, lty=2)
 draw.circle(8.4, 8.4, 0.1, border="red", lty=4, lwd=2)
 dev.off()
+
+hauls <- droplevels(hauls)
 
 ## predict groound speed --------------
 hist(hauls$GroundSpeed, breaks = 1000)
@@ -545,7 +566,9 @@ summary(hauls$GroundSpeed_Used[hauls$Gear=="BT4P"])
 summary(hauls$GroundSpeed_Used[hauls$Gear=="BT4S"])
 summary(hauls$GroundSpeed_Used[hauls$Gear=="BT6"])
 summary(hauls$GroundSpeed_Used[hauls$Gear=="GOV"])
-summary(hauls$GroundSpeed_Used[hauls$Gear=="H18"])
+
+
+
 
 #get equation for gs1
 formula(gs_model1)
@@ -657,7 +680,7 @@ hauls1$qualityDistance[hauls1$NewUniqueID2%in%list] <- "LatLongDistance"
 # recheck 
 outside_bounds<-subset(hauls1, hauls1$newDist/hauls1$manual_speed_distance>1.50|
                          hauls1$newDist/hauls1$manual_speed_distance<.5, )
-## now 242
+## now 235
 
 points(outside_bounds$HaulDur,outside_bounds$newDist, col="blue", pch=19)
 
@@ -687,7 +710,7 @@ points(check_dist_speed_match$HaulDur,check_dist_speed_match$newDist, col="yello
 check_lat_speed_match<-subset(check_dist_speed_match, 
                               check_dist_speed_match$LatLongDistance/check_dist_speed_match$SpeedTimeDist<1.2&
                                 check_dist_speed_match$LatLongDistance/check_dist_speed_match$SpeedTimeDist>.8,)
-# so 97 of the haversine and speed X time are within 20% - use the lat long rather than the 
+# so 103 of the haversine and speed X time are within 20% - use the lat long rather than the 
 # recorded distance
 list<-check_lat_speed_match$NewUniqueID2
 hauls1$newDist[hauls1$NewUniqueID2%in%list]<-hauls1$LatLongDistance[hauls1$NewUniqueID2%in%list]
@@ -698,7 +721,7 @@ check_no_match<-subset(check_dist_speed_match,
                          check_dist_speed_match$LatLongDistance/check_dist_speed_match$SpeedTimeDist<.8,)
 
 points(check_no_match$HaulDur,check_no_match$newDist, col="black", pch=19)
-## 159 obs
+## 181 obs
 
 # Does value lie within +/- 25% of Man Speed
 check_within_bounds<-subset(check_no_match, 
@@ -772,14 +795,8 @@ hauls[!is.na(DoorSpread), c("meanDoorSpread"):=
         mean(DoorSpread)]
 hauls[!is.na(Depth), c("DepthCenter") :=
         Depth-meanDepth]
-
-## DepthNew causing problems as there are a couple of negative estimated depths.
-#temporary subset to get around this before talking to Ruth
-hauls <- hauls[hauls$DepthNew >= 0,]
-
 hauls[!is.na(DepthNew), c("LogDepthCenter") :=
         log(DepthNew)-log(meanDepth)] 
-
 hauls[!is.na(WingSpread), c("WingSpreadCenter") :=
         WingSpread-meanWingSpread]
 hauls[!is.na(DoorSpread), c("DoorSpreadCenter") :=
@@ -925,16 +942,16 @@ coeffs=coefficients(model1_ds);coeffs
 
 summary(hauls$DoorSpread[hauls$Gear=="ROT"])
 # Doorspread can be sorted first
-# DoorSpread only has 955 missing values to be estimated
+# DoorSpread only has 510 missing values to be estimated
 
-length(hauls$DoorSpread[is.na(hauls$DoorSpread)]) ## now 40308....?
+length(hauls$DoorSpread[is.na(hauls$DoorSpread)]) ## 32357
 
 png(file = "Data_QA_Process_V5_2022/Diagnostics/doorspread_ROT.png", bg = "transparent")
 plot(hauls$Depth[hauls$Gear=="ROT"], hauls$DoorSpread[hauls$Gear=="ROT"], 
      pch=19, xlab="Depth (m)",
      ylab="Door Spread (m)")
 dev.off()
-x<-hauls$Depth[hauls$Gear=="ROT"]
+x<-hauls$DepthNew[hauls$Gear=="ROT"]
 y<-hauls$DoorSpread[hauls$Gear=="ROT"]
 
 plot(y~x,type="n")
@@ -1002,7 +1019,7 @@ abline(lm(hauls$WingSpread[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"]~
        col="lightgrey")
 dev.off()
 # given how data poor the situation is this must be kept very simple
-ws_dat<-subset(hauls, !is.na(hauls$WingSpread) & hauls$Gear=="ROT", )
+ws_dat <- subset(hauls, !is.na(hauls$WingSpread) & hauls$Gear=="ROT", )
 summary(ws_dat)
 # need doorspread first
 # Great we can keep this really simple and have a really strong
@@ -1014,7 +1031,7 @@ hauls$mod2_wingspread_rot[hauls$Gear=="ROT"] <- exp(0.3798356+0.6489731*log(haul
 #RAW WINGSPREAD
 hauls$Use_WingSpread[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"] <- hauls$WingSpread[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"]
 hauls$QualityWing[!is.na(hauls$WingSpread)&hauls$Gear=="ROT"] <- "raw_wingspread"
-hauls$Use_WingSpread[is.na(hauls$WingSpread)&hauls$Gear=="ROT"] < -hauls$mod2_wingspread_rot[is.na(hauls$WingSpread)&hauls$Gear=="ROT"]
+hauls$Use_WingSpread[is.na(hauls$WingSpread)&hauls$Gear=="ROT"] <- hauls$mod2_wingspread_rot[is.na(hauls$WingSpread)&hauls$Gear=="ROT"]
 hauls$QualityWing[is.na(hauls$WingSpread)&hauls$Gear=="ROT"] <- "model_wingspread_rot"
 
 summary(hauls$mod2_wingspread_rot[hauls$Gear=="ROT"])
@@ -1143,31 +1160,52 @@ hauls$DoorSpread[hauls$Gear=="BT4A"]<-4
 hauls$WingSpread[hauls$Gear=="BT4A"]<-4
 # netopening NA
 hauls$Netopening[hauls$Gear=="BT4A"]<-.525
+
 # setup user values 
-hauls$Use_DoorSpread[hauls$Gear=="BT4A"]<-4
-hauls$QualityDoor[hauls$Gear=="BT4A"]<-"raw_doorspread"
-hauls$Use_WingSpread[hauls$Gear=="BT4A"]<-4
-hauls$QualityWing[hauls$Gear=="BT4A"]<-"raw_wingspread"
-hauls$Use_Netopening[hauls$Gear=="BT4A"]<-.525
-hauls$QualityNet[hauls$Gear=="BT4A"]<-"raw_netopening"
+hauls$Use_DoorSpread[hauls$Gear %in% c("BT4A", "BT4A", "BT4AI",
+                     "BT4P",  "BT4S")]<-4
+hauls$QualityDoor[hauls$Gear %in% c("BT4A", "BT4A", "BT4AI",
+                                   "BT4P",  "BT4S")]<-"raw_doorspread"
+hauls$Use_WingSpread[hauls$Gear%in% c("BT4A", "BT4A", "BT4AI",
+                                      "BT4P",  "BT4S")]<-4
+hauls$QualityWing[hauls$Gear%in% c("BT4A", "BT4A", "BT4AI",
+                                   "BT4P",  "BT4S")]<-"raw_wingspread"
+hauls$Use_Netopening[hauls$Gear%in% c("BT4A", "BT4A", "BT4AI",
+                                      "BT4P",  "BT4S")]<-.525
+hauls$QualityNet[hauls$Gear%in% c("BT4A", "BT4A", "BT4AI",
+                                  "BT4P",  "BT4S")]<-"raw_netopening"
+
+hauls$Use_DoorSpread[hauls$Gear=="BT6"]<-6
+hauls$QualityDoor[hauls$Gear=="BT6"]<-"raw_doorspread"
+hauls$Use_WingSpread[hauls$Gear=="BT6"]<-6
+hauls$QualityWing[hauls$Gear=="BT6"]<-"raw_wingspread"
+hauls$Use_Netopening[hauls$Gear=="BT6"]<-.6 ## ????
+hauls$QualityNet[hauls$Gear=="BT6"]<-"raw_netopening"
 
 hauls$Use_DoorSpread[hauls$Gear=="BT7"]<-7.2
 hauls$QualityDoor[hauls$Gear=="BT7"]<-"raw_doorspread"
 hauls$Use_WingSpread[hauls$Gear=="BT7"]<-7.2
 hauls$QualityWing[hauls$Gear=="BT7"]<-"raw_wingspread"
-hauls$Use_Netopening[hauls$Gear=="BT7"]<-.6
+hauls$Use_Netopening[hauls$Gear=="BT7"]<-.6 ## ????
 hauls$QualityNet[hauls$Gear=="BT7"]<-"raw_netopening"
 
 hauls$Use_DoorSpread[hauls$Gear=="BT8"]<-8
 hauls$QualityDoor[hauls$Gear=="BT8"]<-"raw_doorspread"
 hauls$Use_WingSpread[hauls$Gear=="BT8"]<-8
 hauls$QualityWing[hauls$Gear=="BT8"]<-"raw_wingspread"
-hauls$Use_Netopening[hauls$Gear=="BT8"]<-.8
+hauls$Use_Netopening[hauls$Gear=="BT8"]<-.8 ## ????
 hauls$QualityNet[hauls$Gear=="BT8"]<-"raw_netopening"
+
+hauls$Use_DoorSpread[hauls$Gear=="BT3"]<-3
+hauls$QualityDoor[hauls$Gear=="BT3"]<-"raw_doorspread"
+hauls$Use_WingSpread[hauls$Gear=="BT3"]<-3
+hauls$QualityWing[hauls$Gear=="BT3"]<-"raw_wingspread"
+hauls$Use_Netopening[hauls$Gear=="BT3"]<-.3 ## can't find this info in mannuals
+hauls$QualityNet[hauls$Gear=="BT3"]<-"raw_netopening"
 
 summary(hauls$Use_WingSpread[hauls$Gear=="BT4A"])
 
-### CM 2022 I still have NA's in key fields - gear from new surveys?
+hauls <- rem_na_df(hauls)
 
 check <- hauls[hauls$Gear %nin% c("BT3", "BT4A1", "BT4P", "BT4S", "BT6", "H18"),]
 table(droplevels(check$Survey))
@@ -1181,8 +1219,8 @@ table(hauls$Gear[is.na(hauls$Use_Depth)])
 summary(hauls$GroundSpeed_Used)
 ### these are okay though
 
-### ommitting BAK because there are odd outliers in 
-# wingspread and doorspread plots when calculated
+#check <- hauls[which(is.na(hauls$Use_Netopening)),]
+
 
 write.csv(hauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/hauls_monster_file_04_2022.csv")
 
@@ -1224,7 +1262,7 @@ list<-unique(hauls$NewUniqueID2)
 list1<-unique(HL$NewUniqueID2)
 length(list)-length(list1)
 setdiff(list1, list)
-setdiff( list, list1) ### these are due to removing 'BAK'
+setdiff( list, list1) ### 0
 
 
 HL1 <- subset(HL, NewUniqueID2%in%list)

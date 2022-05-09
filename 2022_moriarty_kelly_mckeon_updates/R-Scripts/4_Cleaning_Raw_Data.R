@@ -116,8 +116,7 @@ rm(NI_extra, NI_HH, NI_HL, keepers)
 # Correction 2: DENMARK IBTS CORRECTIONs/Additions ------------
 # Denmark data for the earlier IBTS for 1983, 1984, 1995, 1986
 
-NS_DEN<-rbind(NS_DEN_sp_1986,NS_DEN_sp_1985,
-              NS_DEN_sp_1984,NS_DEN_sp_1983, fill=TRUE)
+NS_DEN <- NS_DEN_sp_1986
 
 NS_DEN_add_HH<-subset(NS_DEN, V1=="HH",)
 NS_DEN_add_HL<-subset(NS_DEN, V1=="HL",)
@@ -189,7 +188,7 @@ unique(HH1$Country)
 
 
 Den_ibts <- subset(HH1, Survey=="NS-IBTS" & Country=="DK" & Year<1987&Year>1982,)
-# NS_Den_add_HH has only got 168 obs
+# NS_Den_add_HH has only got 41 obs
 
 remove <- Den_ibts$UniqueID
 # # lets check if they are different
@@ -241,12 +240,8 @@ for(i in names(copy_den)){
 
 test<-compare_function(copy_den, copy1)
 test1<-compare_function(copy1, copy_den)
-# now only have extra data in the test, not the test1,
-# all stations and unique ID StNo relapces Haul No in the DEN_add 
-# datasets. They are the same except for Unique ID NS-IBTS/1986/1/DAN2/30/GOV which 
-# is only in the DATRAS copy not the Denmark copy 
-# neither copy is perfect - retain DATRAS
-# then find the records of species that are missing from DATRAS 
+# now only have extra data in the test1 , not the test,
+# retain DATRAS, then find the records of species that are missing from DATRAS 
 names(Den_ibts_fish)
 copy1 <- subset(Den_ibts_fish,
                  select=c(StNo,  Year, UniqueID, Valid_Aphia))
@@ -254,8 +249,8 @@ copy_den <- subset(NS_DEN_add_HL,
                  select=c(StNo, Year, UniqueID, Valid_Aphia))
 test<-compare_function(copy_den, copy1)
 test1<-compare_function(copy1, copy_den)
-# 637 records in denmark not in DATRAS - this makes sense
-# 198 records in DATRAS not in denmark!?!
+# 236 records in denmark not in DATRAS - this makes sense
+# 139 records in DATRAS not in denmark!?!
 # complete mis-match
 summary(as.factor(test$Year))
 summary(as.factor(test1$Year))
@@ -265,10 +260,10 @@ summary(as.factor(test$Valid_Aphia))
 summary(as.factor(test1$Valid_Aphia))
 
 setdiff(Den_ibts_fish$Valid_Aphia, NS_DEN_add_HL$Valid_Aphia)
-# 4 in Datras not in supplement
+# 3 in Datras not in supplement
 
 length(setdiff(NS_DEN_add_HL$Valid_Aphia, Den_ibts_fish$Valid_Aphia))
-# 26 in supplement not on Datras
+# 16 in supplement not on Datras
 
 
 # add in the missing records in the Denmark files and flag them
@@ -484,9 +479,7 @@ check<-HH1[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV",]
 
 # need to change all postional data
  HH1$ShootLat[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-54.639
- HH1$ShootLong[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-5.501 ## 5.5
- HH1$HaulLat[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-54.641 ## 54.63
- HH1$HaulLong[HH1$UniqueIDP=="NS-IBTS_2000_3_CIR_17_GOV"]<-5.564 ## 5.5
+
  
 ## Fourth Quarter French Channel Groundfish Survey  (GNSFraOT4) ------------
 
@@ -577,8 +570,8 @@ points(HH1$ShootLong[HH1$StatRec%in%list],
 names(HH1)
 summary(as.factor(HH1$Survey))
 
-# remove_stations<-subset(HH1, StatRec%in%list & Ship=="74RY" & Survey=="BTS",) ### this needs to be double checked, 
-# as time series for "BTS-VII" is no longer separate from "BTS" - RK 2021 .... CM needs to check
+# remove_stations<-subset(HH1, StatRec%in%list & Ship=="74RY" & Survey=="BTS",) ### this needs to be double checked,
+## as time series for "BTS-VII" is no longer separate from "BTS" - RK 2021 .... CM needs to check
 
 HH2 <- HH1
 # list<-(remove_stations$UniqueID)

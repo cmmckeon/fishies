@@ -72,14 +72,12 @@ hauls$NewUniqueID2<-paste(hauls$Survey,hauls$Year,hauls$Quarter,hauls$Ship,
                           sep="_")
 
 # Gears differ between regions and Surveys we retain several gear types 
-# BT3  BT4A BT4AI  BT4P  BT4S   BT6   BT7   BT8   GOV   H18   ROT 
-# 6849  4432  3079  2028  2141  4500  1044  4571 39280    63  4648           
 summary(as.factor(hauls$Gear))
 
 table(hauls$Gear, hauls$Survey)
 
 list<-c("BT3", "BT4A", "BT4AI", "BT4P", "BT4S", "BT6", "BT7", "BT8", 
-        "GOV", "H18", "ROT")
+        "GOV", "ROT")
 non_standard_gear<-subset(hauls, !Gear%in%list,) ### 0 hauls
 hauls <- subset(hauls, Gear%in%list, )
 summary(hauls$Gear)
@@ -91,7 +89,7 @@ summary(hauls$Gear)
 hauls$HaulDur <- (as.numeric(hauls$HaulDur))
 hist(hauls$HaulDur)
 summary(hauls$HaulDur)
-smallhauls<- subset(hauls, HaulDur<12 , ) ## how are these values decided?
+smallhauls<- subset(hauls, HaulDur<12 , ) 
 hauls <- subset(hauls, HaulDur>12 , )
 write.csv(smallhauls, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/deleted_too_short_hauls.csv")
 largehauls<- subset(hauls, HaulDur>67 ,)
@@ -177,20 +175,15 @@ nrow(hauls[duplicated(hauls$New_UniqueID2),]) ## should return 0
 checkhl <- unique(HL2$NewUniqueID2)
 check <- unique(hauls$NewUniqueID2)
 
-length(setdiff(checkhl, check)) ## expected records attached to hauls no longer in HH - 2525
-length(setdiff(check, checkhl)) ## odd ids in the HH not in the HL - 296
+length(setdiff(checkhl, check)) ## expected records attached to hauls no longer in HH - 2443
+length(setdiff(check, checkhl)) ## odd ids in the HH not in the HL - 139
 
 HHcheck <- hauls[hauls$NewUniqueID2 %in% setdiff(check, checkhl),]
 
 table(HHcheck$Survey, HHcheck$Year)
-#           1984 1985 1986 1991 1992 1998 2000 2001 2005 2008 2009 2010 2011 2012 2014 2015 2019 2020
-# BTS        0    0    0    0    0    0    1    0    0    0    1   16    1    0    1    2    0    0
-# DYFS       0    0    0    0    0    0    0    0    2    1    0    0    0    0    0    0    0    0
-# EVHOE      0    0    0    0    0    0    0    0    0    0    0    0    0    1    0    0    0    1
-# FR-CGFS    0    0    0    0    0    0    0    0    0    0    0    0    0    0    1    0    0    0
-# NIGFS      0    0    0    0    0    0    0    1    0    0    0    0    0    0    0    0    0    0
-# NS-IBTS    1    2    0   70   65    1    3    0    0    0    0   48    0    0    1    4    1    0
-# SNS        0   76   81    0    0    0    0    0    0    0    0    0    0    0    0    0    0    0
+#          1991 1992  2000  2001
+# NIGFS      0    0    0    1
+# NS-IBTS   70   65    3    0
 
 
 # now select the hauls and HL files that match up given the new unique IDS
@@ -199,7 +192,7 @@ checkhl1 <- unique(HL3$NewUniqueID2)
 
 ### 
 setdiff(checkhl1, check)
-length(setdiff(check, checkhl1)) # 296
+length(setdiff(check, checkhl1)) # 139
 
 ### Following Moriarty et al. I will also drop any Hauls info header info and no
 # HL data - there are not very many and they may be invalid for unknown reasons..
@@ -227,7 +220,7 @@ write.csv(Valid_AphiaHL, "Data_QA_Process_V5_2022/Diagnostics/Diagnostic_data/Fu
 summary(as.numeric(HL3$Valid_Aphia))
 
 
-HL3$Valid_Aphia[HL3$Valid_Aphia == 0] ### hmmmmm.... check this at a later point..
+HL3$Valid_Aphia[HL3$Valid_Aphia == "0"] ### 64 Valid_Aphia ids are zero hmmmmm.... check this at a later point..
 
 ## set to NA
 HL3$Valid_Aphia[which(HL3$Valid_Aphia == 0)] <- NA
