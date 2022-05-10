@@ -1,11 +1,8 @@
-#################### Version Control ####################
-# R version 3.2.2 (2015-08-14): Fire Safety 
-# platform       x86_64-w64-mingw32 (64-bit)
-############### Script Info ###############
-# This is Script 7 of 9
+# title: "8_Species_QA.R"
+# last updated: "08/04/2022"
+
+# This is Script 8 of 13 
 # We now correct the biological data for each of the surveys
-# AUTHOR: Meadhbh Moriarty, 2016
-# REVIEWED BY: 
 
 # PURPOSE:
 # 1. Select relevant hauls within standard survey protocol
@@ -19,38 +16,60 @@
 # 3. Correct known errors in the biological files
 # 4. Make global changes to the data, eg standardise length codes used.
 # 5. Prepare BASELINE DATA (All steps except k-NN)
-############# PACKAGES #############
-list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "lme4", "plyr",
-        "marmap", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
-        "mapplots", "class")
-lapply(list, require, character.only=T)
-################# HouseKeeping #################
+
+# load("./script7_output.rda")
+
 #boost memory for species stuff
-memory.size(10000000000000)
-memory.limit()
-###############################
-### Prepration of fish data ###
-###############################
+
+## tidy up ------------
+rm("blues", "canSpeed", "canSpeedShip", "cat", "check", 
+  "check__dist_haversine_match", "check_dist_speed_match", "check_lat_speed_match", 
+  "check_no_match", "check_speed", "check_within_bounds", "checkhaul", 
+  "coeff", "coeffs", "cols", "contour_1000m", 
+  "contour_200m", "corrhaul_rot", "CV", "d", "data", "dist", 
+  "europe", "evhoe", "find", "greys", "gs", "gs_model1", "gs_model2", 
+  "haul_dat", "hauls", "hauls1", "HH", "HL",  "i", "ices", 
+  "ire", "lat", "legend.text", "list", "list1", "m", "model1_ds", 
+  "model2", "mypath",  "nb", "needSpeed", 
+  "needSpeedGear", "needSpeedShip", "new.x", "ni", "nm1", "NOAA_Depth", 
+  "NWW_boundary", "ospar", "outside_bounds", "p1", "papoue", "pred", 
+  "pred_gear", "pred_ship", "predict1", "predict2", "radius", "rand_vect", 
+  "rock", "save", "sco1", "sco3", 
+  "setSeed", "ships", "speed_none", "sweepcatsummary", "sweepsummary", 
+  "the_gov", "train", "withSpeedShip", "ws_dat", "ws_model1", "wx", 
+  "x", "y")
+
+hauls <- rem_na_df(droplevels(h))
+
+
+### Prepration of fish data -------------
+
 # Check the Hauls and HL1 file match
 # now select the hauls and HL files that match up given the new unique IDS
-checkhaul<-unique(hauls$New_UniqueID)
-checkhl1<-unique(HL1$New_UniqueID)
+checkhaul <- unique(hauls$NewUniqueID2) ## 60076
+checkhl1 <- unique(droplevels(HL1$NewUniqueID2)) ## 60413
+
+## keep only HL rows that come from standardized HH data
+HL1 <- droplevels(rem_na_df(HL1[HL1$NewUniqueID2 %in% hauls$NewUniqueID2,]))
+
 # this gives 45919 hauls - same as HH hauls file
-setdiff(checkhl1, checkhaul)
+length(setdiff(checkhl1, checkhaul))
 setdiff(checkhaul, checkhl1)
+
+
 # All New_UniqueID match - good news as I'll need to merge both together 
-########################### 
-# 4.2.2 Initial Screening #
-###########################
+
+# Initial Screening ----------------
+
 # Step 1: Resolving Species unique ID is in a seperate code - requires different 
 # version of R
 # I need to bring in an external file of preprepared fish life history info and 
 # taxonomic resolution data
 traits<-read.csv("./Raw_Data/Fish_traits_products/Species_List_Final.csv")
 # This file contains information about the Classes of fish that we are interested in
-#########################
+
 # Combine relevant data #
-#########################
+
 # Step 2: merge haul data and LFD (HL1) data by "New_Unique ID"
 # I need to know if how the data has been counted
 # this info is in the haul file

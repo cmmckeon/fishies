@@ -18,7 +18,9 @@ rm(list = ls())
 ### library packages ---------------
 list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "lme4", "plyr",
         "marmap", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
-        "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "rgdal", "marmap")
+        "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "rgdal", 
+        "marmap")
+
 lapply(list, require, character.only=T)
 lapply(list, citation)
 
