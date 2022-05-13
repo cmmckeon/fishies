@@ -238,5 +238,7 @@ for (i in names(haul_dat)){
 
 print(list) ## no NAs
 
+saveRDS(h, "clean_HH.rds")
+
 save(list=ls(all=T), file = "./script7_output.rda")
 
