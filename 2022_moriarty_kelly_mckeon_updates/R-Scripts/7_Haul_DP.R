@@ -50,7 +50,7 @@ summary(as.factor(h$Survey_Acronym))
 
 # add a gear type filer column -------------------
 #h$GearType[h$Survey=="BTS"]<-"BT"
-h$GearType[h$Survey %in% c("BTS", "BT3", "BT4A", "BT4AI", "BT4P", "BT4S", "BY6")] <- "BT"
+h$GearType[h$Gear %in% c("BT3", "BT4A", "BT4AI", "BT4P", "BT4S", "BT6", "BT7", "BT8")] <- "BT"
 h$GearType[is.na(h$GearType)]<-"OT"
 # new haul unique identifer Survey Acronym/ship/year/haul No
 # read ship table
@@ -110,6 +110,11 @@ for (i in names(Filter(is.numeric, h))) {
        xlab = paste(i))
 }
 
+## drop door spread with a value of 1....
+h <- h[h$`Wing/Door(Ratio)` < 10,]
+
+h <- rem_na_df(h)
+
 h$Use_WingSpread[h$Survey_Acronym=="GNSFraOT4"&h$Year=="2014"] <- h$mod1_wingspread_gov[h$Survey_Acronym=="GNSFraOT4"&h$Year=="2014"]
 h$QualityWing[h$Survey_Acronym=="GNSFraOT4"&h$Year=="2014"]<-"mod1_wing_gov"
 h$Depth_m <- h$DepthNew
@@ -117,7 +122,7 @@ h$Distance_km <- h$newDist/1000
 h$WingSpread_m <- h$Use_WingSpread
 h$DoorSpread_m <- h$Use_DoorSpread
 h$NetOpen_m <- h$Use_Netopening
-summary(h$SweptArea_wing_km_sqrd) ## 18841 NAs!!
+summary(h$SweptArea_wing_km_sqrd) 
 
 h$SweptArea_wing_m_sqrd <- h$Use_WingSpread*h$newDist
 h$SweptArea_wing_km_sqrd <- h$SweptArea_wing_m_sqrd/1000/1000
@@ -132,9 +137,6 @@ h$ShootLat_degdec <- h$ShootLat
 h$ShootLong_degdec <- h$ShootLong
 
 check <- droplevels(h[which(is.na(h$SweptArea_wing_m_sqrd)),])
-levels(check$Survey) ## "BTS" "DYFS" "NS-IBTS" "SNS" 
-check <- check[check$Survey %nin% c("DYFS", "SNS"),] ## 10829 missing swept areas from DYFS and SNS
-
 
 #check duplicate times in h file
 h$date_time_check <- paste(h$Ship, h$Year, h$Quarter, h$month, h$Day, h$TimeShot, sep="_")
@@ -172,7 +174,7 @@ table(check$Survey) ## 2023 from BTS
 table(h$Survey, h$Year)
 
 
-list < -(unique(h$HaulID))
+list <- (unique(h$HaulID))
 list <- h[duplicated(h$HaulID),]
 summary(h$WingSwpArea_sqkm)
 summary(h$Depth_m)
@@ -234,5 +236,9 @@ for (i in names(haul_dat)){
   list[i] <-length(which(is.na(haul_dat[,i])))
 }
 
-print(list)
+print(list) ## no NAs
+
+saveRDS(h, "clean_HH.rds")
+
+save(list=ls(all=T), file = "./script7_output.rda")
 

@@ -32,19 +32,14 @@ table(HH_IGFS$Year)
 
 HH_SWC<-as.data.table(HH_SWC)
 table(HH_SWC$Year)
+HH_SWC <- as.data.table(HH_SWC[HH_SWC$Year >= 1986,])
 
 HH_ROCK<-as.data.table(HH_ROCK)
 table(HH_ROCK$Year)
 
-HH_BTS <- as.data.table(HH_BTS[HH_BTS$Year > 1986,])
-x2 <- which(HH_BTS$Year <2002 & HH_BTS$Country == "DE") ## do include
-HH_BTS <- HH_BTS[-x2,]
-## Remove DE prior to 2002 - this wasn't on Datras yet when 
-# Moriarty did there work. It does appear to be the same ship, 
-# but the gear type and other params would need to be error checked 
-# before inclusion
+HH_BTS <- as.data.table(HH_BTS[HH_BTS$Year >= 1986,])
 
-HH_NSIBTS <- as.data.table(HH_NSIBTS[HH_NSIBTS$Year >1982,])
+HH_NSIBTS <- as.data.table(HH_NSIBTS[HH_NSIBTS$Year >= 1986,])
 table(HH_NSIBTS$Year, HH_NSIBTS$Quarter)
 x1 <- which(HH_NSIBTS$Year <1998 & HH_NSIBTS$Quarter %in% c(3,4))
 HH_NSIBTS <- HH_NSIBTS[-x1,]
@@ -52,6 +47,7 @@ HH_NSIBTS <- HH_NSIBTS[-x1,]
 
 HH_SNS <- as.data.table(HH_SNS)
 table(HH_SNS$Year)
+HH_SNS <- as.data.table(HH_SNS[HH_SNS$Year >= 1986,])
 
 HH_BTS8 <- as.data.table(HH_BTS8)
 table(HH_BTS8$Year)
@@ -86,9 +82,8 @@ HL_SWC<-as.data.table(HL_SWC)
 
 HL_ROCK<-as.data.table(HL_ROCK)
 
-HL_BTS<-as.data.table(HL_BTS[HL_BTS$Year> 1986,])
-x4 <- which(HL_BTS$Year <2002 & HL_BTS$Country == "DE")
-HL_BTS <- HL_BTS[-x4,]
+HL_BTS<-as.data.table(HL_BTS[HL_BTS$Year >= 1986,])
+
 names(HL_BTS)[names(HL_BTS) == 'ValidAphiaID'] <- 'Valid_Aphia'
 HL_BTS <- HL_BTS[, c("RecordType", "Survey", "Quarter", "Country", "Ship", "Gear", 
                      "SweepLngt", "GearEx", "DoorType", "StNo", "HaulNo", "Year", 
@@ -96,7 +91,7 @@ HL_BTS <- HL_BTS[, c("RecordType", "Survey", "Quarter", "Country", "Ship", "Gear
                      "NoMeas", "SubFactor", "SubWgt", "CatCatchWgt", "LngtCode", "LngtClass", 
                      "HLNoAtLngt", "DevStage", "LenMeasType", "DateofCalculation", "Valid_Aphia")]
 
-HL_NSIBTS<-as.data.table(HL_NSIBTS[HL_NSIBTS$Year >1982,])
+HL_NSIBTS<-as.data.table(HL_NSIBTS[HL_NSIBTS$Year >= 1986,])
 x3 <- which(HL_NSIBTS$Year <1998 & HL_NSIBTS$Quarter %in% c(3,4))
 HL_NSIBTS <- HL_NSIBTS[-x3,]
 names(HL_NSIBTS)[names(HL_NSIBTS) == 'ValidAphiaID'] <- 'Valid_Aphia'
@@ -107,7 +102,7 @@ HL_NSIBTS <- HL_NSIBTS[, c("RecordType", "Survey", "Quarter", "Country", "Ship",
                      "HLNoAtLngt", "DevStage", "LenMeasType", "DateofCalculation", "Valid_Aphia")]
 
 
-HL_SNS <-as.data.table(HL_SNS[HL_SNS$Year> 1986,])
+HL_SNS <-as.data.table(HL_SNS[HL_SNS$Year>= 1986,])
 
 HL_BTS8 <-as.data.table(HL_BTS8)
 

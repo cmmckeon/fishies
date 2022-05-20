@@ -132,25 +132,21 @@ HL_DYFS <-read.csv("./Raw_Data/DATRAS/Beam_oth/HL_DYFS.csv")
 HL_DYFS <- HL_DYFS[, which(names(HL_DYFS) != "X")]
 
 
-beep(sound = 1, expr = NULL)
-
 # Add national submitted data -------
 
 # Danish Data
 
 # Add corrections of data from National Data providers
-# Denmark earliest years of survey were missing species
-NS_DEN_sp_1983<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1983_GOV.CSV", header=F, stringsAsFactors = FALSE)
-NS_DEN_sp_1984<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1984_GOV.CSV", header=F, stringsAsFactors = FALSE)
-NS_DEN_sp_1985<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1985_GOV.CSV", header=F, stringsAsFactors = FALSE)
-NS_DEN_sp_1986<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1986_GOV.CSV", header=F, stringsAsFactors = FALSE)
 
-# Northern Irish Data 
+# Denmark earliest years of survey were missing species
+NS_DEN_sp_1986<-read.csv("./Raw_Data/Corrections/DNK_IBTS1_1986_GOV.CSV", header=F, stringsAsFactors = FALSE)
 
 # Northern Ireland early data not available on Datras
 NI_extra<-read.csv("./Raw_Data/National Submissions/Datras_MSFD_NI/Datras_MSFD3.txt", header=F) ## updated from Datras_MSFD1.csv to lastest data product CM
 
 save(list=ls(all=T), file = "./script2_output.rda")
 #load("./script2_output.rda")
+
+beep(sound = 1, expr = NULL)
 
 # end ---------

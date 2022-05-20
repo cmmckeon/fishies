@@ -16,9 +16,13 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 rm(list = ls())
 
 ### library packages ---------------
-list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "lme4", "plyr",
-        "marmap", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
-        "mapplots", "class", "gridExtra", "ggmap", "tidyverse")
+list<-c("ggplot2", "data.table", "reshape2", "arm","car", #"DMwR", 
+        "lme4", "plyr",
+        "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
+        "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr") #, "marmap")
+
+
+
 lapply(list, require, character.only=T)
 lapply(list, citation)
 
