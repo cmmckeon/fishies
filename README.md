@@ -7,15 +7,20 @@ There are two sections to this work
 
 Code is adapted from work by Meadhbh Moriarty in 2016 and built on by Ruth Kelly 2021.
 
-# In general the goals of the scripts in series are outline below:
-# Goal 1. Check survey data for outliers and query with data providers
-#             This code has been re-run to insure all errors that have been 
-#             reported have been removed from DATRAS, otherwise a "fix" is used
-# Goal 2. Derive Surveys and fix errors not updated in DATRAS
-# Goal 3. Estimate missing/incorrect gear parameters
-# Goal 4. Calculate Swept Area and Swepth Volume
-# Goal 5. Estimate missing/incorrect biological parameters
-# Goal 6. Calculate Swept Area densities
+In general the goals of the scripts in series are outline below:
+
+Goal 1. Check survey data for outliers and query with data providers. This code has been re-run to insure all errors that have been 
+            reported have been removed from DATRAS, otherwise a "fix" is used
+            
+Goal 2. Derive Surveys and fix errors not updated in DATRAS
+
+Goal 3. Estimate missing/incorrect gear parameters
+
+Goal 4. Calculate Swept Area and Swepth Volume
+
+Goal 5. Estimate missing/incorrect biological parameters
+
+Goal 6. Calculate Swept Area densities
 
 ## DATA NEEDED:
 
