@@ -1,6 +1,12 @@
 # fishies
 Analysis of environmental and anthropogenic drivers of fish occurrence across life history strategy in the North Eastern Atlantic
 
+R version 3.6.3 "Holding the Windsock" 
+
+and
+
+R version 4.2.0 "Vigorous Calestetics" (for using the rfishbase package, then back to 3.6.3 for using raster)
+
 There are two sections to this work 
   - cleaning and standardising survey effort (scripts 1 - 7)
   - cleaning and standardising biodiversity data (scripts 8 - 12)
@@ -26,14 +32,23 @@ Goal 6. Calculate Swept Area densities
 
 # DATRAS DOWNLOAD 04/2022
 
-R version 3.6.3 "Holding the Windsock" 
+## scripts we use
 
+Haul data cleaning: 1 - 7
+
+Biological data cleaning: 8a & 8
+
+Covariate wrangling: 13
+
+
+We are subsetting all available DATRAS data to just surveys in the North East Atlantic (i.e. not the North sea) in order to establish our modelling pipeline. We would currently 
+like to expand to modelling all available data if this goes well (i.e. after Caroline finished her PhD).
+
+Covariates will be modelled at 10km2 spatial and mean monthly values temporal resolution.
 
 The DATRAS data provides us with a response variable (fish occurrence or abundance, and maybe some tratis)
 
 We must search the internet for our co-variates
-
-
 
 # Fishing pressure
 
@@ -47,15 +62,23 @@ Global fish watch
 
 # Sea surface temperature
 
-COPERNICUS - Sea surface temperature daily data from 1981 to present derived from satellite observations
-https://cds.climate.copernicus.eu/cdsapp#!/dataset/satellite-sea-surface-temperature?tab=form
-one  year one month all days = 511 MB
-
 Ocean colour NASA - sea surface temperature from 2002 - 2022
 https://oceancolor.gsfc.nasa.gov/l3/
 
+can extract seasonal SST (as per Lousie Rutterford) at 9km resolution within boundary box of your choosing
+nc files (easily rasterised)
+1 season of data for my study area = approx 240KB. 240*4*13 = 12.5 MB total (they also send nighttime sst so double that) 
+WAY better than copernicus for my purposes
 
-Offshore infrastructure 
+
+# COPERNICUS - Sea surface temperature daily data from 1981 to present derived from satellite observations
+# https://cds.climate.copernicus.eu/cdsapp#!/dataset/satellite-sea-surface-temperature?tab=form
+# one  year one month all days = 511 MB
+
+
+
+
+Offshore infrastructure (not today)
 pH?
 Green index (primary productivity)
 Substrate 

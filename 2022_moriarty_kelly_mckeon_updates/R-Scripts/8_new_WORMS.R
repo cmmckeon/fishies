@@ -8,13 +8,16 @@
 # LOAD PACKAGES --------------
 library("worms")
 library(plyr)
-library(rfishbase)
+library("rfishbase")
 
 
 # LOAD DATA ------------------------ 
 
-HL1 <- readRDS("HL1.rds")
+HL1 <- readRDS("clean_HL.rds")
 h <- readRDS("clean_HH.rds")
+
+h <- h[h$Survey != "DYFS",]
+HL1 <- HL1[HL1$NewUniqueID2 %in% h$NewUniqueID2,]
 
 length(unique(HL1$Valid_Aphia)) ## 1383 unique species
 num_ids <- unique(HL1$Valid_Aphia) 
@@ -28,7 +31,8 @@ AphiaRecords <- wormsbyid(num_ids, verbose = TRUE, ids = FALSE, sleep_btw_chunks
 
 head(AphiaRecords)
 # write a table to save the information
-write.csv(AphiaRecords, "biodiversity/AphiaRecords_all_species.csv")
+# write.csv(AphiaRecords, "biodiversity/AphiaRecords_all_species.csv")
+# AphiaRecords <- read.csv("biodiversity/AphiaRecords_all_species.csv")
 
 # attach the Aphia records to the biological data 
 bio$AphiaID <- bio$Valid_Aphia 
@@ -36,11 +40,11 @@ MySpecList <- merge(bio, AphiaRecords, by="AphiaID")
 
 head(MySpecList)
 # write a table to save the all the information
-write.csv(MySpecList, "biodiversity/HL_tax_all_species.csv") 
+#write.csv(MySpecList, "biodiversity/HL_tax_all_species.csv") 
 
 # Delete non fish records from bio file (MySpecList)
 MyFishList <- subset(MySpecList, phylum=="Chordata")
-MyFishList$totalno <- as.numeric(MyFishList$TotalNo)
+MyFishList$TotalNo <- as.numeric(MyFishList$TotalNo)
 
 write.csv(MyFishList, "biodiversity/HL_tax_fish_species.csv") 
 #fish <- read.csv("biodiversity/HL_tax_fish_species.csv")
@@ -113,9 +117,12 @@ length(unique(MyFishList$AphiaID)) ## only 457 species in chordata....
 
 # 
 MyFishBaseFishList <- species(MyFishList$scientificname)
-write.csv(MyFishBaseFishList, "FishBaseSpeciesData.csv")
+gc()
+write.csv(MyFishBaseFishList, "biodiversity/FishBaseSpeciesData.csv")
 MyFishBaseFishDistribution <- distribution(MyFishBaseFishList$sciname)
+write.csv(MyFishBaseFishDistribution, "biodiversity/MyFishBaseFishDistribution.csv")
 MyFishBaseLengthWeight <- length_weight(MyFishBaseFishList$sciname)
+write.csv(MyFishBaseLengthWeight, "biodiversity/MyFishBaseLengthWeight.csv")
 
 
 # str(MyFishList)
