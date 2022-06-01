@@ -39,14 +39,13 @@ h <- read.csv("~/Desktop/covars/BiologicalInfo_per_species_2009_on_30_05_2022.cs
 
 summary(h)
 
-
 ## cleaned hauls to check some things --------
 
 ## ask Ruth about using check_StatRec instead of StNo
 hh <- readRDS("clean_HH.rds")
 #check <- hh[grep("NA", hh$HaulID),] ## 4054 hauls with no station number
 #length(which(is.na(hh$StNo))) ## 26674
-#check <- hh[grep("NA", hh$NewUniqueID2),]
+check <- hh[grep("NA", hh$NewUniqueID2),]
 
 ## add check_StatRec from HH to the cleaned Biodiversity data
 x <- unique(hh[,which(names(hh) %in% c("check_StatRec", "HaulID"))])
@@ -146,6 +145,28 @@ rat$season <- str_sub(rat$time, -4, -1)
 ## sst dataset made ---------------------
 
 
+## FP: fishing pressure ------------------------
+
+fp <- shapefile("~/Desktop/covars/fp_ICES_2009_2020/shapefiles/") 
+x <- rasterize(fp, tmp_raster)
+plot(x)
+
+plot(fp)
+
+fp <- readOGR(dsn = "~/Desktop/covars/fp_ospar_2009_2017/ICES.2018.Shapefiles-OSPAR-spatial-data-fishing-intensity/2017", layer = "OSPAR_intensity_total_2017")
+x <- rasterize(teow, mat)
+a <- raster::deratify(x, "ECO_NAME")
+writeRaster(a, "Data_08_teow_econame.grd")
+
+
+## OR 
+
+eco_rast <- raster("Data_08_teow_econame.grd")
+
+
+
+
+
 
 f <- system.file('external/test.grd',package = 'raster')
 
@@ -175,34 +196,7 @@ v <- getValuesBlock(r,row=rowcol[1,1],nrows=(rowcol[nrow(rowcol),1] - rowcol[1,1
 
 
 
-fp <- shapefile("~/Desktop/covars/fp_ospar_2009_2017/ICES.2018.Shapefiles-OSPAR-spatial-data-fishing-intensity/2017/OSPAR_intensity_total_2017.shp") 
-x <- rasterize(fp, tmp_raster)
-plot(x)
-
-plot(fp)
-
-fp <- readOGR(dsn = "~/Desktop/covars/fp_ospar_2009_2017/ICES.2018.Shapefiles-OSPAR-spatial-data-fishing-intensity/2017", layer = "OSPAR_intensity_total_2017")
-x <- rasterize(teow, mat)
-a <- raster::deratify(x, "ECO_NAME")
-writeRaster(a, "Data_08_teow_econame.grd")
 
 
-## OR 
-
-eco_rast <- raster("Data_08_teow_econame.grd")
-
-
-
-
-
-## looking at OSPAR fishing pressure (2017 - 2021 available)
-
-## https://www.emodnet-humanactivities.eu/search-results.php?dataname=Vessel+Density+#ID0EAEA
-## View the vessel density data on an interactive map of Europe by clicking on a cell to retrieve the value 
-## (hours per square km per month) by ship type.
-
-ves <- raster("~/Desktop/covars/EMODnet_HA_Vessel_Density_202106/2021_06_st_All.tif")
-
-plot(ves)
 
 

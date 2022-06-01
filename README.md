@@ -52,6 +52,11 @@ We must search the internet for our co-variates
 
 # Fishing pressure
 
+# OSPAR spatial data layers of fishing intensity/pressure - oh my god why was that so incredibly hard to find on the internet
+2009 - 2020
+https://ices-library.figshare.com/articles/dataset/Data_for_OSPAR_request_on_the_production_of_spatial_data_layers_of_fishing_intensity_pressure/18601508
+
+
 EMODnet Vessel density EU
 - https://www.emodnet-humanactivities.eu/search-results.php?dataname=Vessel+Density+#ID0EAEA
 One year one month = 30 MB
