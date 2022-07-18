@@ -31,6 +31,16 @@ lapply(list, require, character.only=T)
 ## create "not in" operator
 '%nin%' = Negate('%in%')
 
+## pairs function
+upper.panel<-function(x, y){
+  points(x,y, pch=21, col=c("grey"), cex = 0.5)
+  r <- round(cor(x, y), digits=2)
+  txt <- paste0("R = ", r)
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  text(0.8, 0.9, txt, cex =0.7)
+}
+
 ## read in data --------------
 
 h <- read.csv("~/Desktop/covars/BiologicalInfo_per_species_2009_on_30_05_2022.csv")
@@ -62,6 +72,8 @@ rm(box, x)
 ## unique hauls locations for extracting sst and fp data
 sp_co <- unique(h[, c("ShootLong", "ShootLat")]) 
 names(sp_co) <- c("x", "y")
+
+
 
 # summary(h$ShootLat)
 # summary(h$ShootLong)
@@ -198,17 +210,28 @@ rm(rat, d, rast_list, f)
 Sys.time()
 
 covars <- merge(sst_data, fp_data, by = c("x", "y", "year"), all.x = T)
+#saveRDS(covars, "Data_covars_sst_fp.rds")
 
-# plot(tmp_raster)
-# points(sp_co$x, sp_co$y, type = "p", col = "blue", lwd = 0.1) 
-# points(fp_data$x, fp_data$y, type = "p", col = "light blue", lwd = 0.3) 
+par(bty = "l", bg = "transparent")
+plot(tmp_raster)
+points(sp_co$x, sp_co$y, type = "p", col = "blue", lwd = 0.1)
+points(fp_data$x, fp_data$y, type = "p", col = "light blue", lwd = 0.3)
 
 
 ## Covars extracted -----------------------------
 
+covars <- readRDS("Data_covars_sst_fp.rds")
 
+c <- c()
+#plot(sum(covars$fp) ~ covars$year)
+for(i in unique(covars$year)){
+  c <- c(c, sum(covars$fp[covars$year == i], na.rm = T))}
+plot(c ~ unique(covars$year))
 
-
+d <- c()
+for(i in unique(covars$year)){
+  d <- c(d, sum(covars$sst[covars$year == i & covars$season == "SNSU"], na.rm = T))}
+plot(d[-15] ~ unique(covars$year[covars$year != "2022"]))
 
 
 ## map beam trawls 
@@ -222,10 +245,163 @@ length(unique(x[, c("ShootLong", "ShootLat")])) ## also 263
 ## all hauls where station number is NA have unique latlons, so i THINK we can use HaulID for 
 ## location level random effect....
 
+## data handling -----------
+
+## combine biodiversity and covars dataframes
+covars$m <- paste(covars$y, covars$x, sep = "_")
+covars <- covars %>%  rename(Year = year)
+h$m <- paste(h$ShootLat, h$ShootLong, sep = "_")
+
+covars <- covars %>%  rename(Quarter = season)
+
+h$Quarter <- as.character(h$Quarter)
+h$Quarter[h$Quarter == "1"] <- "SNSP"
+h$Quarter[h$Quarter == "2"] <- "SNSU"
+h$Quarter[h$Quarter == "3"] <- "SNAU"
+h$Quarter[h$Quarter == "4"] <- "SNWI"
+
+modeldf <- merge(h, covars, by = c("m", "Year", "Quarter"), all.x = T)
+
+## handle names and nestedness of random effects
+## station numbers (stNo) are missing for BTS surverys, so using their co-ordinates to give unique locations
+modeldf$gear_ship <- paste(modeldf$Gear, modeldf$Ship, sep = "_")
+modeldf$location_re <- as.character(modeldf$StNo)
+modeldf$location_re[is.na(modeldf$StNo)] <- modeldf$m[is.na(modeldf$StNo)]
+modeldf$gear_ship_loc <- paste(modeldf$gear_ship, modeldf$location_re, sep = "_")
+
+modeldf <- unique(modeldf[, which(names(modeldf) %in% c("Year", "Gear", "HaulID",
+                                                  "Quarter", "DepthNew", "SciName", "ShootLat", 
+                                                  "ShootLong", "Total_DensAbund_N_Sqkm", "sst", 
+                                                  "season", "fp", "gear_ship",  "gear_ship_loc"))])
+
+## explore data 
+
+# Quick look at model dataframe
+# Factors
+for (i in names(Filter(is.factor, modeldf))) {
+  plot(modeldf[,i],
+       main = paste(i))
+  gc()
+}
+# Numeric variables
+par(mfrow=c(3,3))
+for (i in names(Filter(is.numeric, modeldf))) {
+  hist(modeldf[,i], breaks = 1000, main = paste(i))
+  gc()
+}
+
+
+# par(mfrow=c(2,2))
+# hist(log(modeldf$DepthNew), breaks = 1000)
+# hist(log(modeldf$Total_DensAbund_N_Sqkm), breaks = 1000)
+# hist(log(modeldf$fp), breaks = 50)
+
+
+## transform
+## make a presense absense of fishing pressure column
+modeldf$fp_yn[is.na(modeldf$fp)] <- 0 
+modeldf$fp_yn[!is.na(modeldf$fp)] <- 1 
+
+modeldf$DepthNew <- log(modeldf$DepthNew)
+modeldf$abund <- log(modeldf$Total_DensAbund_N_Sqkm)
+modeldf$fp <- log(modeldf$fp)
+
+## only one year has summer data - drop this quarter
+modeldf <- modeldf[modeldf$Quarter %nin% c("SNSU", "SNAU"),]
+
+modeldf <- droplevels(modeldf)
+
+modeldf$Quarter <- factor(modeldf$Quarter, levels = c("SNWI", "SNSP"))
+modeldf$Quarter <- as.numeric(factor(modeldf$Quarter))
+
+## scale
+
+for (i in c("DepthNew", "sst", "fp", "fp_yn", "abund", "Year", "Quarter")) {
+  modeldf[, i] <- c(scale(modeldf[,i]))
+}
+
+## make the response variable
+modeldf$resp <- modeldf$abund-min(modeldf$abund)+1
+
+## save abundance modeling dataframe
+#saveRDS(modeldf, "Data_modeldf_abundance.rds")
+
+m <- drop_na(mydata)
+pairs(m[, which(names(m) %nin% c("Year", "Quarter", "HaulID", "Gear",  "SciName", 
+                                 "ShootLat", "ShootLong", 
+                                 "gear_ship", "gear_ship_loc"))], lower.panel = NULL, upper.panel = upper.panel)
+
+rcorr(as.matrix(m[, which(names(m) %in% c("DepthNew", "Total_DensAbund_N_Sqkm", "sst", "fp", 
+                                          "fp_yn", "abund"))]))
 
 
 
+## -----------
 
+
+## traits -------------------------
+
+traits <- read.csv("~/Desktop/covars/traits/beukhof_fish_traits.csv")
+#theirfish <- unique(traits$taxon) 
+#myfish <- unique(abundance$SciName) ## only missing seven species from my list
+traits <- traits[traits$taxon %in% abundance$SciName,]
+traits <- unique(traits[traits$LME %in% c(24),]) ## trait values for celtic-biscay shelf LME
+
+## come back for these few if you can
+#setdiff(abundance$SciName, x$taxon)
+
+
+traits <- traits[, c("taxon", "habitat","feeding.mode", 
+                "tl", "body.shape", "fin.shape", 
+                "AR", "offspring.size",  "spawning.type",  
+                "age.maturity", "fecundity","length.infinity", 
+                "growth.coefficient", "length.max", "age.max")]
+
+
+list <- c()
+for (i in names(x)){
+  list[i] <-length(which(is.na(x[,i])))
+}
+
+print(list) ## all variables should be zero 
+
+
+## presense absense ---------
+
+length(unique(modeldf$HaulID))
+
+occ <- modeldf[, c("SciName", "Total_DensAbund_N_Sqkm", "HaulID")]
+
+occ <- as.data.frame(cbind(rep(unique(modeldf$SciName), length(unique(modeldf$SciName)))),
+                     rep(1:length(unique(modeldf$SciName))))
+
+##  get occurrence for all species in each Haul
+occ <- as.data.frame(rep(1:250, length(unique(modeldf$HaulID))))
+occ <- as.data.frame(occ[order(occ[,1]),])
+occ$HaulID <- rep(unique(modeldf$HaulID), length(unique(modeldf$SciName)))
+occ <- as.data.frame(occ[order(occ[,2]),])
+occ$SciName <- rep(unique(modeldf$SciName), length(unique(modeldf$HaulID)))
+
+occ$pres_abs <- 0
+
+for(i in unique(modeldf$SciName)){
+  for(j in unique(modeldf$HaulID)){
+    if(is.numeric(modeldf$Total_DensAbund_N_Sqkm[modeldf$SciName == i & modeldf$HaulID == j])){
+    occ$pres_abs[occ$SciName == i & occ$HaulID == j] <- 1}
+    else {occ$pres_abs[occ$SciName == i & occ$HaulID == j] <- 0}
+  }
+}
+
+save <- occ
+
+occ <- occ[,-1]
+occ <- merge(occ, modeldf, by = c("HaulID"), all.x =T)
+occ$pres_abs[!is.na(occ$Total_DensAbund_N_Sqkm)] <- 1
+occ$pres_abs[is.na(occ$Total_DensAbund_N_Sqkm)] <- 0
+
+names(occ) <- c("SciName", "HaulID", "order", "pres_abs")
+
+occ <- merge(occ, modeldf, by = c("SciName", "HaulID"), all.x =T)
 
 
 
