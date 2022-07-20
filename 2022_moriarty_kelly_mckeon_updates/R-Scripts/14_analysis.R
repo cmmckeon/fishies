@@ -44,125 +44,60 @@ abundance <- drop_na(mydata)
 
 ## model with fishing pressure as continuous -------------
 
+## for beta_family models
+#abundance$rel_ab <- abundance$rel_ab - 1.727584e-08
+
 ## null model
-Sys.time()
-cont_null <- glmmTMB(rel_ab ~ 1 + (1|SciName) + (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-                        family = betabinomial,
-                        data = abundance)
-Sys.time()
-summary(cont_null)
-#saveRDS(cont_null, "null_model.rds")
+# Sys.time()
+# cont_null <- glmmTMB(rel_ab ~ 1 + (1|SciName) + (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+#                         family = beta_family,
+#                         data = abundance)
+# Sys.time()
+# summary(cont_null)
+# #saveRDS(cont_null, "rel_ab_null_model.rds")
 
-
-abundance <- abundance[abundance$Quarter > 0,]
 
 ## full model
 Sys.time()
-cont_full <- glmmTMB(rel_ab ~ sst*DepthNew*fp*Year*PC1 + sst*DepthNew*fp*Year*PC2 +
+cont_full <- glmmTMB(rel_ab ~ SNSP*SNWI*sst_var*DepthNew*fp*Year*PC1 + SNSP*SNWI*sst_var*DepthNew*fp*Year*PC2 + Quarter +
                        (1|SciName) + (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-                     family = betabinomial,
+                     family = beta_family,
                      control = glmmTMBControl(optCtrl = list(iter.max = 1000000, eval.max = 1000000),
                                               profile = FALSE, collect = FALSE),
                      data = abundance)
 Sys.time()
 
-#saveRDS(cont_full, "winter_sciname_traits_poisson_model.rds")
+saveRDS(cont_full, "rel_ab_full_model.rds")
 beep()
 
-
-Sys.time()
-cont_full <- glmmTMB(resp ~ sst*DepthNew*fp*Year + 
-                       tl +
-                       age.maturity +
-                       length.max+ 
-                       fecundity +
-                       (1|SciName) + (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-                     family = poisson,
-                     # family = nbinom2, ## this is no better than poisson in diagnostics, but much slower
-                     control = glmmTMBControl(optCtrl = list(iter.max = 1000000, eval.max = 1000000),
-                                              profile = FALSE, collect = FALSE),
-                     data = abundance)
-Sys.time()
-
-#saveRDS(cont_full, "plus_winter_sciname_traits_poisson_model.rds")
-beep()
 
 # mod2_optim <- update(cont_full,
 #                      control=glmmTMBControl(optimizer=optim,
 #                                             optArgs=list(method="BFGS")))
 
-#saveRDS(cont_full, "nbinom2_full_model.rds")
-beep()
-
 #saveRDS(mod2_optim, "nbinom2_falseconvergence_update_full_model.rds")
 
 
 
-par(mfrow = c(3,3))
-plot(abundance$resp ~ abundance$tl)
-plot(abundance$resp ~ abundance$body.shape)
-plot(abundance$resp ~ abundance$offspring.size)
-plot(abundance$resp ~ abundance$age.maturity)
-plot(abundance$resp ~ abundance$age.max)
-plot(abundance$resp ~ abundance$growth.coefficient)
-plot(abundance$resp ~ abundance$length.max)
+
+# cont_null <- readRDS("rel_ab_null_model.rds")
+# summary(cont_null)
 
 
-cont_full <- readRDS("fp_cont_full_model.rds")
-summary(cont_full)
-
-cont_full <- readRDS("fp_cont_full_model_sciname.rds")
-summary(cont_full)
-
-cont_full <- readRDS("nbinom2_full_model.rds")
-summary(cont_full)
 
 
-cont_full <- readRDS("winter_sciname_traits_poisson_model.rds")
-summary(cont_full)
-
-# abundance <- unique(abundance[, c("Year", "Quarter", "HaulID", "Gear", "DepthNew",
-#                            "ShootLat", "ShootLong", "sst", "fp", 
-#                            "gear_ship", "gear_ship_loc", "fp_yn","total", 
-#                            "log_total")])
-
-Sys.time()
-null_total <- glmmTMB(log_total ~ 1 +  (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-                    # family = poisson,
-                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-                                              profile = FALSE, collect = FALSE),
-                     data = abundance)
-Sys.time()
-beep()
 
 
-## full model with summed total abundance
-Sys.time()
-cont_full <- glmmTMB(log_total ~ sst*DepthNew*fp*Year*Quarter + (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-                    # family = poisson,
-                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-                                              profile = FALSE, collect = FALSE),
-                     data = abundance)
-Sys.time()
-
-#saveRDS(cont_full, "full_total.rds")
-beep()
-full_total <- readRDS("full_total.rds")
-summary(full_total)
-
-# x <- unique(abundance[abundance$SciName == "Trisopterus esmarkii",])
-# 
-# plot(x$resp ~ x$fp)
-
-summary(full)
 
 ## diagnostics -------------
 
-testDispersion(cont_full)
-par(mfrow = c(2,2))
-simulationOutput <- simulateResiduals(fittedModel = cont_full, plot = F)
-residuals(simulationOutput)
-plot(simulationOutput)
-
-
+# testDispersion(cont_full)
+# par(mfrow = c(2,2))
+# simulationOutput <- simulateResiduals(fittedModel = rel_ab_null_beta_model, plot = F)
+# residuals(simulationOutput)
+# plot(simulationOutput)
+# 
+# simulationOutput_beta <- simulateResiduals(fittedModel = rel_ab_null_model, plot = F)
+# residuals(simulationOutput)
+# plot(simulationOutput_beta)
 
