@@ -20,7 +20,7 @@
 # set working directory
 setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 
-list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", 
+list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "Hmisc", "vegan", "viridis", "ggfortify",
         "lme4", "plyr", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
         "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "raster", "ncdf4", "marmap", "rgdal", "foreign",
         "sf") # "rst")
@@ -137,7 +137,18 @@ names(rat) <- c("x", "y", "sst", "time")
 rat$year <- substr(rat$time,1,4)
 rat$season <- str_sub(rat$time, -4, -1)
 
-sst_data <- rat
+## reformat by quarter
+for(i in levels(factor(rat$season))){
+  rat[,paste(i)] <- NA
+  rat[,paste(i)][rat$season == i] <- rat$sst[rat$season == i]}
+
+x <- unique(rat[, c("x", "y", "year")])
+for(i in levels(factor(rat$season))){
+  x <- merge(x, 
+             rat[,c("x", "y", "year", i)][!is.na(rat[,i]),], 
+             by = c("x", "y", "year"), all.x = T)}
+
+sst_data <- x
 
 rm(rat, d, sst, rast_list)
 
@@ -230,8 +241,13 @@ plot(c ~ unique(covars$year))
 
 d <- c()
 for(i in unique(covars$year)){
-  d <- c(d, sum(covars$sst[covars$year == i & covars$season == "SNSU"], na.rm = T))}
+  d <- c(d, sum(covars$SNSU[covars$year == i], na.rm = T))}
 plot(d[-15] ~ unique(covars$year[covars$year != "2022"]))
+
+# d <- c()
+# for(i in unique(covars$year)){
+#   d <- c(d, sum(covars$sst[covars$year == i & covars$season == "SNSU"], na.rm = T))}
+# plot(d[-15] ~ unique(covars$year[covars$year != "2022"]))
 
 
 ## map beam trawls 
@@ -252,7 +268,7 @@ covars$m <- paste(covars$y, covars$x, sep = "_")
 covars <- covars %>%  rename(Year = year)
 h$m <- paste(h$ShootLat, h$ShootLong, sep = "_")
 
-covars <- covars %>%  rename(Quarter = season)
+#covars <- covars %>%  rename(Quarter = season)
 
 h$Quarter <- as.character(h$Quarter)
 h$Quarter[h$Quarter == "1"] <- "SNSP"
@@ -260,7 +276,10 @@ h$Quarter[h$Quarter == "2"] <- "SNSU"
 h$Quarter[h$Quarter == "3"] <- "SNAU"
 h$Quarter[h$Quarter == "4"] <- "SNWI"
 
-modeldf <- merge(h, covars, by = c("m", "Year", "Quarter"), all.x = T)
+## only one year has summer data - drop this quarter
+h <- h[h$Quarter %nin% c("SNSU", "SNAU"),]
+
+modeldf <- merge(h, covars, by = c("m", "Year"), all.x = T)
 
 ## handle names and nestedness of random effects
 ## station numbers (stNo) are missing for BTS surverys, so using their co-ordinates to give unique locations
@@ -271,43 +290,67 @@ modeldf$gear_ship_loc <- paste(modeldf$gear_ship, modeldf$location_re, sep = "_"
 
 modeldf <- unique(modeldf[, which(names(modeldf) %in% c("Year", "Gear", "HaulID",
                                                   "Quarter", "DepthNew", "SciName", "ShootLat", 
-                                                  "ShootLong", "Total_DensAbund_N_Sqkm", "sst", 
+                                                  "ShootLong", "Total_DensAbund_N_Sqkm", 
+                                                  "SNAU", "SNSP", "SNSU", "SNWI", 
                                                   "season", "fp", "gear_ship",  "gear_ship_loc"))])
+
+## get seasonal variation in temp
+modeldf$sst_var <- modeldf$SNSU - modeldf$SNWI
+
+## traits -------------------------
+
+traits <- read.csv("~/Desktop/covars/traits/beukhof_fish_traits.csv")
+#theirfish <- unique(traits$taxon) 
+#myfish <- unique(modeldf$SciName) ## only missing seven species from my list
+traits <- traits[traits$taxon %in% modeldf$SciName,]
+traits <- unique(traits[traits$LME %in% c(24),]) ## trait values for celtic-biscay shelf LME
+
+## come back for these few if you can
+#setdiff(modeldf$SciName, x$taxon)
+
+traits <- traits[, c("taxon", "habitat","feeding.mode", 
+                     "tl", "body.shape", "offspring.size", "spawning.type",
+                     "age.maturity", "fecundity",
+                     "growth.coefficient", "length.max", "age.max")]
+
+list <- c()
+for (i in names(traits)){
+  list[i] <-length(which(is.na(traits[,i])))}
+print(list) ## all variables should be zero 
+
+modeldf <- merge(modeldf, traits, by.x = "SciName", by.y = "taxon", all.x = T)
 
 ## explore data 
 
 # Quick look at model dataframe
 # Factors
-for (i in names(Filter(is.factor, modeldf))) {
-  plot(modeldf[,i],
-       main = paste(i))
-  gc()
-}
+# for (i in names(Filter(is.factor, modeldf))) {
+#   plot(modeldf[,i],
+#        main = paste(i))
+#   gc()
+# }
+
 # Numeric variables
-par(mfrow=c(3,3))
+par(mfrow=c(4,4))
 for (i in names(Filter(is.numeric, modeldf))) {
   hist(modeldf[,i], breaks = 1000, main = paste(i))
+  #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
   gc()
 }
-
-
-# par(mfrow=c(2,2))
-# hist(log(modeldf$DepthNew), breaks = 1000)
-# hist(log(modeldf$Total_DensAbund_N_Sqkm), breaks = 1000)
-# hist(log(modeldf$fp), breaks = 50)
-
 
 ## transform
 ## make a presense absense of fishing pressure column
 modeldf$fp_yn[is.na(modeldf$fp)] <- 0 
 modeldf$fp_yn[!is.na(modeldf$fp)] <- 1 
 
-modeldf$DepthNew <- log(modeldf$DepthNew)
-modeldf$abund <- log(modeldf$Total_DensAbund_N_Sqkm)
-modeldf$fp <- log(modeldf$fp)
+l <- c("DepthNew","SNSP", "SNAU", "sst_var", "fp", "offspring.size", "age.maturity", "fecundity", 
+       "growth.coefficient", "length.max", "age.max")
 
-## only one year has summer data - drop this quarter
-modeldf <- modeldf[modeldf$Quarter %nin% c("SNSU", "SNAU"),]
+for (i in l) {
+  modeldf[, i] <- c(log(modeldf[,i]))
+}
+
+modeldf$abund <- log(modeldf$Total_DensAbund_N_Sqkm)
 
 modeldf <- droplevels(modeldf)
 
@@ -316,54 +359,99 @@ modeldf$Quarter <- as.numeric(factor(modeldf$Quarter))
 
 ## scale
 
-for (i in c("DepthNew", "sst", "fp", "fp_yn", "abund", "Year", "Quarter")) {
+for (i in c("Year", "Quarter", "DepthNew",
+            "SNAU", "SNSP", "SNSU", "SNWI", 
+            "fp", "sst_var", "tl", "offspring.size", 
+            "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+            "age.max", "fp_yn", "abund")) {
   modeldf[, i] <- c(scale(modeldf[,i]))
 }
 
 ## make the response variable
-modeldf$resp <- modeldf$abund-min(modeldf$abund)+1
-
-## save abundance modeling dataframe
-#saveRDS(modeldf, "Data_modeldf_abundance.rds")
-
-m <- drop_na(mydata)
-pairs(m[, which(names(m) %nin% c("Year", "Quarter", "HaulID", "Gear",  "SciName", 
-                                 "ShootLat", "ShootLong", 
-                                 "gear_ship", "gear_ship_loc"))], lower.panel = NULL, upper.panel = upper.panel)
-
-rcorr(as.matrix(m[, which(names(m) %in% c("DepthNew", "Total_DensAbund_N_Sqkm", "sst", "fp", 
-                                          "fp_yn", "abund"))]))
+modeldf$resp_total <- modeldf$abund-min(modeldf$abund)+1
 
 
+## abundance by location
+for(i in unique(modeldf$HaulID)){
+  print(i)
+  modeldf$ab_haul_total[modeldf$HaulID == i] <- sum(modeldf$Total_DensAbund_N_Sqkm[modeldf$HaulID == i])
+}
+modeldf$rel_ab <-  modeldf$Total_DensAbund_N_Sqkm/modeldf$ab_haul_total
 
-## -----------
+abundance <- drop_na(modeldf) 
 
-
-## traits -------------------------
-
-traits <- read.csv("~/Desktop/covars/traits/beukhof_fish_traits.csv")
-#theirfish <- unique(traits$taxon) 
-#myfish <- unique(abundance$SciName) ## only missing seven species from my list
-traits <- traits[traits$taxon %in% abundance$SciName,]
-traits <- unique(traits[traits$LME %in% c(24),]) ## trait values for celtic-biscay shelf LME
-
-## come back for these few if you can
-#setdiff(abundance$SciName, x$taxon)
+## trait PCA ---------------
 
 
-traits <- traits[, c("taxon", "habitat","feeding.mode", 
-                "tl", "body.shape", "fin.shape", 
-                "AR", "offspring.size",  "spawning.type",  
-                "age.maturity", "fecundity","length.infinity", 
-                "growth.coefficient", "length.max", "age.max")]
 
+rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year", "DepthNew",  "SNSP", "SNWI", "fp", "sst_var", 
+                                                          "tl",  "offspring.size",  "age.maturity", "fecundity", "growth.coefficient", 
+                                                          "length.max", "age.max", "fp_yn", "abund", "resp_total", "ab_haul_total", "rel_ab"))]))
+
+rcorr(as.matrix(traits[, which(names(traits) %in% c("tl",  "offspring.size", 
+                                                          "age.maturity", "fecundity", "growth.coefficient", 
+                                                          "length.max", "age.max"))]))
+
+
+a <- unique(abundance[,c("tl",  "offspring.size", "body.shape", "spawning.type",
+                         "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
+                         "length.max", "age.max", "SciName")])
+# for(i in names(a)){
+#   a[,i] <- a[,i] - min(a[,i])}
+
+
+pairs(a[, which(names(a) %in% c("tl",  "offspring.size", 
+                                           "age.maturity", "fecundity", "growth.coefficient", 
+                                           "length.max", "age.max"))], lower.panel = NULL, upper.panel = upper.panel)
 
 list <- c()
-for (i in names(x)){
-  list[i] <-length(which(is.na(x[,i])))
-}
-
+for (i in names(abundance)){
+  list[i] <-length(which(is.nan(abundance[,i])))}
 print(list) ## all variables should be zero 
+
+
+## run pca
+pc <- prcomp(a[,c("tl", "offspring.size","age.maturity", "fecundity", "growth.coefficient", "length.max", "age.max")])
+print(pc)
+summary(pc)
+
+pairs.panels(pc$x,
+             gap=0,
+             bg = cl[a$body.shape],
+             pch=21)
+
+par(mfrow = c(2,1))
+autoplot(pc, data = b, colour = cl[b$body.shape], 
+           loadings = TRUE, loadings.label = TRUE, loadings.colour = "dark grey", 
+         loadings.label.size = 4, loadings.label.colour = "black")
+
+a$PC1 <- scale(pc[["x"]][,1])
+a$PC2 <- scale(pc[["x"]][,2])
+
+modeldf <- merge(modeldf, a[, c("SciName", "PC1", "PC2")], by = "SciName")
+
+## save abundance modeling dataframe --------------
+#saveRDS(modeldf, "Data_modeldf_abundance.rds")
+abundance <- drop_na(modeldf) 
+
+## ordiantation object
+or <- metaMDS(a[,c("tl", "offspring.size","age.maturity", "fecundity", 
+                   "growth.coefficient", "length.max", "age.max")], distance = "jaccard")
+
+## Nonmetric Multidimensional Scaling of compositional dissimilarity by treatment
+ordiplot(pc, type = "n", main = NULL)
+ordiellipse(pc, groups = b$feeding.mode, draw = "polygon", lty = 1, 
+            col = cl,
+            alpha = 0.2)
+points(pc[["x"]], display = "sites", 
+       pch = c(16, 8, 17, 18, 20)[as.numeric(b$feeding.mode)], 
+       col = cl[as.numeric(b$feeding.mode)], 
+       cex =1.2)
+
+legend("topright", legend = levels(b$feeding.mode), pch = c(16, 8, 17, 18, 20), 
+       col = cl,
+       bty = "n", cex = 1) # displays symbol and colour legend
+legend("topleft", legend = "A", bty = "n")
 
 
 ## presense absense ---------
@@ -404,5 +492,29 @@ names(occ) <- c("SciName", "HaulID", "order", "pres_abs")
 occ <- merge(occ, modeldf, by = c("SciName", "HaulID"), all.x =T)
 
 
+## start
+
+data("iris")
+str(iris)
 
 
+set.seed(111)
+ind <- sample(2, nrow(iris),
+              replace = TRUE,
+              prob = c(0.8, 0.2))
+training <- iris[ind==1,]
+testing <- iris[ind==2,]
+
+library(psych)
+
+pairs.panels(training[,-5],
+             gap = 0,
+             bg = c("red", "yellow", "blue")[training$Species],
+             pch=21)
+
+pc <- prcomp(training[,-5],
+             center = TRUE,
+             scale. = TRUE)
+attributes(pc)
+
+print(pc)

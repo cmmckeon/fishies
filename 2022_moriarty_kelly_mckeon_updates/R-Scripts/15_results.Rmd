@@ -154,6 +154,11 @@ plot_model(cont_full, type = "int")
 ```
 
 
+```{r}
+autoplot(pc, data = b, colour = cl[b$feeding.mode], loadings = TRUE,
+         loadings.label = TRUE, loadings.colour = "black", loadings.label.size = 4, 
+         loadings.label.colour = "black")
+```
 
 
 
