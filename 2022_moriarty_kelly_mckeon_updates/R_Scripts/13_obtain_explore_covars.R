@@ -318,7 +318,76 @@ for (i in names(traits)){
   list[i] <-length(which(is.na(traits[,i])))}
 print(list) ## all variables should be zero 
 
-modeldf <- merge(modeldf, traits, by.x = "SciName", by.y = "taxon", all.x = T)
+traits <- drop_na(traits)
+
+## trait PCA ---------------
+
+
+
+rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year", "DepthNew",  "SNSP", "SNWI", "fp", "sst_var", 
+                                                          "tl",  "offspring.size",  "age.maturity", "fecundity", "growth.coefficient", 
+                                                          "length.max", "age.max", "fp_yn", "abund", "resp_total", "ab_haul_total", "rel_ab"))]))
+
+rcorr(as.matrix(traits[, which(names(traits) %in% c("tl",  "offspring.size", 
+                                                    "age.maturity", "fecundity", "growth.coefficient", 
+                                                    "length.max", "age.max"))]))
+
+rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year",  "DepthNew", "SNAU", "SNSP", "SNSU", "SNWI", "fp",  "sst_var", 
+                                                          "ab"))]))
+
+
+a <- unique(traits[,c("tl",  "offspring.size", "body.shape", "spawning.type",
+                         "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
+                         "length.max", "age.max", "taxon")])
+
+# par(mfrow=c(4,4))
+# for (i in names(Filter(is.numeric, a))) {
+#   hist(a[,i], breaks = 1000, main = paste(i))
+#   hist(log(a[,i]), breaks = 1000, main = paste("log",i))
+#   gc()
+# }
+
+
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+
+for (i in c("tl",  "offspring.size", "age.maturity", "fecundity", "growth.coefficient", 
+            "length.max", "age.max")) {
+  a[, i] <- c(log(a[,i]))
+  a[, i] <- c(scale(a[,i]))
+ # a[,i] <- range01(a[,i]) -0.5
+}
+
+# for(i in names(a)){
+#   a[,i] <- a[,i] - min(a[,i])}
+
+pairs(a[, which(names(a) %in% c("tl",  "offspring.size", 
+                                "age.maturity", "fecundity", "growth.coefficient", 
+                                "length.max", "age.max"))], lower.panel = NULL, upper.panel = upper.panel)
+
+
+
+## run pca
+pc <- prcomp(a[,c("tl", "offspring.size","age.maturity", "fecundity", "growth.coefficient", "length.max", "age.max")])
+print(pc)
+summary(pc)
+
+pairs.panels(pc$x,
+             gap=0,
+             bg = cl[a$body.shape],
+             pch=21)
+
+par(mfrow = c(2,1))
+autoplot(pc, data = a, #colour = cl[a$body.shape], 
+         loadings = TRUE, loadings.label = TRUE, loadings.colour = "dark grey", 
+         loadings.label.size = 4, loadings.label.colour = "black")
+
+a$PC1 <- (pc[["x"]][,1])
+a$PC2 <- (pc[["x"]][,2])
+
+# a$PC1 <- scale(pc[["x"]][,1])
+# a$PC2 <- scale(pc[["x"]][,2])
+
+modeldf <- merge(modeldf, a, by.x = "SciName", by.y = "taxon", all.x = T)
 
 ## explore data 
 
@@ -334,7 +403,7 @@ modeldf <- merge(modeldf, traits, by.x = "SciName", by.y = "taxon", all.x = T)
 par(mfrow=c(4,4))
 for (i in names(Filter(is.numeric, modeldf))) {
   hist(modeldf[,i], breaks = 1000, main = paste(i))
-  #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
+  hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
   gc()
 }
 
@@ -343,96 +412,55 @@ for (i in names(Filter(is.numeric, modeldf))) {
 modeldf$fp_yn[is.na(modeldf$fp)] <- 0 
 modeldf$fp_yn[!is.na(modeldf$fp)] <- 1 
 
-l <- c("DepthNew","SNSP", "SNAU", "sst_var", "fp", "offspring.size", "age.maturity", "fecundity", 
-       "growth.coefficient", "length.max", "age.max")
+abundance <- drop_na(modeldf)
+
+l <- c("DepthNew","SNSP", "SNAU", "sst_var", "fp")
 
 for (i in l) {
-  modeldf[, i] <- c(log(modeldf[,i]))
+  abundance[, i] <- c(log(abundance[,i]))
 }
 
-modeldf$abund <- log(modeldf$Total_DensAbund_N_Sqkm)
+abundance$abund <- log(abundance$Total_DensAbund_N_Sqkm)
 
-modeldf <- droplevels(modeldf)
+abundance <- droplevels(abundance)
 
-modeldf$Quarter <- factor(modeldf$Quarter, levels = c("SNWI", "SNSP"))
-modeldf$Quarter <- as.numeric(factor(modeldf$Quarter))
+abundance$Quarter <- factor(abundance$Quarter, levels = c("SNWI", "SNSP"))
+abundance$Quarter <- as.numeric(factor(abundance$Quarter))
 
 ## scale
 
 for (i in c("Year", "Quarter", "DepthNew",
             "SNAU", "SNSP", "SNSU", "SNWI", 
-            "fp", "sst_var", "tl", "offspring.size", 
-            "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-            "age.max", "fp_yn", "abund")) {
-  modeldf[, i] <- c(scale(modeldf[,i]))
+            "fp", "sst_var", "abund")) {
+  abundance[, i] <- c(scale(abundance[,i]))
 }
 
 ## make the response variable
-modeldf$resp_total <- modeldf$abund-min(modeldf$abund)+1
+abundance$resp_total <- abundance$abund-min(abundance$abund)
 
 
 ## abundance by location
-for(i in unique(modeldf$HaulID)){
+for(i in unique(abundance$HaulID)){
   print(i)
-  modeldf$ab_haul_total[modeldf$HaulID == i] <- sum(modeldf$Total_DensAbund_N_Sqkm[modeldf$HaulID == i])
+  abundance$ab_haul_total[abundance$HaulID == i] <- sum(abundance$Total_DensAbund_N_Sqkm[abundance$HaulID == i])
 }
-modeldf$rel_ab <-  modeldf$Total_DensAbund_N_Sqkm/modeldf$ab_haul_total
+abundance$rel_ab <-  abundance$Total_DensAbund_N_Sqkm/abundance$ab_haul_total
 
-abundance <- drop_na(modeldf) 
+abundance <- drop_na(abundance) 
 
-## trait PCA ---------------
+abundance$ab <- abundance$abund-min(abundance$abund)
+abundance$rel_ab <- abundance$rel_ab - 1.727584e-08
 
-
-
-rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year", "DepthNew",  "SNSP", "SNWI", "fp", "sst_var", 
-                                                          "tl",  "offspring.size",  "age.maturity", "fecundity", "growth.coefficient", 
-                                                          "length.max", "age.max", "fp_yn", "abund", "resp_total", "ab_haul_total", "rel_ab"))]))
-
-rcorr(as.matrix(traits[, which(names(traits) %in% c("tl",  "offspring.size", 
-                                                          "age.maturity", "fecundity", "growth.coefficient", 
-                                                          "length.max", "age.max"))]))
-
-
-a <- unique(abundance[,c("tl",  "offspring.size", "body.shape", "spawning.type",
-                         "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
-                         "length.max", "age.max", "SciName")])
-# for(i in names(a)){
-#   a[,i] <- a[,i] - min(a[,i])}
-
-
-pairs(a[, which(names(a) %in% c("tl",  "offspring.size", 
-                                           "age.maturity", "fecundity", "growth.coefficient", 
-                                           "length.max", "age.max"))], lower.panel = NULL, upper.panel = upper.panel)
-
-list <- c()
-for (i in names(abundance)){
-  list[i] <-length(which(is.nan(abundance[,i])))}
-print(list) ## all variables should be zero 
-
-
-## run pca
-pc <- prcomp(a[,c("tl", "offspring.size","age.maturity", "fecundity", "growth.coefficient", "length.max", "age.max")])
-print(pc)
-summary(pc)
-
-pairs.panels(pc$x,
-             gap=0,
-             bg = cl[a$body.shape],
-             pch=21)
-
-par(mfrow = c(2,1))
-autoplot(pc, data = b, colour = cl[b$body.shape], 
-           loadings = TRUE, loadings.label = TRUE, loadings.colour = "dark grey", 
-         loadings.label.size = 4, loadings.label.colour = "black")
-
-a$PC1 <- scale(pc[["x"]][,1])
-a$PC2 <- scale(pc[["x"]][,2])
-
-modeldf <- merge(modeldf, a[, c("SciName", "PC1", "PC2")], by = "SciName")
+par(mfrow=c(4,4))
+for (i in names(Filter(is.numeric, abundance))) {
+  hist(abundance[,i], breaks = 1000, main = paste(i))
+  #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
+  gc()
+}
 
 ## save abundance modeling dataframe --------------
-#saveRDS(modeldf, "Data_modeldf_abundance.rds")
-abundance <- drop_na(modeldf) 
+#saveRDS(abundance, "Data_modeldf_abundance.rds")
+
 
 ## ordiantation object
 or <- metaMDS(a[,c("tl", "offspring.size","age.maturity", "fecundity", 
@@ -452,6 +480,55 @@ legend("topright", legend = levels(b$feeding.mode), pch = c(16, 8, 17, 18, 20),
        col = cl,
        bty = "n", cex = 1) # displays symbol and colour legend
 legend("topleft", legend = "A", bty = "n")
+
+
+## archetype analysis -------------------
+
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+
+for(i in names(a[, c(#"tl", "offspring.size",  
+                     #"age.maturity", "fecundity", "growth.coefficient", "length.max", 
+                     #"age.max" ,
+  "PC1", "PC2")])){ 
+  a[,i] <- range01(a[,i]) -0.5
+}
+
+install.packages("archetypal")
+library(archetypal)
+library("archetypes")
+
+arch2 <- archetypes(a[,c("tl", "offspring.size",  
+                         "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+                         "age.max")],  2)
+
+arch3 <- archetypes(a[,c("tl", "offspring.size",  
+                          "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+                          "age.max")], 3)
+
+arch4 <- archetypes(a[,c("tl", "offspring.size",  
+                         "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+                         "age.max")], 4)
+
+xyplot(arch2, a[,c("tl", "offspring.size",  
+                  "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+                  "age.max")], chull = chull(a[,c("tl", "offspring.size",  
+                                                  "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+                                                  "age.max")]))
+
+
+
+xyplot(arch4, a[, c("PC1", "PC2")]) #, chull = chull(a[, c("PC1", "PC2")]))
+
+as <- stepArchetypes(data = a[,c("tl", "offspring.size",  
+                                 "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+                                 "age.max")], k = 1:10)
+rss(as)
+screeplot(as)
+
+
+## cwm ------------
+
+
 
 
 ## presense absense ---------
@@ -492,29 +569,14 @@ names(occ) <- c("SciName", "HaulID", "order", "pres_abs")
 occ <- merge(occ, modeldf, by = c("SciName", "HaulID"), all.x =T)
 
 
-## start
-
-data("iris")
-str(iris)
 
 
-set.seed(111)
-ind <- sample(2, nrow(iris),
-              replace = TRUE,
-              prob = c(0.8, 0.2))
-training <- iris[ind==1,]
-testing <- iris[ind==2,]
 
-library(psych)
-
-pairs.panels(training[,-5],
-             gap = 0,
-             bg = c("red", "yellow", "blue")[training$Species],
-             pch=21)
-
-pc <- prcomp(training[,-5],
-             center = TRUE,
-             scale. = TRUE)
-attributes(pc)
-
+pc <- prcomp(abundance[,c("SNSP", "SNWI","sst_var")])
 print(pc)
+summary(pc)
+
+pairs.panels(pc$x,
+             gap=0,
+             bg = cl[a$body.shape],
+             pch=21)

@@ -65,19 +65,22 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 mydata <- readRDS("Data_modeldf_abundance.rds")
 abundance <- drop_na(mydata)
 
-cont_null <- readRDS("fp_cont_null_model.rds")
-cont_full <- readRDS("fp_cont_full_model.rds")
+#cont_null <- readRDS("")
+cont_full <- readRDS("rel_ab_full_model.rds")
 ```
 
 
 ```{r eval=FALSE, include=FALSE}
-summary(cont_null)
+#summary(cont_null)
 summary(cont_full)
 ```
 
 
 ```{r}
 check <- broom.mixed::tidy(cont_full, effects = "fixed", conf.int = TRUE, conf.level = 0.95)
+```
+```{r}
+x <- cont_full[["fit"]][["par"]]
 ```
 
 
