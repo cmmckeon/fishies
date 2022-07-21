@@ -4,7 +4,7 @@
 ### set up ---------------
 
 # set working directory
-setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+setwd("~/fishies/2022_moriarty_kelly_mckeon_updates")
 
 # install.packages(c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "Hmisc",
 #                    "lme4", "plyr", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
