@@ -63,10 +63,9 @@ r <- c("total.area", "range.size", "effective.mesh.size", "prop.landscape", "mea
 setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 
 mydata <- readRDS("Data_modeldf_abundance.rds")
-abundance <- drop_na(mydata)
 
 #cont_null <- readRDS("")
-cont_full <- readRDS("rel_ab_full_model.rds")
+cont_full <- readRDS("cwm_models/PC1_2way.rds")
 ```
 
 
@@ -85,7 +84,7 @@ x <- cont_full[["fit"]][["par"]]
 
 
 ```{r}
-check <-check[2:6,]
+check <-check[-1,]
 #check <-check[2:32,]
 ```
 
