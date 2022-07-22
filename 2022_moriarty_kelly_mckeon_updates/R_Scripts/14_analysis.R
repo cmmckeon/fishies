@@ -11,7 +11,7 @@ setwd("~/fishies/2022_moriarty_kelly_mckeon_updates")
 #                    "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "raster", "ncdf4", "marmap", "rgdal", "foreign",
 #                    "sf", "glmmTMB", "DHARMa"))
 
-list<-c("lme4", "plyr",  "tidyverse", "glmmTMB", "DHARMa")
+list<-c("lme4", "plyr",  "tidyverse", "glmmTMB") #, "DHARMa")
 
 lapply(list, require, character.only=T)
 #lapply(list, citation)
