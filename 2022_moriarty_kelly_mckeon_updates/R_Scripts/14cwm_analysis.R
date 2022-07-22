@@ -69,7 +69,7 @@ saveRDS(PC2_null, "cwm_models/PC2_null.rds")
 PC2_full <- glmmTMB(PC2_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
                        (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
                      data = cwm)
-saveRDS(PC1_full, "cwm_models/PC1_full.rds")
+saveRDS(PC2_full, "cwm_models/PC2_full.rds")
 
 ## 2 way
 PC2_2way <- glmmTMB(PC2_cwm ~ 
@@ -123,7 +123,7 @@ PC3_2way <- glmmTMB(PC3_cwm ~
                       
                       DepthNew*fp +
                       
-                      year + Quarter +
+                      Year + Quarter +
                       (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
                     data = cwm)
 saveRDS(PC3_2way, "cwm_models/PC3_2way.rds")
