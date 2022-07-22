@@ -91,6 +91,24 @@ Sys.time()
 tmp_raster <- stack("~/Desktop/covars/sst_aquamodis_seasonal_2009_2021/AQUA_MODIS.20081221_20090320.L3m.SNWI.SST.x_sst.nc", varname="sst")
 tmp_raster <- brick(tmp_raster, varname="sst")
 
+## aggregating resolutions ---------
+r5 <- aggregate(tmp_raster, 5)
+r10 <- aggregate(tmp_raster, 10)
+r10 <- aggregate(tmp_raster, 10)
+r20 <- aggregate(tmp_raster, 20)
+r50 <- aggregate(tmp_raster, 50)
+r100 <- aggregate(tmp_raster, 100)
+
+res5  <- extract(r5, sp_co)
+res10  <- extract(r10, sp_co)
+res20  <- extract(r20, sp_co)
+res50  <- extract(r50, sp_co)
+res100  <- extract(r100, sp_co)
+
+res <- cbind(sp_co, res5, res10, res20, res50, res100)
+rm(r5, r10, r20, r50, r100, res5, res10, res20, res50, res100)
+
+
 #plot(tmp_raster)
 #points(sp_co$x, sp_co$y, type = "p", col = "black", lwd = 0.1) ## these points are unique locations, we have a good bit more data than this
 #points(h$ShootLong, h$ShootLat, col="green") ## all points. SCOROC and EVHOE are responsible for the points way out top left
@@ -337,18 +355,19 @@ rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year",  "DepthNew", "
 
 
 a <- unique(traits[,c("tl",  "offspring.size", "body.shape", "spawning.type",
+                     # "spawning.type",
                          "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
                          "length.max", "age.max", "taxon")])
 
-# par(mfrow=c(4,4))
-# for (i in names(Filter(is.numeric, a))) {
-#   hist(a[,i], breaks = 1000, main = paste(i))
-#   hist(log(a[,i]), breaks = 1000, main = paste("log",i))
-#   gc()
-# }
+par(mfrow=c(4,4))
+for (i in names(Filter(is.numeric, a))) {
+  hist(a[,i], breaks = 1000, main = paste(i))
+ # hist(log(a[,i]), breaks = 1000, main = paste("log",i))
+  gc()
+}
 
 
-range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+#range01 <- function(x){(x-min(x))/(max(x)-min(x))}
 
 for (i in c("tl",  "offspring.size", "age.maturity", "fecundity", "growth.coefficient", 
             "length.max", "age.max")) {
@@ -381,11 +400,12 @@ autoplot(pc, data = a, #colour = cl[a$body.shape],
          loadings = TRUE, loadings.label = TRUE, loadings.colour = "dark grey", 
          loadings.label.size = 4, loadings.label.colour = "black")
 
-a$PC1 <- (pc[["x"]][,1])
-a$PC2 <- (pc[["x"]][,2])
+# a$PC1 <- (pc[["x"]][,1])
+# a$PC2 <- (pc[["x"]][,2])
 
-# a$PC1 <- scale(pc[["x"]][,1])
-# a$PC2 <- scale(pc[["x"]][,2])
+a$PC1 <- scale(pc[["x"]][,1])
+a$PC2 <- scale(pc[["x"]][,2])
+a$PC3 <- scale(pc[["x"]][,3])
 
 modeldf <- merge(modeldf, a, by.x = "SciName", by.y = "taxon", all.x = T)
 
@@ -458,6 +478,9 @@ for (i in names(Filter(is.numeric, abundance))) {
   gc()
 }
 
+abundance <- merge(abundance, res, by.x = c("ShootLat", "ShootLong"), by.y = c("y", "x"))
+
+
 ## save abundance modeling dataframe --------------
 #saveRDS(abundance, "Data_modeldf_abundance.rds")
 
@@ -486,15 +509,21 @@ legend("topleft", legend = "A", bty = "n")
 
 range01 <- function(x){(x-min(x))/(max(x)-min(x))}
 
-for(i in names(a[, c(#"tl", "offspring.size",  
-                     #"age.maturity", "fecundity", "growth.coefficient", "length.max", 
-                     #"age.max" ,
-  "PC1", "PC2")])){ 
-  a[,i] <- range01(a[,i]) -0.5
-}
+a$PC1 <- (pc[["x"]][,1])
+a$PC2 <- (pc[["x"]][,2])
 
-install.packages("archetypal")
-library(archetypal)
+a$PC1 <- scale(pc[["x"]][,1])
+a$PC2 <- scale(pc[["x"]][,2])
+a$PC3 <- scale(pc[["x"]][,3])
+
+# for(i in names(a[, c("tl", "offspring.size",  
+#                      "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+#                      "age.max" ,
+# "PC1", "PC2")])){ 
+# a[,i] <- range01(a[,i]) -0.5
+#}
+
+
 library("archetypes")
 
 arch2 <- archetypes(a[,c("tl", "offspring.size",  
@@ -515,9 +544,20 @@ xyplot(arch2, a[,c("tl", "offspring.size",
                                                   "age.maturity", "fecundity", "growth.coefficient", "length.max", 
                                                   "age.max")]))
 
+par(mfrow=c(4,4))
+for (i in names(Filter(is.numeric, a))) {
+  hist(a[,i], breaks = 1000, main = paste(i))
+  #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
+  gc()
+}
 
+save <- a
+par(mfrow =c(1,1))
+xyplot(arch4, a[, c("PC1", "PC3")]) #, chull = chull(a[, c("PC1", "PC2")]))
+xyplot(arch4, a[, c("PC2", "PC3")]) #, chull = chull(a[, c("PC1", "PC2")]))
+xyplot(arch4, a[, c("age.maturity", "fecundity")]) #, chull = chull(a[, c("PC1", "PC2")]))
 
-xyplot(arch4, a[, c("PC1", "PC2")]) #, chull = chull(a[, c("PC1", "PC2")]))
+xyplot(arch4, a[, c("PC1", "PC2")], adata.show = TRUE)
 
 as <- stepArchetypes(data = a[,c("tl", "offspring.size",  
                                  "age.maturity", "fecundity", "growth.coefficient", "length.max", 
@@ -525,58 +565,125 @@ as <- stepArchetypes(data = a[,c("tl", "offspring.size",
 rss(as)
 screeplot(as)
 
+ternaryplot(coef(arch4, 'alphas'))
+
 
 ## cwm ------------
+
+cwm <- abundance[, c("SciName", "HaulID",  "Total_DensAbund_N_Sqkm", "PC1", "PC2", "PC3", 
+                     "res5", "res10", "res20", "res50","res100")]
+
+# Calculating CWM using dplyr and tidyr functions
+cwm1 <-   # New dataframe where we can inspect the result
+  cwm %>%   # First step in the next string of statements
+  group_by(HaulID) %>%   # Groups the summary file by HaulID number
+  summarize(           # Coding for how we want our CWMs summarized
+    PC1_cwm = weighted.mean(PC1, Total_DensAbund_N_Sqkm),   # Actual calculation of CWMs
+    PC2_cwm = weighted.mean(PC2, Total_DensAbund_N_Sqkm),
+    PC3_cwm = weighted.mean(PC3, Total_DensAbund_N_Sqkm)
+    )
+
+cwm5 <-   # New dataframe where we can inspect the result
+  cwm %>%   # First step in the next string of statements
+  group_by(res5) %>%   # Groups the summary file by HaulID number
+  summarize(           # Coding for how we want our CWMs summarized
+    PC1_cwm5 = weighted.mean(PC1, Total_DensAbund_N_Sqkm),   # Actual calculation of CWMs
+    PC2_cwm5 = weighted.mean(PC2, Total_DensAbund_N_Sqkm),
+    PC3_cwm5 = weighted.mean(PC3, Total_DensAbund_N_Sqkm)
+  )
+
+cwm10 <-   # New dataframe where we can inspect the result
+  cwm %>%   # First step in the next string of statements
+  group_by(res10) %>%   # Groups the summary file by HaulID number
+  summarize(           # Coding for how we want our CWMs summarized
+    PC1_cwm10 = weighted.mean(PC1, Total_DensAbund_N_Sqkm),   # Actual calculation of CWMs
+    PC2_cwm10 = weighted.mean(PC2, Total_DensAbund_N_Sqkm),
+    PC3_cwm10 = weighted.mean(PC3, Total_DensAbund_N_Sqkm)
+  )
+
+cwm20 <-   # New dataframe where we can inspect the result
+  cwm %>%   # First step in the next string of statements
+  group_by(res20) %>%   # Groups the summary file by HaulID number
+  summarize(           # Coding for how we want our CWMs summarized
+    PC1_cwm20 = weighted.mean(PC1, Total_DensAbund_N_Sqkm),   # Actual calculation of CWMs
+    PC2_cwm20 = weighted.mean(PC2, Total_DensAbund_N_Sqkm),
+    PC3_cwm20 = weighted.mean(PC3, Total_DensAbund_N_Sqkm)
+  )
+
+cwm50 <-   # New dataframe where we can inspect the result
+  cwm %>%   # First step in the next string of statements
+  group_by(res50) %>%   # Groups the summary file by HaulID number
+  summarize(           # Coding for how we want our CWMs summarized
+    PC1_cwm50 = weighted.mean(PC1, Total_DensAbund_N_Sqkm),   # Actual calculation of CWMs
+    PC2_cwm50 = weighted.mean(PC2, Total_DensAbund_N_Sqkm),
+    PC3_cwm50 = weighted.mean(PC3, Total_DensAbund_N_Sqkm)
+  )
+
+
+
+cwm <- merge(cwm1, abundance, by = "HaulID")
+
+cwm <- merge(cwm5, cwm, by = "res5")
+cwm <- merge(cwm10, cwm, by = "res10")
+cwm <- merge(cwm20, cwm, by = "res20")
+cwm <- merge(cwm50, cwm, by = "res50")
+
+#saveRDS(cwm, "Data_cwm_PCA.rds")
+
+
+
+
+
 
 
 
 
 ## presense absense ---------
 
-length(unique(modeldf$HaulID))
-
-occ <- modeldf[, c("SciName", "Total_DensAbund_N_Sqkm", "HaulID")]
-
-occ <- as.data.frame(cbind(rep(unique(modeldf$SciName), length(unique(modeldf$SciName)))),
-                     rep(1:length(unique(modeldf$SciName))))
-
-##  get occurrence for all species in each Haul
-occ <- as.data.frame(rep(1:250, length(unique(modeldf$HaulID))))
-occ <- as.data.frame(occ[order(occ[,1]),])
-occ$HaulID <- rep(unique(modeldf$HaulID), length(unique(modeldf$SciName)))
-occ <- as.data.frame(occ[order(occ[,2]),])
-occ$SciName <- rep(unique(modeldf$SciName), length(unique(modeldf$HaulID)))
-
-occ$pres_abs <- 0
-
-for(i in unique(modeldf$SciName)){
-  for(j in unique(modeldf$HaulID)){
-    if(is.numeric(modeldf$Total_DensAbund_N_Sqkm[modeldf$SciName == i & modeldf$HaulID == j])){
-    occ$pres_abs[occ$SciName == i & occ$HaulID == j] <- 1}
-    else {occ$pres_abs[occ$SciName == i & occ$HaulID == j] <- 0}
-  }
-}
-
-save <- occ
-
-occ <- occ[,-1]
-occ <- merge(occ, modeldf, by = c("HaulID"), all.x =T)
-occ$pres_abs[!is.na(occ$Total_DensAbund_N_Sqkm)] <- 1
-occ$pres_abs[is.na(occ$Total_DensAbund_N_Sqkm)] <- 0
-
-names(occ) <- c("SciName", "HaulID", "order", "pres_abs")
-
-occ <- merge(occ, modeldf, by = c("SciName", "HaulID"), all.x =T)
-
-
-
+# length(unique(modeldf$HaulID))
+# 
+# occ <- modeldf[, c("SciName", "Total_DensAbund_N_Sqkm", "HaulID")]
+# 
+# occ <- as.data.frame(cbind(rep(unique(modeldf$SciName), length(unique(modeldf$SciName)))),
+#                      rep(1:length(unique(modeldf$SciName))))
+# 
+# ##  get occurrence for all species in each Haul
+# occ <- as.data.frame(rep(1:250, length(unique(modeldf$HaulID))))
+# occ <- as.data.frame(occ[order(occ[,1]),])
+# occ$HaulID <- rep(unique(modeldf$HaulID), length(unique(modeldf$SciName)))
+# occ <- as.data.frame(occ[order(occ[,2]),])
+# occ$SciName <- rep(unique(modeldf$SciName), length(unique(modeldf$HaulID)))
+# 
+# occ$pres_abs <- 0
+# 
+# for(i in unique(modeldf$SciName)){
+#   for(j in unique(modeldf$HaulID)){
+#     if(is.numeric(modeldf$Total_DensAbund_N_Sqkm[modeldf$SciName == i & modeldf$HaulID == j])){
+#     occ$pres_abs[occ$SciName == i & occ$HaulID == j] <- 1}
+#     else {occ$pres_abs[occ$SciName == i & occ$HaulID == j] <- 0}
+#   }
+# }
+# 
+# save <- occ
+# 
+# occ <- occ[,-1]
+# occ <- merge(occ, modeldf, by = c("HaulID"), all.x =T)
+# occ$pres_abs[!is.na(occ$Total_DensAbund_N_Sqkm)] <- 1
+# occ$pres_abs[is.na(occ$Total_DensAbund_N_Sqkm)] <- 0
+# 
+# names(occ) <- c("SciName", "HaulID", "order", "pres_abs")
+# 
+# occ <- merge(occ, modeldf, by = c("SciName", "HaulID"), all.x =T)
+# 
 
 
-pc <- prcomp(abundance[,c("SNSP", "SNWI","sst_var")])
-print(pc)
-summary(pc)
 
-pairs.panels(pc$x,
-             gap=0,
-             bg = cl[a$body.shape],
-             pch=21)
+
+# pc <- prcomp(abundance[,c("SNSP", "SNWI","sst_var")])
+# print(pc)
+# summary(pc)
+# 
+# pairs.panels(pc$x,
+#              gap=0,
+#              bg = cl[a$body.shape],
+#              pch=21)

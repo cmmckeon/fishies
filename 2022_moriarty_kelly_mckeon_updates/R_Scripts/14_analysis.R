@@ -98,41 +98,36 @@ abundance <- readRDS("Data_modeldf_abundance.rds")
 
 Sys.time()
 cont_full <- glmmTMB(rel_ab ~
-                       # SNSP*SNWI +
-                       # SNSP*sst_var +
-                       # SNSP*DepthNew +
-                       # SNSP*fp +
-                       # SNSP*Year +
-                       # 
-                       # SNWI*sst_var +
-                       # SNWI*DepthNew +
-                       # SNWI*fp +
-                       # SNWI*Year +
-                       # 
-                       # sst_var*DepthNew +
-                       # sst_var*fp +
-                       # sst_var*Year +
-                       # 
-                       # DepthNew*fp +
-                       # DepthNew*Year +
-                       # 
-                       # fp*Year +
+                       SNSP*SNWI +
+                       SNSP*sst_var +
+                       SNSP*DepthNew +
+                       SNSP*fp +
+                       SNWI*sst_var +
+                       SNWI*DepthNew +
+                       SNWI*fp +
+                       sst_var*DepthNew +
+                       sst_var*fp +
+                       DepthNew*fp +
 
                        SNSP*PC1 +
                        SNWI*PC1 +
                        sst_var*PC1 +
                        DepthNew*PC1 +
                        fp*PC1 +
-                       Year*PC1 +
 
                        SNSP*PC2 +
                        SNWI*PC2 +
                        sst_var*PC2 +
                        DepthNew*PC2 +
                        fp*PC2 +
-                       Year*PC2 +
+                       
+                       SNSP*PC3 +
+                       SNWI*PC3 +
+                       sst_var*PC3 +
+                       DepthNew*PC3 +
+                       fp*PC3 +
 
-                       Quarter +
+                       Year + Quarter +
 
                        (1|SciName) + (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
                      family = beta_family,
