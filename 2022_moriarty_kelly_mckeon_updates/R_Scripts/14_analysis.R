@@ -83,66 +83,66 @@ abundance <- readRDS("Data_modeldf_abundance.rds")
 #saveRDS(cont_full, "ab_total_full_nbinom1_model.rds")
 #beep()
 
-print(Sys.time())
-cont_full <- glmmTMB(rel_ab ~ SNSP*SNWI*sst_var*DepthNew*fp*Year*PC1 + SNSP*SNWI*sst_var*DepthNew*fp*Year*PC2 + Quarter +
-                       (1|SciName) + (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-                     family = beta_family,
-                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-                                              profile = FALSE, collect = FALSE),
-                     data = abundance)
-
-print(Sys.time())
-
-saveRDS(cont_full, "rel_ab_beta_full_model_cluster.rds")
-#beep()
-
-# Sys.time()
-# cont_full <- glmmTMB(rel_ab ~ 
-#                        SNSP*SNWI +
-#                        SNSP*sst_var +
-#                        SNSP*DepthNew +
-#                        SNSP*fp +
-#                        SNSP*Year +
-#                       
-#                        SNWI*sst_var +
-#                        SNWI*DepthNew +
-#                        SNWI*fp +
-#                        SNWI*Year +
-#                        
-#                        sst_var*DepthNew +
-#                        sst_var*fp +
-#                        sst_var*Year +
-#                        
-#                        DepthNew*fp +
-#                        DepthNew*Year +
-#                        
-#                        fp*Year +
-#                        
-#                        SNSP*PC1 +
-#                        SNWI*PC1 +
-#                        sst_var*PC1 +
-#                        DepthNew*PC1 +
-#                        fp*PC1 +
-#                        Year*PC1 + 
-#                        
-#                        SNSP*PC2 +
-#                        SNWI*PC2 +
-#                        sst_var*PC2 +
-#                        DepthNew*PC2 +
-#                        fp*PC2 +
-#                        Year*PC2 + 
-#                     
-#                        Quarter +
-#                        
+# print(Sys.time())
+# cont_full <- glmmTMB(rel_ab ~ SNSP*SNWI*sst_var*DepthNew*fp*Year*PC1 + SNSP*SNWI*sst_var*DepthNew*fp*Year*PC2 + Quarter +
 #                        (1|SciName) + (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
 #                      family = beta_family,
 #                      control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
 #                                               profile = FALSE, collect = FALSE),
 #                      data = abundance)
-# Sys.time()
+# 
+# print(Sys.time())
+# 
+# saveRDS(cont_full, "rel_ab_beta_full_model_cluster.rds")
+# #beep()
 
-#saveRDS(cont_full, "rel_ab_beta_2way_model.rds")
-#beep()
+Sys.time()
+cont_full <- glmmTMB(rel_ab ~
+                       # SNSP*SNWI +
+                       # SNSP*sst_var +
+                       # SNSP*DepthNew +
+                       # SNSP*fp +
+                       # SNSP*Year +
+                       # 
+                       # SNWI*sst_var +
+                       # SNWI*DepthNew +
+                       # SNWI*fp +
+                       # SNWI*Year +
+                       # 
+                       # sst_var*DepthNew +
+                       # sst_var*fp +
+                       # sst_var*Year +
+                       # 
+                       # DepthNew*fp +
+                       # DepthNew*Year +
+                       # 
+                       # fp*Year +
+
+                       SNSP*PC1 +
+                       SNWI*PC1 +
+                       sst_var*PC1 +
+                       DepthNew*PC1 +
+                       fp*PC1 +
+                       Year*PC1 +
+
+                       SNSP*PC2 +
+                       SNWI*PC2 +
+                       sst_var*PC2 +
+                       DepthNew*PC2 +
+                       fp*PC2 +
+                       Year*PC2 +
+
+                       Quarter +
+
+                       (1|SciName) + (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+                     family = beta_family,
+                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+                                              profile = FALSE, collect = FALSE),
+                     data = abundance)
+Sys.time()
+
+saveRDS(cont_full, "rel_ab_beta_2way_model.rds")
+
 
 
 
@@ -169,12 +169,12 @@ saveRDS(cont_full, "rel_ab_beta_full_model_cluster.rds")
 # residuals(simulationOutput)
 # plot(simulationOutput)
 # 
-# simulationOutput <- simulateResiduals(fittedModel = ab_total_full_nbinom2_model, plot = F)
+# simulationOutput <- simulateResiduals(fittedModel = rel_ab_beta_full_model, plot = F)
 # residuals(simulationOutput)
 # plot(simulationOutput)
 # 
 # 
-# summary(ab_total_full_nbinom2_model)
+# summary(rel_ab_beta_full_model)
 
 
 
