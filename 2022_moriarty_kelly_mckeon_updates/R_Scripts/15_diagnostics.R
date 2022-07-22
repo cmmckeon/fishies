@@ -68,17 +68,17 @@ PC1_2way <- readRDS("cwm_5/PC1_2way.rds")
 PC2_2way <- readRDS("cwm_5/PC2_2way.rds")
 PC3_2way <- readRDS("cwm_5/PC3_2way.rds")
 
-summary(PC1_null) ## dg AIC 2496.5
-summary(PC1_full) ## 
-summary(PC1_2way) ##
+summary(PC1_null) ## AIC 2496.5
+summary(PC1_full) ## AIC 923.2
+summary(PC1_2way) ## AIC 1301.2
 
-summary(PC2_null) ## dg AIC 41863.4
-summary(PC2_full) ## dg AIC 38646.7
-summary(PC2_2way) ## dg AIC 39055.5
+summary(PC2_null) ## 
+summary(PC2_full) ## 
+summary(PC2_2way) ## 
 
-summary(PC3_null) ## dg AIC 108068.8
-summary(PC3_full) ## dg AIC  97818.6
-summary(PC3_2way) ## dg AIC  98707.7
+summary(PC3_null) ## 
+summary(PC3_full) ## 
+summary(PC3_2way) ## 
 
 
 ## diagnostics ------------------

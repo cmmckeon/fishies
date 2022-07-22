@@ -66,25 +66,29 @@ mydata <- readRDS("Data_modeldf_abundance.rds")
 
 #cont_null <- readRDS("")
 cont_full <- readRDS("cwm_models/PC1_2way.rds")
+cont_full5 <- readRDS("cwm_5/PC1_2way.rds")
 ```
 
 
 ```{r eval=FALSE, include=FALSE}
-#summary(cont_null)
 summary(cont_full)
+summary(cont_full5)
 ```
 
 
 ```{r}
 check <- broom.mixed::tidy(cont_full, effects = "fixed", conf.int = TRUE, conf.level = 0.95)
+check5 <- broom.mixed::tidy(cont_full5, effects = "fixed", conf.int = TRUE, conf.level = 0.95)
 ```
+
 ```{r}
 x <- cont_full[["fit"]][["par"]]
 ```
 
 
 ```{r}
-check <-check[-1,]
+check <- check[-1,]
+check5 <- check5[-1,]
 #check <-check[2:32,]
 ```
 
@@ -137,7 +141,16 @@ ggplot(check,  aes(term, estimate, colour = term)) +
   geom_line() +
   geom_pointrange(data = check,
                     aes(term, estimate, colour = term, ymin= conf.low, ymax= conf.high), 
-                    position = position_dodge(0.5), size = 1.5) 
+                    position = position_dodge(0.5), size = 1.5) +
+  ylim(-0.1, 0.1) 
+
+ggplot(check5,  aes(term, estimate, colour = term)) + 
+      geom_hline(yintercept= 0, alpha = 0.8) +
+  geom_line() +
+  geom_pointrange(data = check5,
+                    aes(term, estimate, colour = term, ymin= conf.low, ymax= conf.high), 
+                    position = position_dodge(0.5), size = 1.5) +
+  ylim(-0.1, 0.1) 
   
     # theme(axis.line = element_line(colour = 'black', size = 1.5), 
     #       axis.title.x = element_blank(),
