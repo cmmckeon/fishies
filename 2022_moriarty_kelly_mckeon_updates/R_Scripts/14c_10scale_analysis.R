@@ -1,6 +1,6 @@
-#14b_scale_analysis
+#14c_10scale_analysis
 # setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
-# source("R_Scripts/14b_scale_analysis.R")
+# source("R_Scripts/14c_10scale_analysis.R")
 
 ### set up ---------------
 
@@ -25,22 +25,23 @@ cwm_main <- readRDS("Data_cwm_PCA.rds")
 #   gc()
 # }
 
-cwm <- unique(cwm_main[, c("res5", "PC1_cwm5", "PC2_cwm5", "PC3_cwm5", 
-                "Year", "Gear", "Quarter", "DepthNew", "SNSP", "SNWI", "fp", "gear_ship", 
-                "sst_var")])
+cwm <- unique(cwm_main[, c("res10", "PC1_cwm10", "PC2_cwm10", "PC3_cwm10", 
+                           "Year", "Gear", "Quarter", "DepthNew", "SNSP", "SNWI", "fp", 
+                           "sst_var")])
 
 for(i in c("DepthNew", "SNSP", "SNWI", "fp", "sst_var")){
-  for(j in unique(cwm$res5)){
-    cwm[,i][cwm$res5 == j] <- mean(cwm[,i][cwm$res5 == j])
-    }}
+  for(j in unique(cwm$res10)){
+    for(k in unique(cwm$Year)){
+    cwm[,i][cwm$res10 == j & cwm$Year == k] <- mean(cwm[,i][cwm$res10 == j & cwm$Year == k])
+  }}}
 
 cwm <- unique(cwm)
 ## renames to save me retyping everything 
-names(cwm) <- c("res5", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Year", "Gear", 
-  "Quarter", "DepthNew", "SNSP", "SNWI", "fp", "gear_ship", "sst_var")
+names(cwm) <- c("res10", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Year", "Gear", 
+                "Quarter", "DepthNew", "SNSP", "SNWI", "fp", "sst_var")
 
 
-setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates/cwm_5")
+setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates/cwm_10")
 
 ## PC1 ---------------------
 
@@ -48,7 +49,7 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 print("pc1 null model")
 
 PC1_null <- glmmTMB(PC1_cwm ~  1 +
-                      (1|Gear) + (1|gear_ship),
+                      (1|Gear),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -58,7 +59,7 @@ saveRDS(PC1_null, "PC1_null.rds")
 # full model
 print("pc1 full model")
 PC1_full <- glmmTMB(PC1_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-                      (1|Gear) + (1|gear_ship),
+                      (1|Gear),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -72,18 +73,18 @@ PC1_2way <- glmmTMB(PC1_cwm ~
                       SNSP*sst_var +
                       SNSP*DepthNew +
                       SNSP*fp +
-
+                      
                       SNWI*sst_var +
                       SNWI*DepthNew +
                       SNWI*fp +
-
+                      
                       sst_var*DepthNew +
                       sst_var*fp +
-
+                      
                       DepthNew*fp +
-
+                      
                       Year + Quarter +
-                      (1|Gear) + (1|gear_ship),
+                      (1|Gear),
                     control = glmmTMBControl(optCtrl = list(iter.max = 100000000, eval.max = 100000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -95,7 +96,7 @@ saveRDS(PC1_2way, "PC1_2way.rds")
 # null model
 print("pc2 null model")
 PC2_null <- glmmTMB(PC2_cwm ~  1 +
-                      (1|Gear) + (1|gear_ship),
+                      (1|Gear),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -104,7 +105,7 @@ saveRDS(PC2_null, "PC2_null.rds")
 # full model
 print("pc2 full model")
 PC2_full <- glmmTMB(PC2_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-                      (1|Gear) + (1|gear_ship),
+                      (1|Gear),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -128,7 +129,7 @@ PC2_2way <- glmmTMB(PC2_cwm ~
                       DepthNew*fp +
                       
                       Year + Quarter +
-                      (1|Gear) + (1|gear_ship),
+                      (1|Gear),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -139,7 +140,7 @@ saveRDS(PC2_2way, "PC2_2way.rds")
 # null model
 print("pc3 null model")
 PC3_null <- glmmTMB(PC3_cwm ~  1 +
-                      (1|Gear) + (1|gear_ship),
+                      (1|Gear),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -149,7 +150,7 @@ saveRDS(PC3_null, "PC3_null.rds")
 # full model
 print("pc3 full model")
 PC3_full <- glmmTMB(PC3_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-                      (1|Gear) + (1|gear_ship),
+                      (1|Gear),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -173,7 +174,7 @@ PC3_2way <- glmmTMB(PC3_cwm ~
                       DepthNew*fp +
                       
                       Year + Quarter +
-                      (1|Gear) + (1|gear_ship),
+                      (1|Gear),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)

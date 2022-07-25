@@ -570,7 +570,9 @@ ternaryplot(coef(arch4, 'alphas'))
 
 ## cwm ------------
 
-cwm <- abundance[, c("SciName", "HaulID",  "Total_DensAbund_N_Sqkm", "PC1", "PC2", "PC3", 
+abundance <- readRDS("Data_modeldf_abundance.rds")
+
+cwm <- abundance[, c("SciName", "HaulID", "Year", "Total_DensAbund_N_Sqkm", "PC1", "PC2", "PC3", 
                      "res5", "res10", "res20", "res50","res100")]
 
 # Calculating CWM using dplyr and tidyr functions
@@ -585,7 +587,7 @@ cwm1 <-   # New dataframe where we can inspect the result
 
 cwm5 <-   # New dataframe where we can inspect the result
   cwm %>%   # First step in the next string of statements
-  group_by(res5) %>%   # Groups the summary file by HaulID number
+  group_by(res5, Year) %>%   # Groups the summary file by HaulID number
   summarize(           # Coding for how we want our CWMs summarized
     PC1_cwm5 = weighted.mean(PC1, Total_DensAbund_N_Sqkm),   # Actual calculation of CWMs
     PC2_cwm5 = weighted.mean(PC2, Total_DensAbund_N_Sqkm),
@@ -594,7 +596,7 @@ cwm5 <-   # New dataframe where we can inspect the result
 
 cwm10 <-   # New dataframe where we can inspect the result
   cwm %>%   # First step in the next string of statements
-  group_by(res10) %>%   # Groups the summary file by HaulID number
+  group_by(res10, Year) %>%   # Groups the summary file by HaulID number
   summarize(           # Coding for how we want our CWMs summarized
     PC1_cwm10 = weighted.mean(PC1, Total_DensAbund_N_Sqkm),   # Actual calculation of CWMs
     PC2_cwm10 = weighted.mean(PC2, Total_DensAbund_N_Sqkm),
@@ -603,7 +605,7 @@ cwm10 <-   # New dataframe where we can inspect the result
 
 cwm20 <-   # New dataframe where we can inspect the result
   cwm %>%   # First step in the next string of statements
-  group_by(res20) %>%   # Groups the summary file by HaulID number
+  group_by(res20, Year) %>%   # Groups the summary file by HaulID number
   summarize(           # Coding for how we want our CWMs summarized
     PC1_cwm20 = weighted.mean(PC1, Total_DensAbund_N_Sqkm),   # Actual calculation of CWMs
     PC2_cwm20 = weighted.mean(PC2, Total_DensAbund_N_Sqkm),
@@ -612,7 +614,7 @@ cwm20 <-   # New dataframe where we can inspect the result
 
 cwm50 <-   # New dataframe where we can inspect the result
   cwm %>%   # First step in the next string of statements
-  group_by(res50) %>%   # Groups the summary file by HaulID number
+  group_by(res50, Year) %>%   # Groups the summary file by HaulID number
   summarize(           # Coding for how we want our CWMs summarized
     PC1_cwm50 = weighted.mean(PC1, Total_DensAbund_N_Sqkm),   # Actual calculation of CWMs
     PC2_cwm50 = weighted.mean(PC2, Total_DensAbund_N_Sqkm),
@@ -622,15 +624,25 @@ cwm50 <-   # New dataframe where we can inspect the result
 
 
 cwm <- merge(cwm1, abundance, by = "HaulID")
-
-cwm <- merge(cwm5, cwm, by = "res5")
-cwm <- merge(cwm10, cwm, by = "res10")
-cwm <- merge(cwm20, cwm, by = "res20")
-cwm <- merge(cwm50, cwm, by = "res50")
+gc()
+cwm <- merge(cwm5, cwm, by = c("res5", "Year"))
+gc()
+cwm <- merge(cwm10, cwm, by = c("res10", "Year"))
+gc()
+cwm <- merge(cwm20, cwm, by = c("res20", "Year"))
+gc()
+cwm <- merge(cwm50, cwm, by = c("res50", "Year"))
 
 #saveRDS(cwm, "Data_cwm_PCA.rds")
 
 
+
+# par(mfrow=c(4,4))
+# for (i in names(Filter(is.numeric, cwm))) {
+#   hist(cwm[,i], breaks = 1000, main = paste(i))
+#   #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
+#   gc()
+# }
 
 
 

@@ -68,28 +68,135 @@ PC1_2way <- readRDS("cwm_5/PC1_2way.rds")
 PC2_2way <- readRDS("cwm_5/PC2_2way.rds")
 PC3_2way <- readRDS("cwm_5/PC3_2way.rds")
 
-summary(PC1_null) ## AIC 2496.5
-summary(PC1_full) ## AIC 923.2
-summary(PC1_2way) ## AIC 1301.2
+summary(PC1_null) ## dg AIC 4394.9
+summary(PC1_full) ## dg AIC 3947.3
+summary(PC1_2way) ## dg AIC 3994.6
 
-summary(PC2_null) ## 
-summary(PC2_full) ## 
-summary(PC2_2way) ## 
+summary(PC2_null) ## dg AIC 5099.5
+summary(PC2_full) ## dg AIC 4837.0
+summary(PC2_2way) ## dg AIC 4937.3
 
-summary(PC3_null) ## 
-summary(PC3_full) ## 
-summary(PC3_2way) ## 
+summary(PC3_null) ## dg AIC 7320.0
+summary(PC3_full) ## dg AIC 5903.6
+summary(PC3_2way) ## dg AIC 6033.7
 
 
 ## diagnostics ------------------
 
-m <- PC1_null
+m <- PC3_2way
 simulationOutput <- simulateResiduals(fittedModel = m, plot = F)
 hist(residuals(simulationOutput))
 plot(simulationOutput)
 beep()
 
 
+## 10 res ------------
+
+PC1_null <- readRDS("cwm_10/PC1_null.rds")
+PC2_null <- readRDS("cwm_10/PC2_null.rds")
+PC3_null <- readRDS("cwm_10/PC3_null.rds")
+
+PC1_full <- readRDS("cwm_10/PC1_full.rds")
+PC2_full <- readRDS("cwm_10/PC2_full.rds")
+PC3_full <- readRDS("cwm_10/PC3_full.rds")
+
+PC1_2way <- readRDS("cwm_10/PC1_2way.rds")
+PC2_2way <- readRDS("cwm_10/PC2_2way.rds")
+PC3_2way <- readRDS("cwm_10/PC3_2way.rds")
+
+summary(PC1_null) ## dg AIC 2987.8
+summary(PC1_full) ## dg AIC 2484.4
+summary(PC1_2way) ## dg AIC 2522.7
+
+summary(PC2_null) ## dg AIC 2906.0
+summary(PC2_full) ## dg AIC 2638.3
+summary(PC2_2way) ## dg AIC 2729.6
+
+summary(PC3_null) ## dg AIC 4682.6
+summary(PC3_full) ## dg AIC 3685.6
+summary(PC3_2way) ## dg AIC 3769.1
+
+
+## diagnostics ------------------
+
+m <- PC3_2way
+simulationOutput <- simulateResiduals(fittedModel = m, plot = F)
+#hist(residuals(simulationOutput))
+plot(simulationOutput)
+beep()
+
+
+## 20 res ------------
+
+PC1_null <- readRDS("cwm_20/PC1_null.rds")
+PC2_null <- readRDS("cwm_20/PC2_null.rds")
+PC3_null <- readRDS("cwm_20/PC3_null.rds")
+
+PC1_full <- readRDS("cwm_20/PC1_full.rds")
+PC2_full <- readRDS("cwm_20/PC2_full.rds")
+PC3_full <- readRDS("cwm_20/PC3_full.rds")
+
+PC1_2way <- readRDS("cwm_20/PC1_2way.rds")
+PC2_2way <- readRDS("cwm_20/PC2_2way.rds")
+PC3_2way <- readRDS("cwm_20/PC3_2way.rds")
+
+summary(PC1_null) ## dg AIC 1338.5
+summary(PC1_full) ## dg AIC 1040.8
+summary(PC1_2way) ## dg AIC 1043.0
+
+summary(PC2_null) ## dg AIC 1169.4
+summary(PC2_full) ## dg AIC 967.2
+summary(PC2_2way) ## dg AIC 1016.9
+
+summary(PC3_null) ## dg AIC 2204.1
+summary(PC3_full) ## dg AIC 1642.9
+summary(PC3_2way) ## dg AIC 1694.1
+
+
+## diagnostics ------------------
+
+m <- PC3_null
+simulationOutput <- simulateResiduals(fittedModel = m, plot = F)
+#hist(residuals(simulationOutput))
+plot(simulationOutput)
+beep()
+gc()
+
+## 50 res ------------
+
+PC1_null <- readRDS("cwm_50/PC1_null.rds")
+PC2_null <- readRDS("cwm_50/PC2_null.rds")
+PC3_null <- readRDS("cwm_50/PC3_null.rds")
+
+PC1_full <- readRDS("cwm_50/PC1_full.rds")
+PC2_full <- readRDS("cwm_50/PC2_full.rds")
+PC3_full <- readRDS("cwm_50/PC3_full.rds")
+
+PC1_2way <- readRDS("cwm_50/PC1_2way.rds")
+PC2_2way <- readRDS("cwm_50/PC2_2way.rds")
+PC3_2way <- readRDS("cwm_50/PC3_2way.rds")
+
+summary(PC1_null) ## dg AIC 317.6
+summary(PC1_full) ## dg AIC 139.8
+summary(PC1_2way) ## dg AIC 179.0
+
+summary(PC2_null) ## dg AIC 289.7
+summary(PC2_full) ## dg AIC 150.2
+summary(PC2_2way) ## AIC 198.6
+
+summary(PC3_null) ## dg AIC 584.3
+summary(PC3_full) ## dg AIC 335.5
+summary(PC3_2way) ## dg AIC 374.5
+
+
+## diagnostics ------------------
+
+m <- PC3_2way
+simulationOutput <- simulateResiduals(fittedModel = m, plot = F)
+#hist(residuals(simulationOutput))
+plot(simulationOutput)
+beep()
+gc()
 
 
 
