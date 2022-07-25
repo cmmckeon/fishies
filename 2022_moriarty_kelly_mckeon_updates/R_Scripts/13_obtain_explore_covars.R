@@ -389,6 +389,7 @@ pairs(a[, which(names(a) %in% c("tl",  "offspring.size",
 pc <- prcomp(a[,c("tl", "offspring.size","age.maturity", "fecundity", "growth.coefficient", "length.max", "age.max")])
 print(pc)
 summary(pc)
+#saveRDS(a, "Data_pca_traits.rds")
 
 pairs.panels(pc$x,
              gap=0,
