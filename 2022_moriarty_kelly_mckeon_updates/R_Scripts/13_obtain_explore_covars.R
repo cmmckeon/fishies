@@ -23,7 +23,7 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "Hmisc", "vegan", "viridis", "ggfortify",
         "lme4", "plyr", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
         "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "raster", "ncdf4", "marmap", "rgdal", "foreign",
-        "sf") # "rst")
+        "sf", "archetypes") # "rst")
 
 lapply(list, require, character.only=T)
 #lapply(list, citation)
@@ -355,16 +355,20 @@ rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year",  "DepthNew", "
 
 
 a <- unique(traits[,c("tl",  "offspring.size", "body.shape", "spawning.type",
-                     # "spawning.type",
                          "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
                          "length.max", "age.max", "taxon")])
 
 par(mfrow=c(4,4))
 for (i in names(Filter(is.numeric, a))) {
   hist(a[,i], breaks = 1000, main = paste(i))
- # hist(log(a[,i]), breaks = 1000, main = paste("log",i))
+  hist(log(a[,i]), breaks = 1000, main = paste("log",i))
   gc()
 }
+
+## checking if the skew in fecunidity is responsible for the missmatch between my PCA plot and my archetypal analysis...
+# a$fake <- correlate(given = a$fecundity,
+#           rho = 0.9,
+#           rnorm, mean = 0, sd = 1)
 
 
 #range01 <- function(x){(x-min(x))/(max(x)-min(x))}
@@ -512,6 +516,7 @@ range01 <- function(x){(x-min(x))/(max(x)-min(x))}
 
 a$PC1 <- (pc[["x"]][,1])
 a$PC2 <- (pc[["x"]][,2])
+a$PC3 <- (pc[["x"]][,3])
 
 a$PC1 <- scale(pc[["x"]][,1])
 a$PC2 <- scale(pc[["x"]][,2])
@@ -524,8 +529,6 @@ a$PC3 <- scale(pc[["x"]][,3])
 # a[,i] <- range01(a[,i]) -0.5
 #}
 
-
-library("archetypes")
 
 arch2 <- archetypes(a[,c("tl", "offspring.size",  
                          "age.maturity", "fecundity", "growth.coefficient", "length.max", 
@@ -554,9 +557,12 @@ for (i in names(Filter(is.numeric, a))) {
 
 save <- a
 par(mfrow =c(1,1))
-xyplot(arch4, a[, c("PC1", "PC3")]) #, chull = chull(a[, c("PC1", "PC2")]))
+a$PC2 <- a$PC2 + 1
+xyplot(arch4, a[, c("PC1", "PC2")]) #, chull = chull(a[, c("PC1", "PC2")]))
 xyplot(arch4, a[, c("PC2", "PC3")]) #, chull = chull(a[, c("PC1", "PC2")]))
 xyplot(arch4, a[, c("age.maturity", "fecundity")]) #, chull = chull(a[, c("PC1", "PC2")]))
+xyplot(arch4, a[, c("tl", "fecundity")]) #, chull = chull(a[, c("PC1", "PC2")]))
+
 
 xyplot(arch4, a[, c("PC1", "PC2")], adata.show = TRUE)
 

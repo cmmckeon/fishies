@@ -15,7 +15,7 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "Hmisc",
         "lme4", "plyr", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
         "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "raster", "ncdf4", "marmap", "rgdal", "foreign",
-        "sf", "glmmTMB", "DHARMa", "sjPlot", "ggpubr")
+        "sf", "glmmTMB", "DHARMa", "sjPlot", "ggpubr", "ggfortify")
 
 lapply(list, require, character.only=T)
 #lapply(list, citation)
@@ -160,9 +160,9 @@ g_pc3$term <- factor(g_pc3$term, levels = c("DepthNew", "DepthNew:fp", "fp", "ss
                                             "SNSP:DepthNew", "SNSP:fp", "SNSP:SNWI", "SNWI", "SNWI:DepthNew", "SNWI:fp", "SNWI:sst_var",  "Quarter", "Year"))
 ```
 
+## map
 
-
-## plot effect sizes
+## effect sizes
 
 ```{r fig.height= 6, fig.width= 10}
 
@@ -175,7 +175,7 @@ a1 <- ggplot(g_pc1,  aes(term, estimate)) +
                     position = position_dodge(0.5), size = 1.5) + 
     geom_point(data = g_pc1, 
                     aes(term, estimate, colour = main2),
-                    position = position_dodge(0.5), size = 4) + ylim(-0.11, 0.11) +        
+                    position = position_dodge(0.5), size = 4) + #ylim(-0.11, 0.11) +        
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
                                   "sst_var" = "#7AD151FF",
@@ -193,7 +193,7 @@ a2 <- ggplot(g_pc2,  aes(term, estimate)) +
                     position = position_dodge(0.5), size = 1.5) +
     geom_point(data = g_pc2,
                     aes(term, estimate, colour = main2),
-                    position = position_dodge(0.5), size = 4) + ylim(-0.11, 0.11) +
+                    position = position_dodge(0.5), size = 4) + #ylim(-0.11, 0.11) +
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
                                   "sst_var" = "#7AD151FF",
@@ -211,7 +211,7 @@ a3 <- ggplot(g_pc3,  aes(term, estimate)) +
                     position = position_dodge(0.5), size = 1.5) +
     geom_point(data = g_pc3,
                     aes(term, estimate, colour = main2),
-                    position = position_dodge(0.5), size = 4) + ylim(-0.11, 0.11) + 
+                    position = position_dodge(0.5), size = 4) +# ylim(-0.11, 0.11) + 
     scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
                                   "sst_var" = "#7AD151FF",
@@ -337,27 +337,27 @@ b1 <- ggplot(g1,  aes(term, estimate, colour = res)) +
   geom_line() +
   geom_pointrange(data = g1,
                     aes(term, estimate, colour = res, ymin= conf.low, ymax= conf.high),
-                    position = position_dodge(0.5), size = 1.5) #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
+                    position = position_dodge(0.5), size = 1) #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
 
 b2 <- ggplot(g2,  aes(term, estimate, colour = res)) +
       geom_hline(yintercept= 0, alpha = 0.8) +
   geom_line() +
   geom_pointrange(data = g2,
                     aes(term, estimate, colour = res, ymin= conf.low, ymax= conf.high),
-                    position = position_dodge(0.5), size = 1.5) #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
+                    position = position_dodge(0.5), size = 1) #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
 
 b3 <- ggplot(g3,  aes(term, estimate, colour = res)) +
       geom_hline(yintercept= 0, alpha = 0.8) +
   geom_line() +
   geom_pointrange(data = g3,
                     aes(term, estimate, colour = res, ymin= conf.low, ymax= conf.high),
-                    position = position_dodge(0.5), size = 1.5) #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
+                    position = position_dodge(0.5), size = 1) #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
 ```
 
-```{r, fig.width= 12, fig.height= 10}
+```{r, fig.width= 11, fig.height= 20}
 b1 <- b1 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
 b2 <- b2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
-b3 <- b3 + theme(axis.text.x = element_text(angle = 45)) #, vjust = 0.5, hjust=1)) 
+b3 <- b3 + theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) 
 
 resp <-ggarrange(b1, b2, b3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, common.legend = TRUE, legend = "bottom")
 # annotate_figure(resp, top = text_grob("Effects of climate and human footprint on range metrics", #color = "black", 
@@ -429,10 +429,12 @@ print(pc)
 summary(pc)
 ```
 
-```{r}
-autoplot(pc, data = a, colour = a$feeding.mode, loadings = TRUE,
-         loadings.label = TRUE, loadings.colour = "black", loadings.label.size = 4, 
+```{r fig.height= 6, fig.width= 7}
+autoplot(pc, data = a, colour = "grey",# colour = cb_pal[a$body.shape], 
+         loadings = TRUE,
+         loadings.label = TRUE, loadings.colour = "grey", loadings.label.size = 4,
          loadings.label.colour = "black")
+
 ```
 
 
@@ -442,7 +444,7 @@ autoplot(pc, data = a, colour = a$feeding.mode, loadings = TRUE,
 # show_col(viridis_pal(option = "D", direction = 1)(5))
 # dput(viridis_pal(option = "D", direction = 1)(5))
 
-full_pal <-c("#FA9E3BFF", "#ED7953FF","#D8576BFF", "#BD3786FF","#7301A8FF",  "#47039FFF")
+#full_pal <-c("#FA9E3BFF", "#ED7953FF","#D8576BFF", "#BD3786FF","#7301A8FF",  "#47039FFF")
 
 
 ```
