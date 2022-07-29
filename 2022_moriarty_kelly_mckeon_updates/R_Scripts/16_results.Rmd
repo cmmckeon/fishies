@@ -117,6 +117,82 @@ pc3_50 <- readRDS("PC3_2way.rds")
 ```
 
 
+## raw data visualisation
+```{r}
+
+# x50 <- unique(cwm[,c("PC1_cwm50", "PC2_cwm50", "PC3_cwm50")])
+# names(x50) <- c("PC1", "PC2", "PC3")
+# x50$res <- 50
+# 
+# x20 <- unique(cwm[,c("PC1_cwm20", "PC2_cwm20", "PC3_cwm20")])
+# names(x20) <- c( "PC1", "PC2", "PC3")
+# x20$res <- 20
+# 
+# x10 <- unique(cwm[,c("PC1_cwm10", "PC2_cwm10", "PC3_cwm10")])
+# names(x10) <- c("PC1", "PC2", "PC3")
+# x10$res <- 10
+# 
+# x5 <- unique(cwm[,c("PC1_cwm5", "PC2_cwm5", "PC3_cwm5")])
+# names(x5) <- c("PC1", "PC2", "PC3")
+# x5$res <- 5
+# 
+# x <- unique(cwm[,c("PC1", "PC2", "PC3")])
+# names(x) <- c("PC1", "PC2", "PC3")
+# x$res <- 1
+# 
+# d <- unique(rbind(x, x5, x10, x20, x50))
+# d$res <- factor(d$res)
+# plot(d$PC1 ~ d$res)
+# plot(d$PC2 ~ d$res)
+# plot(d$PC3 ~ d$res)
+
+ggplot(d, aes(res, PC1)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.01)
+
+ggplot(d, aes(res, PC2)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.01)
+
+ggplot(d, aes(res, PC3)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.01)
+
+```
+```{r}
+plot(cwm$PC1 ~ cwm$DepthNew)
+plot(cwm$PC1 ~ cwm$fp)
+plot(cwm$PC1_cwm50 ~ cwm$DepthNew)
+plot(cwm$PC1_cwm50 ~ cwm$fp)
+
+
+plot(cwm$PC3 ~ cwm$DepthNew)
+plot(cwm$PC3 ~ cwm$fp)
+plot(cwm$PC3_cwm50 ~ cwm$DepthNew)
+plot(cwm$PC3_cwm50 ~ cwm$fp)
+```
+
+
+```{r}
+
+# pairs(cwm[, which(names(cwm) %in% c("Year",  "DepthNew","SNSP", "SNWI", "fp", 
+#                                     "sst_var", "tl", "offspring.size", "age.maturity", "fecundity", "growth.coefficient", 
+#                                     "length.max", "age.max", "PC1", "PC2", "PC3"))], lower.panel = NULL, upper.panel = upper.panel)
+
+
+
+# c("res50", "Year", "PC1_cwm50", "PC2_cwm50", "PC3_cwm50", "res20", 
+# "PC1_cwm20", "PC2_cwm20", "PC3_cwm20", "res10", "PC1_cwm10", 
+# "PC2_cwm10", "PC3_cwm10", "res5", "PC1_cwm5", "PC2_cwm5", "PC3_cwm5", 
+# "HaulID", "PC1_cwm", "PC2_cwm", "PC3_cwm", "DepthNew", "Total_DensAbund_N_Sqkm", 
+# "SNAU", "SNSP", "SNSU", "SNWI", "fp", 
+# "sst_var", "tl", "offspring.size", "body.shape", "spawning.type", 
+# "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
+# "length.max", "age.max", "PC1", "PC2", "PC3", 
+# "resp_total", "ab_haul_total", "rel_ab", "ab", "res100")
+```
+
+
 ```{r}
 g_pc1 <- broom.mixed::tidy(pc1, effects = "fixed", conf.int = TRUE, conf.level = 0.95)
 g_pc2 <- broom.mixed::tidy(pc2, effects = "fixed", conf.int = TRUE, conf.level = 0.95)
@@ -140,27 +216,67 @@ g_pc1$main1 <-  gsub(":.*", "", g_pc1$main, ignore.case = TRUE)
 g_pc1$main2 <-  gsub(".*:", "", g_pc1$main, ignore.case = TRUE)
 
 g_pc1$main1 <- factor(g_pc1$main1, levels = c("DepthNew", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
-g_pc1$term <- factor(g_pc1$term, levels = c("DepthNew", "DepthNew:fp", "fp", "sst_var", "sst_var:DepthNew", "sst_var:fp", "SNSP:sst_var", "SNSP",
-                                            "SNSP:DepthNew", "SNSP:fp", "SNSP:SNWI", "SNWI", "SNWI:DepthNew", "SNWI:fp", "SNWI:sst_var",  "Quarter", "Year"))
+g_pc1$term <- factor(g_pc1$term, levels = c("DepthNew", "SNSP", "SNWI", "sst_var", "fp", "DepthNew:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+                                             "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:DepthNew",  "SNWI:DepthNew", "sst_var:DepthNew", 
+                                              "Quarter", "Year"))
 
 g_pc2$main <- g_pc2$term
 g_pc2$main1 <-  gsub(":.*", "", g_pc2$main, ignore.case = TRUE)
 g_pc2$main2 <-  gsub(".*:", "", g_pc2$main, ignore.case = TRUE)
 
 g_pc2$main1 <- factor(g_pc2$main1, levels = c("DepthNew", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
-g_pc2$term <- factor(g_pc2$term, levels = c("DepthNew", "DepthNew:fp", "fp", "sst_var", "sst_var:DepthNew", "sst_var:fp", "SNSP:sst_var", "SNSP",
-                                            "SNSP:DepthNew", "SNSP:fp", "SNSP:SNWI", "SNWI", "SNWI:DepthNew", "SNWI:fp", "SNWI:sst_var",  "Quarter", "Year"))
+g_pc2$term <- factor(g_pc2$term, levels = c("DepthNew", "SNSP", "SNWI", "sst_var", "fp", "DepthNew:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+                                             "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:DepthNew",  "SNWI:DepthNew", "sst_var:DepthNew", 
+                                              "Quarter", "Year"))
 
 g_pc3$main <- g_pc3$term
 g_pc3$main1 <-  gsub(":.*", "", g_pc3$main, ignore.case = TRUE)
 g_pc3$main2 <-  gsub(".*:", "", g_pc3$main, ignore.case = TRUE)
 
 g_pc3$main1 <- factor(g_pc3$main1, levels = c("DepthNew", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
-g_pc3$term <- factor(g_pc3$term, levels = c("DepthNew", "DepthNew:fp", "fp", "sst_var", "sst_var:DepthNew", "sst_var:fp", "SNSP:sst_var", "SNSP",
-                                            "SNSP:DepthNew", "SNSP:fp", "SNSP:SNWI", "SNWI", "SNWI:DepthNew", "SNWI:fp", "SNWI:sst_var",  "Quarter", "Year"))
+g_pc3$term <- factor(g_pc3$term, levels = c("DepthNew", "SNSP", "SNWI", "sst_var", "fp", "DepthNew:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+                                             "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:DepthNew",  "SNWI:DepthNew", "sst_var:DepthNew", 
+                                              "Quarter", "Year"))
 ```
 
 ## map
+
+
+
+```{r}
+
+## create column for grey bars
+g_pc1$rep <- as.character("white")
+#g_pc1$rep[g_pc1$main %in% c("SNSP", "SNWI", "sst_var", "DepthNew")] <- "white"
+g_pc1$rep[g_pc1$main %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","DepthNew:fp")] <- "grey"
+
+```
+
+
+```{r fig.height= 6, fig.width= 10}
+ggplot(g_pc1,  aes(term, estimate)) +
+      geom_hline(yintercept= 0, alpha = 0.8) +
+  geom_line() +
+
+    geom_rect(data = g_pc1[g_pc1$rep != "white",],
+            aes(NULL, NULL, xmin = cat -0.5, xmax = cat+0.5, ymin = -Inf, ymax = Inf), col = "grey", alpha = 0.15) +
+  
+  geom_pointrange(data = g_pc1, shape = 1,
+                    aes(term, estimate, colour = main1, 
+                        ymin= conf.low, ymax= conf.high),
+                    position = position_dodge(0.5), size = 1.5) + 
+    geom_point(data = g_pc1, 
+                    aes(term, estimate, colour = main2),
+                    position = position_dodge(0.5), size = 4) + #ylim(-0.11, 0.11) +        
+  scale_color_manual(values = c("SNSP" = "#414487FF",
+                                  "SNWI" = "#2A788EFF",
+                                  "sst_var" = "#7AD151FF",
+                                  "DepthNew" =  "orange",
+                                  "fp" = "#FDE725FF",
+                                  "Quarter" = "light grey",
+                                  "Year" = "dark grey"))
+```
+
 
 ## effect sizes
 
@@ -310,24 +426,27 @@ g1$main1 <-  gsub(":.*", "", g1$main, ignore.case = TRUE)
 g1$main2 <-  gsub(".*:", "", g1$main, ignore.case = TRUE)
 
 g1$main1 <- factor(g1$main1, levels = c("DepthNew", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
-g1$term <- factor(g1$term, levels = c("DepthNew", "DepthNew:fp", "fp", "sst_var", "sst_var:DepthNew", "sst_var:fp", "SNSP:sst_var", "SNSP",
-                                            "SNSP:DepthNew", "SNSP:fp", "SNSP:SNWI", "SNWI", "SNWI:DepthNew", "SNWI:fp", "SNWI:sst_var",  "Quarter", "Year"))
+g1$term <- factor(g1$term, levels = c("DepthNew", "SNSP", "SNWI", "sst_var", "fp", "DepthNew:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+                                             "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:DepthNew",  "SNWI:DepthNew", "sst_var:DepthNew", 
+                                              "Quarter", "Year"))
 
 g2$main <- g2$term
 g2$main1 <-  gsub(":.*", "", g2$main, ignore.case = TRUE)
 g2$main2 <-  gsub(".*:", "", g2$main, ignore.case = TRUE)
 
 g2$main1 <- factor(g2$main1, levels = c("DepthNew", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
-g2$term <- factor(g2$term, levels = c("DepthNew", "DepthNew:fp", "fp", "sst_var", "sst_var:DepthNew", "sst_var:fp", "SNSP:sst_var", "SNSP",
-                                            "SNSP:DepthNew", "SNSP:fp", "SNSP:SNWI", "SNWI", "SNWI:DepthNew", "SNWI:fp", "SNWI:sst_var",  "Quarter", "Year"))
+g2$term <- factor(g2$term, levels = c("DepthNew", "SNSP", "SNWI", "sst_var", "fp", "DepthNew:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+                                             "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:DepthNew",  "SNWI:DepthNew", "sst_var:DepthNew", 
+                                              "Quarter", "Year"))
 
 g3$main <- g3$term
 g3$main1 <-  gsub(":.*", "", g3$main, ignore.case = TRUE)
 g3$main2 <-  gsub(".*:", "", g3$main, ignore.case = TRUE)
 
 g3$main1 <- factor(g3$main1, levels = c("DepthNew", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
-g3$term <- factor(g3$term, levels = c("DepthNew", "DepthNew:fp", "fp", "sst_var", "sst_var:DepthNew", "sst_var:fp", "SNSP:sst_var", "SNSP",
-                                            "SNSP:DepthNew", "SNSP:fp", "SNSP:SNWI", "SNWI", "SNWI:DepthNew", "SNWI:fp", "SNWI:sst_var",  "Quarter", "Year"))
+g3$term <- factor(g3$term, levels = c("DepthNew", "SNSP", "SNWI", "sst_var", "fp", "DepthNew:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+                                             "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:DepthNew",  "SNWI:DepthNew", "sst_var:DepthNew", 
+                                              "Quarter", "Year"))
 ```
 
 

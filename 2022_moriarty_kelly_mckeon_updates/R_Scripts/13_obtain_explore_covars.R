@@ -706,3 +706,22 @@ cwm <- merge(cwm50, cwm, by = c("res50", "Year"))
 #              gap=0,
 #              bg = cl[a$body.shape],
 #              pch=21)
+
+
+#b1 <- 
+# g1$res <- as.numeric(g1$res)
+#   ggplot(g1,  aes(term, estimate, colour = main1, size = (log(res)+1))) +
+#       geom_hline(yintercept= 0, alpha = 0.8) +
+#   geom_line() +
+#   geom_pointrange(data = g1,
+#                     aes(term, estimate, colour = main1, ymin= conf.low, ymax= conf.high, size = (log(res)+1)),
+#                     position = position_dodge(0.5))  + #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
+# geom_point(data = g1,
+#                 aes(term, estimate, colour = main2, size = (log(res)+1)), position = position_dodge(0.5))  +
+# scale_color_manual(values = c("SNSP" = "#414487FF",
+#                               "SNWI" = "#2A788EFF",
+#                               "sst_var" = "#7AD151FF",
+#                               "DepthNew" =  "orange",
+#                               "fp" = "#FDE725FF",
+#                               "Quarter" = "light grey",
+#                               "Year" = "dark grey"))
