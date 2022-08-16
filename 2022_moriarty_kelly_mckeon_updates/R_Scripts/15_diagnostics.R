@@ -48,6 +48,7 @@ summary(PC3_2way) ## dg AIC  98707.7
 ## diagnostics ------------------
 
 m <- PC3_2way
+m <- PC1_2way
 simulationOutput <- simulateResiduals(fittedModel = m, plot = F)
 hist(residuals(simulationOutput))
 plot(simulationOutput)
@@ -84,7 +85,7 @@ summary(PC3_2way) ## dg AIC 6033.7
 ## diagnostics ------------------
 
 m <- PC3_2way
-simulationOutput <- simulateResiduals(fittedModel = m, plot = F)
+simulationOutput <- DHARMa::simulateResiduals(fittedModel = m, plot = F)
 hist(residuals(simulationOutput))
 plot(simulationOutput)
 beep()

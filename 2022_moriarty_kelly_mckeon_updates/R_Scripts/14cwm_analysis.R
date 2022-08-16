@@ -32,13 +32,13 @@ PC1_null <- glmmTMB(PC1_cwm ~  1 +
 saveRDS(PC1_null, "cwm_models/PC1_null.rds")
 
 # full model
-PC1_full <- glmmTMB(PC1_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-                     (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-                    control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-                                             profile = FALSE, collect = FALSE),
-                     data = cwm)
-
-saveRDS(PC1_full, "cwm_models/PC1_full.rds")
+# PC1_full <- glmmTMB(PC1_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
+#                      (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+#                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+#                                              profile = FALSE, collect = FALSE),
+#                      data = cwm)
+# 
+# saveRDS(PC1_full, "cwm_models/PC1_full.rds")
 
 ## 2 way
 PC1_2way <- glmmTMB(PC1_cwm ~ 
@@ -75,12 +75,12 @@ PC2_null <- glmmTMB(PC2_cwm ~  1 +
 saveRDS(PC2_null, "cwm_models/PC2_null.rds")
 
 # full model
-PC2_full <- glmmTMB(PC2_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-                       (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-                    control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-                                             profile = FALSE, collect = FALSE),
-                     data = cwm)
-saveRDS(PC2_full, "cwm_models/PC2_full.rds")
+# PC2_full <- glmmTMB(PC2_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
+#                        (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+#                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+#                                              profile = FALSE, collect = FALSE),
+#                      data = cwm)
+# saveRDS(PC2_full, "cwm_models/PC2_full.rds")
 
 ## 2 way
 PC2_2way <- glmmTMB(PC2_cwm ~ 
@@ -117,12 +117,12 @@ PC3_null <- glmmTMB(PC3_cwm ~  1 +
 saveRDS(PC3_null, "cwm_models/PC3_null.rds")
 
 # full model
-PC3_full <- glmmTMB(PC3_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-                      (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-                    control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-                                             profile = FALSE, collect = FALSE),
-                    data = cwm)
-saveRDS(PC3_full, "cwm_models/PC3_full.rds")
+# PC3_full <- glmmTMB(PC3_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
+#                       (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+#                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+#                                              profile = FALSE, collect = FALSE),
+#                     data = cwm)
+# saveRDS(PC3_full, "cwm_models/PC3_full.rds")
 
 ## 2 way
 PC3_2way <- glmmTMB(PC3_cwm ~ 

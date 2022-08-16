@@ -72,7 +72,7 @@ rm(box, x)
 ## unique hauls locations for extracting sst and fp data
 sp_co <- unique(h[, c("ShootLong", "ShootLat")]) 
 names(sp_co) <- c("x", "y")
-
+gc()
 
 
 # summary(h$ShootLat)
@@ -315,6 +315,8 @@ modeldf <- unique(modeldf[, which(names(modeldf) %in% c("Year", "Gear", "HaulID"
 ## get seasonal variation in temp
 modeldf$sst_var <- modeldf$SNSU - modeldf$SNWI
 
+modeldf <- drop_na(modeldf)
+
 ## traits -------------------------
 
 traits <- read.csv("~/Desktop/covars/traits/beukhof_fish_traits.csv")
@@ -342,16 +344,16 @@ traits <- drop_na(traits)
 
 
 
-rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year", "DepthNew",  "SNSP", "SNWI", "fp", "sst_var", 
-                                                          "tl",  "offspring.size",  "age.maturity", "fecundity", "growth.coefficient", 
-                                                          "length.max", "age.max", "fp_yn", "abund", "resp_total", "ab_haul_total", "rel_ab"))]))
-
-rcorr(as.matrix(traits[, which(names(traits) %in% c("tl",  "offspring.size", 
-                                                    "age.maturity", "fecundity", "growth.coefficient", 
-                                                    "length.max", "age.max"))]))
-
-rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year",  "DepthNew", "SNAU", "SNSP", "SNSU", "SNWI", "fp",  "sst_var", 
-                                                          "ab"))]))
+# rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year", "DepthNew",  "SNSP", "SNWI", "fp", "sst_var", 
+#                                                           "tl",  "offspring.size",  "age.maturity", "fecundity", "growth.coefficient", 
+#                                                           "length.max", "age.max", "fp_yn", "abund", "resp_total", "ab_haul_total", "rel_ab"))]))
+# 
+# rcorr(as.matrix(traits[, which(names(traits) %in% c("tl",  "offspring.size", 
+#                                                     "age.maturity", "fecundity", "growth.coefficient", 
+#                                                     "length.max", "age.max"))]))
+# 
+# rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year",  "DepthNew", "SNAU", "SNSP", "SNSU", "SNWI", "fp",  "sst_var", 
+#                                                           "ab"))]))
 
 
 a <- unique(traits[,c("tl",  "offspring.size", "body.shape", "spawning.type",
@@ -434,8 +436,8 @@ for (i in names(Filter(is.numeric, modeldf))) {
 
 ## transform
 ## make a presense absense of fishing pressure column
-modeldf$fp_yn[is.na(modeldf$fp)] <- 0 
-modeldf$fp_yn[!is.na(modeldf$fp)] <- 1 
+# modeldf$fp_yn[is.na(modeldf$fp)] <- 0 
+# modeldf$fp_yn[!is.na(modeldf$fp)] <- 1 
 
 abundance <- drop_na(modeldf)
 
@@ -642,6 +644,64 @@ cwm <- merge(cwm50, cwm, by = c("res50", "Year"))
 
 #saveRDS(cwm, "Data_cwm_PCA.rds")
 
+par(mfrow=c(4,4))
+for (i in names(Filter(is.numeric, cwm))) {
+  hist(cwm[,i], breaks = 1000, main = paste(i))
+  hist(check[,i], breaks = 1000, main = paste(i))
+  gc()
+}
+
+par(mfrow = c(1,3))
+plot(x$PC1 ~ x$age.maturity)
+plot(x$PC2 ~ x$fecundity)
+plot(x$PC3 ~ x$tl)
+
+x <- unique(cwm[, c("PC1_cwm50", "PC2_cwm50", "PC3_cwm50", 
+             "PC1_cwm20", "PC2_cwm20", "PC3_cwm20", 
+             "PC1_cwm10", "PC2_cwm10", "PC3_cwm10", 
+             "PC1_cwm5", "PC2_cwm5", "PC3_cwm5", 
+             "PC1_cwm", "PC2_cwm", "PC3_cwm", 
+             "tl", "offspring.size", "body.shape", "spawning.type", 
+             "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
+             "length.max", "age.max", "PC1", "PC2", "PC3")])
+
+par(mfrow =c (3,5))
+plot(x$PC1_x50 ~ x$age.maturity)
+plot(x$PC1_x20 ~ x$age.maturity)
+plot(x$PC1_x10 ~ x$age.maturity)
+plot(x$PC1_x5 ~ x$age.maturity)
+plot(x$PC1_x ~ x$age.maturity)
+
+plot(x$PC2_x50 ~ x$fecundity)
+plot(x$PC2_x20 ~ x$fecundity)
+plot(x$PC2_x10 ~ x$fecundity)
+plot(x$PC2_x5 ~ x$fecundity)
+plot(x$PC2_x ~ x$fecundity)
+
+plot(x$PC3_x50 ~ x$tl)
+plot(x$PC3_x20 ~ x$tl)
+plot(x$PC3_x10 ~ x$tl)
+plot(x$PC3_x5 ~ x$tl)
+plot(x$PC3_x ~ x$tl)
+
+## run models ----------------------
+
+# setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+# source("R_Scripts/14cwm_analysis.R")
+# Sys.sleep(60)
+# gc
+# source("R_Scripts/14b_5scale_analysis.R")
+# Sys.sleep(60)
+# gc
+# source("R_Scripts/14c_10scale_analysis.R")
+# Sys.sleep(60)
+# gc
+# source("R_Scripts/14d_20scale_analysis.R")
+# Sys.sleep(60)
+# gc
+# source("R_Scripts/14e_50scale_analysis.R")
+
+
 
 
 # par(mfrow=c(4,4))
@@ -652,8 +712,18 @@ cwm <- merge(cwm50, cwm, by = c("res50", "Year"))
 # }
 
 
-
-
+# x <- unique(abundance[, c("tl", "offspring.size", "body.shape", "spawning.type", "feeding.mode", 
+#                           "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+#                           "age.max","PC1", "PC2", "PC3")])
+# 
+# par(mfrow =c (2,3))
+# plot(x$PC2 ~ x$PC1)
+# plot(x$PC3 ~ x$PC1)
+# plot(x$PC3 ~ x$PC2)
+# 
+# plot(a$PC2 ~ a$PC1)
+# plot(a$PC3 ~ a$PC1)
+# plot(a$PC3 ~ a$PC2)
 
 
 
