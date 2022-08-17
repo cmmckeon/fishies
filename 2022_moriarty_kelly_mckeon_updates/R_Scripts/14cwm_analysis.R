@@ -17,7 +17,12 @@ lapply(list, require, character.only=T)
 
 ## read in data ------------
 
-cwm <- readRDS("Data_cwm_PCA.rds")
+cwm_main <- readRDS("Data_cwm_PCA.rds")
+
+cwm <- unique(cwm_main[, c("Year", "HaulID", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Gear", "Quarter", "DepthNew", 
+                      "SNSP",  "SNWI", "fp", "gear_ship", "gear_ship_loc", 
+                      "sst_var")])
+
 
 ## PC1 ---------------------
 

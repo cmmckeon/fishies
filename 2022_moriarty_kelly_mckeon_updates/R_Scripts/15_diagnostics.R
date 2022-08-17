@@ -21,9 +21,9 @@ PC1_null <- readRDS("cwm_models/PC1_null.rds")
 PC2_null <- readRDS("cwm_models/PC2_null.rds")
 PC3_null <- readRDS("cwm_models/PC3_null.rds")
 
-PC1_full <- readRDS("cwm_models/PC1_full.rds")
-PC2_full <- readRDS("cwm_models/PC2_full.rds")
-PC3_full <- readRDS("cwm_models/PC3_full.rds")
+# PC1_full <- readRDS("cwm_models/PC1_full.rds")
+# PC2_full <- readRDS("cwm_models/PC2_full.rds")
+# PC3_full <- readRDS("cwm_models/PC3_full.rds")
 
 PC1_2way <- readRDS("cwm_models/PC1_2way.rds")
 PC2_2way <- readRDS("cwm_models/PC2_2way.rds")
@@ -47,10 +47,11 @@ summary(PC3_2way) ## dg AIC  98707.7
 
 ## diagnostics ------------------
 
-m <- PC3_2way
 m <- PC1_2way
+m <- PC2_2way
+m <- PC3_2way
 simulationOutput <- simulateResiduals(fittedModel = m, plot = F)
-hist(residuals(simulationOutput))
+#hist(residuals(simulationOutput))
 plot(simulationOutput)
 beep()
 
@@ -84,9 +85,11 @@ summary(PC3_2way) ## dg AIC 6033.7
 
 ## diagnostics ------------------
 
+m <- PC1_2way
+m <- PC2_2way
 m <- PC3_2way
 simulationOutput <- DHARMa::simulateResiduals(fittedModel = m, plot = F)
-hist(residuals(simulationOutput))
+#hist(residuals(simulationOutput))
 plot(simulationOutput)
 beep()
 

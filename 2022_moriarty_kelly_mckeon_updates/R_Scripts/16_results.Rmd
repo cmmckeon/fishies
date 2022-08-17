@@ -3,9 +3,9 @@ title: "15_fishies_results"
 author: "Caroline McKeon"
 date: "15/08/2022"
 output:
-  html_document: default
-  pdf_document: default
   word_document: default
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -16,7 +16,7 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "Hmisc",
         "lme4", "plyr", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
         "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "raster", "ncdf4", "marmap", "rgdal", "foreign",
-        "sf", "glmmTMB", "DHARMa", "sjPlot", "ggpubr", "ggfortify")
+        "sf", "glmmTMB", "DHARMa", "sjPlot", "ggpubr", "ggfortify", "scales")
 
 lapply(list, require, character.only=T)
 #lapply(list, citation)
@@ -255,10 +255,6 @@ g_pc3$rep[g_pc3$main %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")
 g_pc3$cat <- as.numeric(g_pc3$term)
 ```
 
-## map
-
-
-
 ## effect sizes
 
 ```{r fig.height= 6, fig.width= 10}
@@ -275,7 +271,7 @@ a1 <- ggplot(g_pc1,  aes(term, estimate)) +
                     position = position_dodge(0.5), size = 1.5) + 
     geom_point(data = g_pc1, 
                     aes(term, estimate, colour = main2),
-                    position = position_dodge(0.5), size = 4) + ylim(-0.075, 0.11) +      
+                    position = position_dodge(0.5), size = 4) +  ylim(-0.15, 0.12) +  
    labs(colour = "Model terms", y = "Effect size PC1") + 
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
@@ -297,7 +293,7 @@ a2 <- ggplot(g_pc2,  aes(term, estimate)) +
                     position = position_dodge(0.5), size = 1.5) +
     geom_point(data = g_pc2,
                     aes(term, estimate, colour = main2),
-                    position = position_dodge(0.5), size = 4) + ylim(-0.075, 0.11) + 
+                    position = position_dodge(0.5), size = 4) +  ylim(-0.15, 0.12) +  
      labs(colour = "Model terms", y = "Effect size PC2") + 
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
@@ -319,7 +315,7 @@ a3 <- ggplot(g_pc3,  aes(term, estimate)) +
                     position = position_dodge(0.5), size = 1.5) +
     geom_point(data = g_pc3,
                     aes(term, estimate, colour = main2),
-                    position = position_dodge(0.5), size = 4) + ylim(-0.075, 0.11) +  
+                    position = position_dodge(0.5), size = 4) + ylim(-0.15, 0.12) +  
      labs(colour = "Model terms", y = "Effect size PC3") + 
     scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
@@ -463,8 +459,9 @@ g3$cat <- as.numeric(g3$term)
 
 ```{r}
 #g1$safe <- g1$res
-
 g1$res <- as.numeric(as.character(g1$res))/10
+g2$res <- as.numeric(as.character(g2$res))/10
+g3$res <- as.numeric(as.character(g3$res))/10
 
 ```
 
@@ -536,11 +533,11 @@ b1 <- ggplot(g1,  aes(term, estimate, group = res)) +
   geom_pointrange(data = g1, shape = 1,
                     aes(term, estimate, colour = main1,
                         ymin= conf.low, ymax= conf.high),
-                    position = position_dodge(1), size = 2) +
+                    position = position_dodge(0.9), size = 1.5) +
      geom_point(data = g1,
                     aes(term, estimate, colour = main2, size = res),
-                    position = position_dodge(1)) +
-  labs(colour = "Model terms", y = "Effect size PC1") + 
+                    position = position_dodge(0.9)) +
+  labs(colour = "Model terms", y = "Effect size PC1", colour = "resolution") + 
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                 "SNWI" = "#2A788EFF",
                                 "sst_var" = "#7AD151FF",
@@ -557,11 +554,11 @@ b2 <- ggplot(g2,  aes(term, estimate, group = res)) +
   geom_pointrange(data = g2, shape = 1,
                     aes(term, estimate, colour = main1,
                         ymin= conf.low, ymax= conf.high),
-                    position = position_dodge(1), size = 2) +
+                    position = position_dodge(0.9), size = 1.5) +
      geom_point(data = g2,
                     aes(term, estimate, colour = main2, size = res),
-                    position = position_dodge(1)) +
-  labs(colour = "Model terms", y = "Effect size PC2") + 
+                    position = position_dodge(0.9)) +
+  labs(colour = "Model terms", y = "Effect size PC2", colour = "resolution") + 
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                 "SNWI" = "#2A788EFF",
                                 "sst_var" = "#7AD151FF",
@@ -578,11 +575,11 @@ b3 <- ggplot(g3,  aes(term, estimate, group = res)) +
   geom_pointrange(data = g3, shape = 1,
                     aes(term, estimate, colour = main1,
                         ymin= conf.low, ymax= conf.high),
-                    position = position_dodge(1), size = 2) +
+                    position = position_dodge(0.9), size = 1.5) +
      geom_point(data = g3,
                     aes(term, estimate, colour = main2, size = res),
-                    position = position_dodge(1)) +
-  labs(colour = "Model terms", y = "Effect size PC3") + 
+                    position = position_dodge(0.9)) +
+  labs(colour = "Model terms", y = "Effect size PC3", colour = "resolution") + 
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                 "SNWI" = "#2A788EFF",
                                 "sst_var" = "#7AD151FF",
@@ -627,6 +624,13 @@ resp <-ggarrange(b1, b2, b3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, comm
 resp
 ```
 
+```{r}
+g1 <- g1[g1$res != 5,]
+g2 <- g2[g2$res != 5,]
+g3 <- g3[g3$res != 5,]
+```
+
+
 ```{r, fig.width= 11, fig.height= 4}
 
 b1 <- ggplot(g1,  aes(term, estimate, group = res)) +
@@ -636,11 +640,11 @@ b1 <- ggplot(g1,  aes(term, estimate, group = res)) +
             colour = NA, alpha = 0.01) +
 geom_pointrange(data = g1, 
                   aes(term, estimate, colour = main1, ymin= conf.low, ymax= conf.high, shape = factor(res)),
-                  position = position_dodge(1), size = 1.5) +
+                  position = position_dodge(0.9), size = 1.5) +
   geom_point(data = g1,
                   aes(term, estimate, colour = main2, shape = factor(res)),
-             position = position_dodge(1), size = 4) +
-  labs(colour = "Model terms", y = "Effect size PC1") + 
+             position = position_dodge(0.9), size = 4) +
+  labs(colour = "Model terms", y = "Effect size PC1", group = "resolution") + 
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                 "SNWI" = "#2A788EFF",
                                 "sst_var" = "#7AD151FF",
@@ -656,11 +660,11 @@ b2 <- ggplot(g2,  aes(term, estimate, group = res)) +
             colour = NA, alpha = 0.01) +
   geom_pointrange(data = g2, 
                     aes(term, estimate, colour = main1,ymin= conf.low, ymax= conf.high, shape = factor(res)),
-                    position = position_dodge(1), size = 1.5) +
+                    position = position_dodge(0.9), size = 1.5) +
     geom_point(data = g2,
                   aes(term, estimate, colour = main2, shape = factor(res)),
-                position = position_dodge(1), size = 4) +
-  labs(colour = "Model terms", y = "Effect size PC2") + 
+                position = position_dodge(0.9), size = 4) +
+  labs(colour = "Model terms", y = "Effect size PC2", group = "resolution") + 
     scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
                                   "sst_var" = "#7AD151FF",
@@ -677,11 +681,11 @@ b3 <- ggplot(g3,  aes(term, estimate, group = res)) +
             colour = NA, alpha = 0.01) +
   geom_pointrange(data = g3, 
                     aes(term, estimate, colour = main1,ymin= conf.low, ymax= conf.high, shape = factor(res)),
-                    position = position_dodge(1), size = 1.5) +
+                    position = position_dodge(0.9), size = 1.5) +
     geom_point(data = g3,
                   aes(term, estimate, colour = main2, shape = factor(res)),
-                position = position_dodge(1), size = 4) +
-  labs(colour = "Model terms", y = "Effect size PC3") + 
+                position = position_dodge(0.9), size = 4) +
+  labs(colour = "Model terms", y = "Effect size PC3", group = "resolution") + 
     scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
                                   "sst_var" = "#7AD151FF",
@@ -711,10 +715,11 @@ print(pc)
 summary(pc)
 ```
 
-```{r fig.height= 6, fig.width= 7}
+```{r fig.height= 6, fig.width= 6}
 a$groups <- 1
-a$groups[a$taxon %in% c(#"Scophthalmus rhombus",
-  "Lamna nasus", "Polymetme thaeocoryla", 
+a$groups[a$taxon %in% c("Lamna nasus", #"Polymetme thaeocoryla", 
+                        "Spinachia spinachia",
+                        #"Sprattus sprattus",
   "Gadus morhua")] <- 0
 a$groups <- factor(a$groups)
 autoplot(pc, data = a, #colour = "grey", 
@@ -722,38 +727,94 @@ autoplot(pc, data = a, #colour = "grey",
          # colour = "groups", 
         colour = c("red" , "grey")[a$groups],
          loadings = TRUE,
-         loadings.label = TRUE, loadings.colour = " dark grey", #loadings.label.size = 5, 
+         loadings.label = F, loadings.colour = "black", #loadings.label.size = 5, 
         # loadings.label.hjust = -0.2,
         # loadings.label.vjust = 0.4,
          loadings.label.colour = "black")
 
-autoplot(pc, data = a,
-          x =2,
-         y =3,
-           colour = c("red" , "grey")[a$groups],
-         loadings = TRUE, loadings.label = TRUE, loadings.colour = " dark grey", 
-         loadings.label.colour = "black")
+```
 
+```{r  fig.height= 4, fig.width= 4}
 autoplot(pc, data = a,
           x =1,
          y =3,
            colour = c("red" , "grey")[a$groups],
          loadings = TRUE,
-         loadings.label = TRUE, loadings.colour = " dark grey",
+         loadings.label = F, loadings.colour = "black",
          loadings.label.colour = "black")
+```
+
+## map
+
+read in map data
+```{r}
+tmp_raster <- stack("~/Desktop/covars/sst_aquamodis_seasonal_2009_2021/AQUA_MODIS.20081221_20090320.L3m.SNWI.SST.x_sst.nc", varname="sst")
+tmp_raster <- brick(tmp_raster, varname="sst")
+fp <- read.dbf("~/Desktop/covars/fp_ICES_2009_2020/shapefiles/total-2020.dbf")
+  f <- fp[, c("lon","lat", "kWH_upp")]
+  ## subset by North East Atlantic box
+  f <- f[f$lon <= tmp_raster@extent@xmax  & f$lon >= tmp_raster@extent@xmin & f$lat <= tmp_raster@extent@ymax  & f$lat >= tmp_raster@extent@ymin,]
+  f <- rasterFromXYZ(f, crs = tmp_raster@crs)
+  f <- projectRaster(f, tmp_raster) 
+setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+depth <- as.raster(readRDS("./Regional Boundaries Maps and Data/papoue_bathy_map.rds"))
+depth <- projectRaster(depth, tmp_raster) 
+land <- depth
+land <- calc(land, fun=function(x){ x[x <= 0] <- NA; return(x)} )
+land <- calc(land, fun=function(x){ x[x > 0] <- 1; return(x)} )
+depth <- calc(depth, fun=function(x){ x[x > 0] <- NA; return(x)} )
+sp_co <- readRDS("Data_sp_co.rds")
+
+## aggregating resolutions ---------
+t50 <- aggregate(tmp_raster, 50)
+fp50 <- aggregate(f, 50)
+d50 <- aggregate(depth, 50)
+```
+
+
+```{r}
+x <- as.data.frame(t50, xy = T)
+x <- unique(round(x, 0))
+ag <- unique(round(sp_co, 0))
+x <- merge(ag, x, by = c("x", "y"))
+```
+
+```{r}
+par(mfrow =c(1,2), bty = "n", yaxt="n", xaxt="n", mar = c(1,1,1,1))
+# plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+# plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+# points(sp_co$x, sp_co$y, cex = 0.5)
+
+plot(t50, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+points(x$x, x$y, cex = 7)
+
+#scalebar(250, xy=NULL, type='bar', divs=2, label = "0  20  40",adj=c(1, 1), cex = 0.5)
 
 ```
 
 
+```{r fig.width= 4, fig.height= 7}
+par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n", mar = c(1,1,1,1))
 
+plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(t50, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(depth, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(d50, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(f, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(fp50, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+
+```
 
 ```{r}
-	
-# Scophthalmus rhombus - highest fecundity 
 
-# Lamna nasus - portobegel, highest offsprin size (episodic)
 
-# Polymetme thaeocoryla - opertunistic - fastest growth co-efficeint 
+x <- unique(cwm[, c("Year", "HaulID", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Gear", "Quarter", "DepthNew", 
+"SNSP",  "SNWI", "fp", "gear_ship", "gear_ship_loc", 
+"sst_var")])
 ```
 
 
@@ -773,10 +834,105 @@ autoplot(pc, data = a,
 #A302B7 - purple
 #02AFA8 - turquoise
 
+```{r}
+# check1 <- g1[g1$res == 0.5,]
+# check2 <- g2[g2$res == 0.5,]
+# check3 <- g3[g3$res == 0.5,]
+
+# check1 <- g1[g1$res == 1,]
+# check2 <- g2[g2$res == 1,]
+# check3 <- g3[g3$res == 1,]
+
+check1 <- g1[g1$res == 2,]
+check2 <- g2[g2$res == 2,]
+check3 <- g3[g3$res == 2,]
+
+# check1 <- g1[g1$res == 5,]
+# check2 <- g2[g2$res == 5,]
+# check3 <- g3[g3$res == 5,]
+```
 
 
 
+```{r fig.height= 15, fig.width= 9}
 
+a1 <- ggplot(check1,  aes(term, estimate)) +
+      geom_hline(yintercept= 0, alpha = 0.8) +
+        geom_rect(data = check1[check1$rep != "white",],
+             aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.15),
+            colour = NA, alpha = 0.15) +
+  geom_pointrange(data = check1, shape = 1,
+                    aes(term, estimate, colour = main1, 
+                        ymin= conf.low, ymax= conf.high),
+                    position = position_dodge(0.5), size = 1.5) + 
+    geom_point(data = check1, 
+                    aes(term, estimate, colour = main2),
+                    position = position_dodge(0.5), size = 4) +  #ylim(-0.15, 0.12) +  
+   labs(colour = "Model terms", y = "Effect size PC1") + 
+  scale_color_manual(values = c("SNSP" = "#414487FF",
+                                  "SNWI" = "#2A788EFF",
+                                  "sst_var" = "#7AD151FF",
+                                  "Depth" =  "orange",
+                                  "fp" = "#FDE725FF",
+                                  "Quarter" = "light grey",
+                                  "Year" = "dark grey"))
+
+a2 <- ggplot(check2,  aes(term, estimate)) +
+      geom_hline(yintercept= 0, alpha = 0.8) +
+      geom_rect(data = check2[check2$rep != "white",],
+             aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.15),
+            colour = NA, alpha = 0.15) +
+  geom_pointrange(data = check2, shape = 1,
+                    aes(term, estimate, colour = main1,
+                        ymin= conf.low, ymax= conf.high),
+                    position = position_dodge(0.5), size = 1.5) +
+    geom_point(data = check2,
+                    aes(term, estimate, colour = main2),
+                    position = position_dodge(0.5), size = 4) +  #ylim(-0.15, 0.12) +  
+     labs(colour = "Model terms", y = "Effect size PC2") + 
+  scale_color_manual(values = c("SNSP" = "#414487FF",
+                                  "SNWI" = "#2A788EFF",
+                                  "sst_var" = "#7AD151FF",
+                                  "Depth" =  "orange",
+                                  "fp" = "#FDE725FF",
+                                  "Quarter" = "light grey",
+                                  "Year" = "dark grey"))
+
+a3 <- ggplot(check3,  aes(term, estimate)) +
+      geom_hline(yintercept= 0, alpha = 0.8) +
+        geom_rect(data = check3[check3$rep != "white",],
+             aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.15),
+            colour = NA, alpha = 0.15) +
+  geom_pointrange(data = check3, shape = 1,
+                    aes(term, estimate, colour = main1,
+                        ymin= conf.low, ymax= conf.high),
+                    position = position_dodge(0.5), size = 1.5) +
+    geom_point(data = check3,
+                    aes(term, estimate, colour = main2),
+                    position = position_dodge(0.5), size = 4) + #ylim(-0.15, 0.12) +  
+     labs(colour = "Model terms", y = "Effect size PC3") + 
+    scale_color_manual(values = c("SNSP" = "#414487FF",
+                                  "SNWI" = "#2A788EFF",
+                                  "sst_var" = "#7AD151FF",
+                                  "Depth" =  "orange",
+                                  "fp" = "#FDE725FF",
+                                  "Quarter" = "light grey",
+                                  "Year" = "dark grey"))
+
+a1 <- a1 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
+a2 <- a2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
+a3 <- a3 + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), axis.title.x = element_blank()) 
+
+resp <-ggarrange(a1, a2, a3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, common.legend = TRUE, legend = "bottom")
+resp
+```
+
+```{r}
+par(mfrow =c(3,1))
+a1
+a2
+a3
+```
 
 
 
