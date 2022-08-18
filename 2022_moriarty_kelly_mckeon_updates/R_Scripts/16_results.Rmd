@@ -18,6 +18,7 @@ list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "Hmisc",
         "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "raster", "ncdf4", "marmap", "rgdal", "foreign",
         "sf", "glmmTMB", "DHARMa", "sjPlot", "ggpubr", "ggfortify", "scales")
 
+
 lapply(list, require, character.only=T)
 #lapply(list, citation)
 
@@ -624,12 +625,6 @@ resp <-ggarrange(b1, b2, b3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, comm
 resp
 ```
 
-```{r}
-g1 <- g1[g1$res != 5,]
-g2 <- g2[g2$res != 5,]
-g3 <- g3[g3$res != 5,]
-```
-
 
 ```{r, fig.width= 11, fig.height= 4}
 
@@ -757,7 +752,8 @@ fp <- read.dbf("~/Desktop/covars/fp_ICES_2009_2020/shapefiles/total-2020.dbf")
   f <- rasterFromXYZ(f, crs = tmp_raster@crs)
   f <- projectRaster(f, tmp_raster) 
 setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
-depth <- as.raster(readRDS("./Regional Boundaries Maps and Data/papoue_bathy_map.rds"))
+depth <- readRDS("./Regional Boundaries Maps and Data/papoue_bathy_map.rds")
+depth <- as.raster(depth)
 depth <- projectRaster(depth, tmp_raster) 
 land <- depth
 land <- calc(land, fun=function(x){ x[x <= 0] <- NA; return(x)} )
@@ -780,14 +776,14 @@ x <- merge(ag, x, by = c("x", "y"))
 ```
 
 ```{r}
-par(mfrow =c(1,2), bty = "n", yaxt="n", xaxt="n", mar = c(1,1,1,1))
-# plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-# plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-# points(sp_co$x, sp_co$y, cex = 0.5)
+par(mfrow =c(2,1), bty = "n", yaxt="n", xaxt="n", mar = c(1,1,1,1))
+plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+points(sp_co$x, sp_co$y, cex = 0.5)
 
 plot(t50, ext=extent(tmp_raster),xaxs="i",yaxs="i")
 plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-points(x$x, x$y, cex = 7)
+points(x$x, x$y, cex = 6)
 
 #scalebar(250, xy=NULL, type='bar', divs=2, label = "0  20  40",adj=c(1, 1), cex = 0.5)
 
@@ -828,6 +824,44 @@ x <- unique(cwm[, c("Year", "HaulID", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Gear", "
 
 
 ```
+
+## homa ranges
+```{r}
+hr <- read.csv("~/Desktop/covars/probst2021_northseahomeranges.csv")
+hr <- drop_na(hr[,c("Species", "Area.CCA.w", "Area.CCA.S", "Area.CCA.WS")])
+hr <- hr[1:53,]
+
+hr$Area.CCA.w <-  gsub(",", "", hr$Area.CCA.w)
+hr$Area.CCA.S <-  gsub(",", "", hr$Area.CCA.S)
+hr$Area.CCA.WS <-  gsub(",", "", hr$Area.CCA.WS)
+
+hr$w_range <- round(sqrt(as.numeric((hr$Area.CCA.w))),0)
+hr$s_range <- round(sqrt(as.numeric((hr$Area.CCA.S))),0)
+hr$range <- round(sqrt(as.numeric((hr$Area.CCA.WS))),)
+intersect(a$taxon, hr$Species)
+setdiff(hr$Species, a$taxon)
+```
+
+```{r}
+par(mfrow = c(2,1))
+hist(hr$w_range, breaks = 20, main = "Consitent core areas winter", xlab = "square root of area")
+abline(v = mean(hr$w_range), col = "red", lwd = 2)
+hist(hr$s_range, breaks = 20, main = "Consitent core areas summer", xlab = "square root of area")
+abline(v = mean(hr$s_range, na.rm = T), col = "red", lwd = 2)
+# hist(hr$range, breaks = 15, main = "Consitent core areas all year")
+# abline(v = mean(hr$range, na.rm = T), col = "red", lwd = 2)
+```
+
+```{r}
+x <- unique(mydata[, c("SciName", "Total_DensAbund_N_Sqkm")])
+x <- x[x$SciName %in% hr$Species,]
+
+x1 <- x %>%   group_by(SciName) %>% summarise(max_ab = sum(Total_DensAbund_N_Sqkm), n = n())
+hr <- merge(x1, hr, by.x = "SciName", by.y = "Species")
+hr <- hr[order(-hr$max_ab),] 
+
+```
+
 
 
 #FDBA00 - yellow
