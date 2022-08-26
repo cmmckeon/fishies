@@ -775,33 +775,57 @@ ag <- unique(round(sp_co, 0))
 x <- merge(ag, x, by = c("x", "y"))
 ```
 
-```{r}
-par(mfrow =c(2,1), bty = "n", yaxt="n", xaxt="n", mar = c(1,1,1,1))
-plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-points(sp_co$x, sp_co$y, cex = 0.5)
+```{r fig.width= 4, fig.height= 11}
+par(mfrow =c(3,1), bty = "n", yaxt="n", xaxt="n", mar = c(1,1,1,1), bg = "transparent")
 
-plot(t50, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-points(x$x, x$y, cex = 6)
+plot(land, col = "grey", #add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+points(sp_co$x, sp_co$y, cex = 0.5)
+plot(land, col = "grey", add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+
+plot(land, col = "grey", #add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+points(x$x, x$y, cex = 5, pch  = 0)
+plot(land, col = "grey", add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+
+plot(land, col = "grey", #add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+points(-15, 55.5, cex = 0.2, pch  = 0, col = "black",  lwd = 2)
+points(-15, 55.5, cex = 5, pch  = 0, col = "black",  lwd = 2)
+points(-15, 54, cex = 5*(218/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 52.5, cex = 5*(197/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 51, cex = 5*(183/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 49.5, cex = 5*(210/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 48, cex = 5*(138/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 46.5, cex = 5*(150/250), pch  = 0, col = "red",  lwd = 2)
+
 
 #scalebar(250, xy=NULL, type='bar', divs=2, label = "0  20  40",adj=c(1, 1), cex = 0.5)
 
 ```
 
+```{r}
+pal <- colorRampPalette(viridis_pal(option = "D", direction = -1)(5))
 
-```{r fig.width= 4, fig.height= 7}
-par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n", mar = c(1,1,1,1))
+```
 
-plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(t50, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(depth, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(d50, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(f, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(fp50, ext=extent(tmp_raster),xaxs="i",yaxs="i")
-plot(land, col = "white", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i")
+```{r fig.width= 4, fig.height= 8}
+par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n", mar = c(0.5,0,0.5,0.5))
+
+plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE)
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
+plot(t50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50))
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
+plot(-depth, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE)
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
+plot(-d50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50))
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
+plot(f, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE)
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
+plot(fp50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50))
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
 
 ```
 
@@ -817,7 +841,7 @@ x <- unique(cwm[, c("Year", "HaulID", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Gear", "
 ## plot r2s
 
 ```{r}
-# show_col(viridis_pal(option = "D", direction = 1)(5))
+# show_col(viridis_pal(option = "C", direction = 1)(5))
 # dput(viridis_pal(option = "D", direction = 1)(5))
 
 #full_pal <-c("#FA9E3BFF", "#ED7953FF","#D8576BFF", "#BD3786FF","#7301A8FF",  "#47039FFF")
