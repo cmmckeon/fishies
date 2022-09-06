@@ -16,7 +16,7 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "Hmisc",
         "lme4", "plyr", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
         "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "raster", "ncdf4", "marmap", "rgdal", "foreign",
-        "sf", "glmmTMB", "DHARMa", "sjPlot", "ggpubr", "ggfortify", "scales")
+        "sf", "glmmTMB", "DHARMa", "sjPlot", "ggpubr", "ggfortify", "scales", "kableExtra")
 
 
 lapply(list, require, character.only=T)
@@ -161,6 +161,7 @@ pc3_50 <- readRDS("PC3_2way.rds")
 #   geom_jitter(alpha = 0.01)
 
 ```
+
 ```{r}
 # plot(cwm$PC1 ~ cwm$DepthNew)
 # plot(cwm$PC1 ~ cwm$fp)
@@ -173,7 +174,6 @@ pc3_50 <- readRDS("PC3_2way.rds")
 # plot(cwm$PC3_cwm50 ~ cwm$DepthNew)
 # plot(cwm$PC3_cwm50 ~ cwm$fp)
 ```
-
 
 ```{r}
 
@@ -202,57 +202,62 @@ g_pc3 <- broom.mixed::tidy(pc3, effects = "fixed", conf.int = TRUE, conf.level =
 ```
 
 ```{r}
-# g_pc1 <- g_pc1[2:8,]
-# g_pc2 <- g_pc2[2:8,]
-# g_pc3 <- g_pc3[2:8,]
-
- g_pc1 <- g_pc1[-1,]
- g_pc2 <- g_pc2[-1,]
- g_pc3 <- g_pc3[-1,]
+g_pc1 <- g_pc1[-1,]
+g_pc2 <- g_pc2[-1,]
+g_pc3 <- g_pc3[-1,]
 ```
 
 
 ```{r}
 g_pc1$term <-  gsub("DepthNew", "Depth", g_pc1$term, ignore.case = TRUE)
 g_pc1$main <- g_pc1$term
+
+g_pc2$term <-  gsub("DepthNew", "Depth", g_pc2$term, ignore.case = TRUE)
+g_pc2$main <- g_pc2$term
+
+g_pc3$term <-  gsub("DepthNew", "Depth", g_pc3$term, ignore.case = TRUE)
+g_pc3$main <- g_pc3$term
+
+## grey out ns terms
+g_pc1$main[g_pc1$p.value > 0.05] <- "ns"
+g_pc1$main <- factor(g_pc1$main)
+g_pc2$main[g_pc2$p.value > 0.05] <- "ns"
+g_pc2$main <- factor(g_pc2$main)
+g_pc3$main[g_pc3$p.value > 0.05] <- "ns"
+g_pc3$main <- factor(g_pc3$main)
+
 g_pc1$main1 <-  gsub(":.*", "", g_pc1$main, ignore.case = TRUE)
 g_pc1$main2 <-  gsub(".*:", "", g_pc1$main, ignore.case = TRUE)
 
-g_pc1$main1 <- factor(g_pc1$main1, levels = c("Depth", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
 g_pc1$term <- factor(g_pc1$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 
-g_pc2$term <-  gsub("DepthNew", "Depth", g_pc2$term, ignore.case = TRUE)
-g_pc2$main <- g_pc2$term
 g_pc2$main1 <-  gsub(":.*", "", g_pc2$main, ignore.case = TRUE)
 g_pc2$main2 <-  gsub(".*:", "", g_pc2$main, ignore.case = TRUE)
 
-g_pc2$main1 <- factor(g_pc2$main1, levels = c("Depth", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
 g_pc2$term <- factor(g_pc2$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 
-g_pc3$term <-  gsub("DepthNew", "Depth", g_pc3$term, ignore.case = TRUE)
-g_pc3$main <- g_pc3$term
 g_pc3$main1 <-  gsub(":.*", "", g_pc3$main, ignore.case = TRUE)
 g_pc3$main2 <-  gsub(".*:", "", g_pc3$main, ignore.case = TRUE)
 
-g_pc3$main1 <- factor(g_pc3$main1, levels = c("Depth", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
 g_pc3$term <- factor(g_pc3$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
+
 ## create column for grey bars
 g_pc1$rep <- as.character("white")
-g_pc1$rep[g_pc1$main %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "grey"
+g_pc1$rep[g_pc1$term %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "light grey"
 g_pc1$cat <- as.numeric(g_pc1$term)
 
 g_pc2$rep <- as.character("white")
-g_pc2$rep[g_pc2$main %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "grey"
+g_pc2$rep[g_pc2$term %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "light grey"
 g_pc2$cat <- as.numeric(g_pc2$term)
 
 g_pc3$rep <- as.character("white")
-g_pc3$rep[g_pc3$main %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "grey"
+g_pc3$rep[g_pc3$term %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "light grey"
 g_pc3$cat <- as.numeric(g_pc3$term)
 ```
 
@@ -279,8 +284,9 @@ a1 <- ggplot(g_pc1,  aes(term, estimate)) +
                                   "sst_var" = "#7AD151FF",
                                   "Depth" =  "orange",
                                   "fp" = "#FDE725FF",
-                                  "Quarter" = "light grey",
-                                  "Year" = "dark grey"))
+                                "ns" = "light grey",
+                                   "Quarter" = "pink",
+                                  "Year" = "purple"))
 
 a2 <- ggplot(g_pc2,  aes(term, estimate)) +
       geom_hline(yintercept= 0, alpha = 0.8) +
@@ -301,8 +307,10 @@ a2 <- ggplot(g_pc2,  aes(term, estimate)) +
                                   "sst_var" = "#7AD151FF",
                                   "Depth" =  "orange",
                                   "fp" = "#FDE725FF",
-                                  "Quarter" = "light grey",
-                                  "Year" = "dark grey"))
+                                "ns" = "light grey",
+                                   "Quarter" = "pink",
+                                  "Year" = "purple"))
+
 
 a3 <- ggplot(g_pc3,  aes(term, estimate)) +
       geom_hline(yintercept= 0, alpha = 0.8) +
@@ -323,8 +331,9 @@ a3 <- ggplot(g_pc3,  aes(term, estimate)) +
                                   "sst_var" = "#7AD151FF",
                                   "Depth" =  "orange",
                                   "fp" = "#FDE725FF",
-                                  "Quarter" = "light grey",
-                                  "Year" = "dark grey"))
+                                "ns" = "light grey",
+                                   "Quarter" = "pink",
+                                  "Year" = "purple"))
 
 ```
 
@@ -417,49 +426,56 @@ g3$res <- factor(g3$res,levels = c("1", "5", "10", "20", "50"))
 ```{r}
 g1$term <-  gsub("DepthNew", "Depth", g1$term, ignore.case = TRUE)
 g1$main <- g1$term
+
+g2$term <-  gsub("DepthNew", "Depth", g2$term, ignore.case = TRUE)
+g2$main <- g2$term
+
+g3$term <-  gsub("DepthNew", "Depth", g3$term, ignore.case = TRUE)
+g3$main <- g3$term
+
+## grey out ns terms
+g1$main[g1$p.value > 0.05] <- "ns"
+g1$main <- factor(g1$main)
+g2$main[g2$p.value > 0.05] <- "ns"
+g2$main <- factor(g2$main)
+g3$main[g3$p.value > 0.05] <- "ns"
+g3$main <- factor(g3$main)
+
 g1$main1 <-  gsub(":.*", "", g1$main, ignore.case = TRUE)
 g1$main2 <-  gsub(".*:", "", g1$main, ignore.case = TRUE)
 
-g1$main1 <- factor(g1$main1, levels = c("Depth", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
 g1$term <- factor(g1$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 
-g2$term <-  gsub("DepthNew", "Depth", g2$term, ignore.case = TRUE)
-g2$main <- g2$term
 g2$main1 <-  gsub(":.*", "", g2$main, ignore.case = TRUE)
 g2$main2 <-  gsub(".*:", "", g2$main, ignore.case = TRUE)
 
-g2$main1 <- factor(g2$main1, levels = c("Depth", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
 g2$term <- factor(g2$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 
-g3$term <-  gsub("DepthNew", "Depth", g3$term, ignore.case = TRUE)
-g3$main <- g3$term
 g3$main1 <-  gsub(":.*", "", g3$main, ignore.case = TRUE)
 g3$main2 <-  gsub(".*:", "", g3$main, ignore.case = TRUE)
 
-g3$main1 <- factor(g3$main1, levels = c("Depth", "SNSP", "SNWI", "sst_var",  "fp","Quarter","Year"))
 g3$term <- factor(g3$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 ## create column for grey bars
 g1$rep <- as.character("white")
-g1$rep[g1$main %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "grey"
+g1$rep[g1$term %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "light grey"
 g1$cat <- as.numeric(g1$term)
 
 g2$rep <- as.character("white")
-g2$rep[g2$main %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "grey"
+g2$rep[g2$term %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "light grey"
 g2$cat <- as.numeric(g2$term)
 
 g3$rep <- as.character("white")
-g3$rep[g3$main %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "grey"
+g3$rep[g3$term %in% c("fp", "SNSP:fp", "SNWI:fp", "sst_var:fp","Depth:fp")] <- "light grey"
 g3$cat <- as.numeric(g3$term)
 ```
 
 ```{r}
-#g1$safe <- g1$res
 g1$res <- as.numeric(as.character(g1$res))/10
 g2$res <- as.numeric(as.character(g2$res))/10
 g3$res <- as.numeric(as.character(g3$res))/10
@@ -525,6 +541,7 @@ g3$res <- as.numeric(as.character(g3$res))/10
 
 ```
 
+## size-based plot of all resolution models
 ```{r}
 b1 <- ggplot(g1,  aes(term, estimate, group = res)) +
   geom_hline(yintercept= 0, alpha = 0.8) +
@@ -544,8 +561,9 @@ b1 <- ggplot(g1,  aes(term, estimate, group = res)) +
                                 "sst_var" = "#7AD151FF",
                                 "Depth" =  "orange",
                                 "fp" = "#FDE725FF",
-                                "Quarter" = "light grey",
-                                "Year" = "dark grey"))
+                                "ns" = "light grey",
+                                   "Quarter" = "pink",
+                                  "Year" = "purple"))
 
 b2 <- ggplot(g2,  aes(term, estimate, group = res)) +
   geom_hline(yintercept= 0, alpha = 0.8) +
@@ -565,8 +583,9 @@ b2 <- ggplot(g2,  aes(term, estimate, group = res)) +
                                 "sst_var" = "#7AD151FF",
                                 "Depth" =  "orange",
                                 "fp" = "#FDE725FF",
-                                "Quarter" = "light grey",
-                                "Year" = "dark grey"))
+                                "ns" = "light grey",
+                                   "Quarter" = "pink",
+                                  "Year" = "purple"))
 
 b3 <- ggplot(g3,  aes(term, estimate, group = res)) +
   geom_hline(yintercept= 0, alpha = 0.8) +
@@ -586,8 +605,9 @@ b3 <- ggplot(g3,  aes(term, estimate, group = res)) +
                                 "sst_var" = "#7AD151FF",
                                 "Depth" =  "orange",
                                 "fp" = "#FDE725FF",
-                                "Quarter" = "light grey",
-                                "Year" = "dark grey"))
+                                "ns" = "light grey",
+                                   "Quarter" = "pink",
+                                  "Year" = "purple"))
 ```
 
 
@@ -625,72 +645,72 @@ resp <-ggarrange(b1, b2, b3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, comm
 resp
 ```
 
+## shape-based plot of all resolution models
 
-```{r, fig.width= 11, fig.height= 4}
-
-b1 <- ggplot(g1,  aes(term, estimate, group = res)) +
-    geom_hline(yintercept= 0, alpha = 0.8) +
-             geom_rect(data = g1[g1$rep != "white",],
-             aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
-            colour = NA, alpha = 0.01) +
-geom_pointrange(data = g1, 
-                  aes(term, estimate, colour = main1, ymin= conf.low, ymax= conf.high, shape = factor(res)),
-                  position = position_dodge(0.9), size = 1.5) +
-  geom_point(data = g1,
-                  aes(term, estimate, colour = main2, shape = factor(res)),
-             position = position_dodge(0.9), size = 4) +
-  labs(colour = "Model terms", y = "Effect size PC1", group = "resolution") + 
-  scale_color_manual(values = c("SNSP" = "#414487FF",
-                                "SNWI" = "#2A788EFF",
-                                "sst_var" = "#7AD151FF",
-                                "Depth" =  "orange",
-                                "fp" = "#FDE725FF",
-                                "Quarter" = "light grey",
-                                "Year" = "dark grey"))
-
-b2 <- ggplot(g2,  aes(term, estimate, group = res)) +
-      geom_hline(yintercept= 0, alpha = 0.8) +
-             geom_rect(data = g2[g2$rep != "white",],
-             aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
-            colour = NA, alpha = 0.01) +
-  geom_pointrange(data = g2, 
-                    aes(term, estimate, colour = main1,ymin= conf.low, ymax= conf.high, shape = factor(res)),
-                    position = position_dodge(0.9), size = 1.5) +
-    geom_point(data = g2,
-                  aes(term, estimate, colour = main2, shape = factor(res)),
-                position = position_dodge(0.9), size = 4) +
-  labs(colour = "Model terms", y = "Effect size PC2", group = "resolution") + 
-    scale_color_manual(values = c("SNSP" = "#414487FF",
-                                  "SNWI" = "#2A788EFF",
-                                  "sst_var" = "#7AD151FF",
-                                  "Depth" =  "orange",
-                                  "fp" = "#FDE725FF",
-                                  "Quarter" = "light grey",
-                                  "Year" = "dark grey"))
-
-
-b3 <- ggplot(g3,  aes(term, estimate, group = res)) +
-      geom_hline(yintercept= 0, alpha = 0.8) +
-             geom_rect(data = g3[g3$rep != "white",],
-             aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
-            colour = NA, alpha = 0.01) +
-  geom_pointrange(data = g3, 
-                    aes(term, estimate, colour = main1,ymin= conf.low, ymax= conf.high, shape = factor(res)),
-                    position = position_dodge(0.9), size = 1.5) +
-    geom_point(data = g3,
-                  aes(term, estimate, colour = main2, shape = factor(res)),
-                position = position_dodge(0.9), size = 4) +
-  labs(colour = "Model terms", y = "Effect size PC3", group = "resolution") + 
-    scale_color_manual(values = c("SNSP" = "#414487FF",
-                                  "SNWI" = "#2A788EFF",
-                                  "sst_var" = "#7AD151FF",
-                                  "Depth" =  "orange",
-                                  "fp" = "#FDE725FF",
-                                  "Quarter" = "light grey",
-                                  "Year" = "dark grey"))
+```{r fig.width= 14, fig.height= 20}
+# b1 <- ggplot(g1,  aes(term, estimate, group = res)) +
+#     geom_hline(yintercept= 0, alpha = 0.8) +
+#              geom_rect(data = g1[g1$rep != "white",],
+#              aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
+#             colour = NA, alpha = 0.01) +
+# geom_pointrange(data = g1, 
+#                   aes(term, estimate, colour = main1, ymin= conf.low, ymax= conf.high, shape = factor(res)),
+#                   position = position_dodge(0.9), size = 1.5) +
+#   geom_point(data = g1,
+#                   aes(term, estimate, colour = main2, shape = factor(res)),
+#              position = position_dodge(0.9), size = 4) +
+#   labs(colour = "Model terms", y = "Effect size PC1", group = "resolution") + 
+#   scale_color_manual(values = c("SNSP" = "#414487FF",
+#                                 "SNWI" = "#2A788EFF",
+#                                 "sst_var" = "#7AD151FF",
+#                                 "Depth" =  "orange",
+#                                 "fp" = "#FDE725FF",
+#                                 "Quarter" = "light grey",
+#                                 "Year" = "dark grey"))
+# 
+# b2 <- ggplot(g2,  aes(term, estimate, group = res)) +
+#       geom_hline(yintercept= 0, alpha = 0.8) +
+#              geom_rect(data = g2[g2$rep != "white",],
+#              aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
+#             colour = NA, alpha = 0.01) +
+#   geom_pointrange(data = g2, 
+#                     aes(term, estimate, colour = main1,ymin= conf.low, ymax= conf.high, shape = factor(res)),
+#                     position = position_dodge(0.9), size = 1.5) +
+#     geom_point(data = g2,
+#                   aes(term, estimate, colour = main2, shape = factor(res)),
+#                 position = position_dodge(0.9), size = 4) +
+#   labs(colour = "Model terms", y = "Effect size PC2", group = "resolution") + 
+#     scale_color_manual(values = c("SNSP" = "#414487FF",
+#                                   "SNWI" = "#2A788EFF",
+#                                   "sst_var" = "#7AD151FF",
+#                                   "Depth" =  "orange",
+#                                   "fp" = "#FDE725FF",
+#                                   "Quarter" = "light grey",
+#                                   "Year" = "dark grey"))
+# 
+# 
+# b3 <- ggplot(g3,  aes(term, estimate, group = res)) +
+#       geom_hline(yintercept= 0, alpha = 0.8) +
+#              geom_rect(data = g3[g3$rep != "white",],
+#              aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
+#             colour = NA, alpha = 0.01) +
+#   geom_pointrange(data = g3, 
+#                     aes(term, estimate, colour = main1,ymin= conf.low, ymax= conf.high, shape = factor(res)),
+#                     position = position_dodge(0.9), size = 1.5) +
+#     geom_point(data = g3,
+#                   aes(term, estimate, colour = main2, shape = factor(res)),
+#                 position = position_dodge(0.9), size = 4) +
+#   labs(colour = "Model terms", y = "Effect size PC3", group = "resolution") + 
+#     scale_color_manual(values = c("SNSP" = "#414487FF",
+#                                   "SNWI" = "#2A788EFF",
+#                                   "sst_var" = "#7AD151FF",
+#                                   "Depth" =  "orange",
+#                                   "fp" = "#FDE725FF",
+#                                   "Quarter" = "light grey",
+#                                   "Year" = "dark grey"))
 ```
 
-```{r, fig.width= 14, fig.height= 20}
+```{r eval=FALSE, include=FALSE}
 b1 <- b1 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
 b2 <- b2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
 b3 <- b3 + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), axis.title.x = element_blank()) 
@@ -700,6 +720,66 @@ resp <-ggarrange(b1, b2, b3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, comm
 #                                       face = "bold", size = 20)
 resp
 ```
+
+##Start
+
+## tabulate model outputs
+```{r}
+m1 <- g1[, c("term", "estimate", "std.error", "statistic", "p.value", "res")]
+
+sum.df <- as_tibble(m1[m1$res == 0.1,])
+
+## res 1
+sum.df <- as_tibble(m1[m1$res == 0.1,])
+sum.df <- as_tibble(sum.df[, c("term", "estimate", "std.error", "statistic", "p.value")])
+sum.df %>% 
+  kable(booktabs = T, caption = "Table C.1.1. Model outputs for communities at the level of haul") %>%
+  kable_styling(bootstrap_options = "striped", full_width = T) %>%
+    row_spec(which(sum.df$statistic < -2), color = "red", background = "white") %>%
+  row_spec(which(sum.df$statistic >2), color = "blue", background = "white") %>% 
+  kable_styling(font_size = 11)
+
+## res 5
+sum.df <- as_tibble(m1[m1$res == 0.5,])
+sum.df <- as_tibble(sum.df[, c("term", "estimate", "std.error", "statistic", "p.value")])
+sum.df %>% 
+  kable(booktabs = T, caption = "Table C.1.2. Model outputs for communities at the level of haul") %>%
+  kable_styling(bootstrap_options = "striped", full_width = T) %>%
+    row_spec(which(sum.df$statistic < -2), color = "red", background = "white") %>%
+  row_spec(which(sum.df$statistic >2), color = "blue", background = "white") %>% 
+  kable_styling(font_size = 11)
+
+## res 10
+sum.df <- as_tibble(m1[m1$res == 1,])
+sum.df <- as_tibble(sum.df[, c("term", "estimate", "std.error", "statistic", "p.value")])
+sum.df %>% 
+  kable(booktabs = T, caption = "Table C.1.3. Model outputs for communities at the level of haul") %>%
+  kable_styling(bootstrap_options = "striped", full_width = T) %>%
+    row_spec(which(sum.df$statistic < -2), color = "red", background = "white") %>%
+  row_spec(which(sum.df$statistic >2), color = "blue", background = "white") %>% 
+  kable_styling(font_size = 11)
+
+## res 20
+sum.df <- as_tibble(m1[m1$res == 2,])
+sum.df <- as_tibble(sum.df[, c("term", "estimate", "std.error", "statistic", "p.value")])
+sum.df %>% 
+  kable(booktabs = T, caption = "Table C.1.4. Model outputs for communities at the level of haul") %>%
+  kable_styling(bootstrap_options = "striped", full_width = T) %>%
+    row_spec(which(sum.df$statistic < -2), color = "red", background = "white") %>%
+  row_spec(which(sum.df$statistic >2), color = "blue", background = "white") %>% 
+  kable_styling(font_size = 11)
+
+## res 50
+sum.df <- as_tibble(m1[m1$res == 5,])
+sum.df <- as_tibble(sum.df[, c("term", "estimate", "std.error", "statistic", "p.value")])
+sum.df %>% 
+  kable(booktabs = T, caption = "Table C.1.5. Model outputs for communities at the level of haul") %>%
+  kable_styling(bootstrap_options = "striped", full_width = T) %>%
+    row_spec(which(sum.df$statistic < -2), color = "red", background = "white") %>%
+  row_spec(which(sum.df$statistic >2), color = "blue", background = "white") %>% 
+  kable_styling(font_size = 11)
+```
+
 
 
 ## PCA
@@ -849,7 +929,7 @@ x <- unique(cwm[, c("Year", "HaulID", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Gear", "
 
 ```
 
-## homa ranges
+## home ranges
 ```{r}
 hr <- read.csv("~/Desktop/covars/probst2021_northseahomeranges.csv")
 hr <- drop_na(hr[,c("Species", "Area.CCA.w", "Area.CCA.S", "Area.CCA.WS")])
@@ -883,7 +963,31 @@ x <- x[x$SciName %in% hr$Species,]
 x1 <- x %>%   group_by(SciName) %>% summarise(max_ab = sum(Total_DensAbund_N_Sqkm), n = n())
 hr <- merge(x1, hr, by.x = "SciName", by.y = "Species")
 hr <- hr[order(-hr$max_ab),] 
+```
 
+```{r}
+sum.df <- as_tibble(hr[, c("SciName","w_range", "s_range", "range")])
+
+sum.df %>% 
+  kable(booktabs = T, caption = "Table C.2. Consistent core areas of 48 species after Probst et al., 2021") %>%
+  kable_styling(bootstrap_options = "striped", full_width = T) %>%
+  kable_styling(font_size = 11)
+```
+
+## commerical species
+```{r}
+setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+com <- read.csv("commercial_species.csv")
+
+x <- unique(mydata[, c("SciName", "Total_DensAbund_N_Sqkm")])
+x1 <- x %>%   group_by(SciName) %>% summarise(max_ab = sum(Total_DensAbund_N_Sqkm), n = n())
+x1 <- merge(x1, a[,c("taxon", "tl")], by.x = "SciName", by.y = "taxon")
+
+x <- unique(a[, c("taxon", "tl")])
+x <- x[x$tl >= 0,]
+com <- merge(x, com, by.x = "taxon", by.y = "species")
+hist(com$tl)
+ 
 ```
 
 
@@ -892,6 +996,7 @@ hr <- hr[order(-hr$max_ab),]
 #A302B7 - purple
 #02AFA8 - turquoise
 
+## looking at individual resolutions to check things
 ```{r}
 # check1 <- g1[g1$res == 0.5,]
 # check2 <- g2[g2$res == 0.5,]
@@ -901,18 +1006,16 @@ hr <- hr[order(-hr$max_ab),]
 # check2 <- g2[g2$res == 1,]
 # check3 <- g3[g3$res == 1,]
 
-check1 <- g1[g1$res == 2,]
-check2 <- g2[g2$res == 2,]
-check3 <- g3[g3$res == 2,]
+# check1 <- g1[g1$res == 2,]
+# check2 <- g2[g2$res == 2,]
+# check3 <- g3[g3$res == 2,]
 
 # check1 <- g1[g1$res == 5,]
 # check2 <- g2[g2$res == 5,]
 # check3 <- g3[g3$res == 5,]
 ```
 
-
-
-```{r fig.height= 15, fig.width= 9}
+```{r eval=FALSE, include=FALSE}
 
 a1 <- ggplot(check1,  aes(term, estimate)) +
       geom_hline(yintercept= 0, alpha = 0.8) +
@@ -985,7 +1088,7 @@ resp <-ggarrange(a1, a2, a3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, comm
 resp
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 par(mfrow =c(3,1))
 a1
 a2

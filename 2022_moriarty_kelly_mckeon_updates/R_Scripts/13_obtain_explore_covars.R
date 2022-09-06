@@ -343,20 +343,6 @@ traits <- drop_na(traits)
 
 ## trait PCA ---------------
 
-
-
-# rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year", "DepthNew",  "SNSP", "SNWI", "fp", "sst_var", 
-#                                                           "tl",  "offspring.size",  "age.maturity", "fecundity", "growth.coefficient", 
-#                                                           "length.max", "age.max", "fp_yn", "abund", "resp_total", "ab_haul_total", "rel_ab"))]))
-# 
-# rcorr(as.matrix(traits[, which(names(traits) %in% c("tl",  "offspring.size", 
-#                                                     "age.maturity", "fecundity", "growth.coefficient", 
-#                                                     "length.max", "age.max"))]))
-# 
-# rcorr(as.matrix(abundance[, which(names(abundance) %in% c("Year",  "DepthNew", "SNAU", "SNSP", "SNSU", "SNWI", "fp",  "sst_var", 
-#                                                           "ab"))]))
-
-
 a <- unique(traits[,c("tl",  "offspring.size", "body.shape", "spawning.type",
                          "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
                          "length.max", "age.max", "taxon")])
@@ -368,23 +354,11 @@ for (i in names(Filter(is.numeric, a))) {
   gc()
 }
 
-## checking if the skew in fecunidity is responsible for the missmatch between my PCA plot and my archetypal analysis...
-# a$fake <- correlate(given = a$fecundity,
-#           rho = 0.9,
-#           rnorm, mean = 0, sd = 1)
-
-
-#range01 <- function(x){(x-min(x))/(max(x)-min(x))}
-
 for (i in c("tl",  "offspring.size", "age.maturity", "fecundity", "growth.coefficient", 
             "length.max", "age.max")) {
   a[, i] <- c(log(a[,i]))
   a[, i] <- c(scale(a[,i]))
- # a[,i] <- range01(a[,i]) -0.5
 }
-
-# for(i in names(a)){
-#   a[,i] <- a[,i] - min(a[,i])}
 
 pairs(a[, which(names(a) %in% c("tl",  "offspring.size", 
                                 "age.maturity", "fecundity", "growth.coefficient", 
@@ -408,9 +382,6 @@ autoplot(pc, data = a, #colour = cl[a$body.shape],
          loadings = TRUE, loadings.label = TRUE, loadings.colour = "dark grey", 
          loadings.label.size = 4, loadings.label.colour = "black")
 
-# a$PC1 <- (pc[["x"]][,1])
-# a$PC2 <- (pc[["x"]][,2])
-
 a$PC1 <- scale(pc[["x"]][,1])
 a$PC2 <- scale(pc[["x"]][,2])
 a$PC3 <- scale(pc[["x"]][,3])
@@ -420,13 +391,6 @@ modeldf <- merge(modeldf, a, by.x = "SciName", by.y = "taxon", all.x = T)
 ## explore data 
 
 # Quick look at model dataframe
-# Factors
-# for (i in names(Filter(is.factor, modeldf))) {
-#   plot(modeldf[,i],
-#        main = paste(i))
-#   gc()
-# }
-
 # Numeric variables
 par(mfrow=c(4,4))
 for (i in names(Filter(is.numeric, modeldf))) {
@@ -464,7 +428,7 @@ for (i in c("Year", "Quarter", "DepthNew",
 }
 
 ## make the response variable
-abundance$resp_total <- abundance$abund-min(abundance$abund)
+abundance$resp_total <- abundance$abund - min(abundance$abund)
 
 
 ## abundance by location
@@ -515,22 +479,15 @@ legend("topleft", legend = "A", bty = "n")
 
 ## archetype analysis -------------------
 
-range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+#range01 <- function(x){(x-min(x))/(max(x)-min(x))}
 
-a$PC1 <- (pc[["x"]][,1])
-a$PC2 <- (pc[["x"]][,2])
-a$PC3 <- (pc[["x"]][,3])
+# a$PC1 <- (pc[["x"]][,1])
+# a$PC2 <- (pc[["x"]][,2])
+# a$PC3 <- (pc[["x"]][,3])
 
 a$PC1 <- scale(pc[["x"]][,1])
 a$PC2 <- scale(pc[["x"]][,2])
 a$PC3 <- scale(pc[["x"]][,3])
-
-# for(i in names(a[, c("tl", "offspring.size",  
-#                      "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-#                      "age.max" ,
-# "PC1", "PC2")])){ 
-# a[,i] <- range01(a[,i]) -0.5
-#}
 
 
 arch2 <- archetypes(a[,c("tl", "offspring.size",  
@@ -651,43 +608,49 @@ for (i in names(Filter(is.numeric, cwm))) {
   gc()
 }
 
-par(mfrow = c(1,3))
-plot(x$PC1 ~ x$age.maturity)
-plot(x$PC2 ~ x$fecundity)
-plot(x$PC3 ~ x$tl)
 
-x <- unique(cwm[, c("PC1_cwm50", "PC2_cwm50", "PC3_cwm50", 
-             "PC1_cwm20", "PC2_cwm20", "PC3_cwm20", 
-             "PC1_cwm10", "PC2_cwm10", "PC3_cwm10", 
-             "PC1_cwm5", "PC2_cwm5", "PC3_cwm5", 
-             "PC1_cwm", "PC2_cwm", "PC3_cwm", 
-             "tl", "offspring.size", "body.shape", "spawning.type", 
-             "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
-             "length.max", "age.max", "PC1", "PC2", "PC3")])
+# par(mfrow = c(1,3))
+# plot(x$PC1 ~ x$age.maturity)
+# plot(x$PC2 ~ x$fecundity)
+# plot(x$PC3 ~ x$tl)
+# 
+# x <- unique(cwm[, c("PC1_cwm50", "PC2_cwm50", "PC3_cwm50", 
+#              "PC1_cwm20", "PC2_cwm20", "PC3_cwm20", 
+#              "PC1_cwm10", "PC2_cwm10", "PC3_cwm10", 
+#              "PC1_cwm5", "PC2_cwm5", "PC3_cwm5", 
+#              "PC1_cwm", "PC2_cwm", "PC3_cwm", 
+#              "tl", "offspring.size", "body.shape", "spawning.type", 
+#              "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
+#              "length.max", "age.max", "PC1", "PC2", "PC3")])
+# 
+# par(mfrow =c (3,5))
+# plot(x$PC1_x50 ~ x$age.maturity)
+# plot(x$PC1_x20 ~ x$age.maturity)
+# plot(x$PC1_x10 ~ x$age.maturity)
+# plot(x$PC1_x5 ~ x$age.maturity)
+# plot(x$PC1_x ~ x$age.maturity)
+# 
+# plot(x$PC2_x50 ~ x$fecundity)
+# plot(x$PC2_x20 ~ x$fecundity)
+# plot(x$PC2_x10 ~ x$fecundity)
+# plot(x$PC2_x5 ~ x$fecundity)
+# plot(x$PC2_x ~ x$fecundity)
+# 
+# plot(x$PC3_x50 ~ x$tl)
+# plot(x$PC3_x20 ~ x$tl)
+# plot(x$PC3_x10 ~ x$tl)
+# plot(x$PC3_x5 ~ x$tl)
+# plot(x$PC3_x ~ x$tl)
 
-par(mfrow =c (3,5))
-plot(x$PC1_x50 ~ x$age.maturity)
-plot(x$PC1_x20 ~ x$age.maturity)
-plot(x$PC1_x10 ~ x$age.maturity)
-plot(x$PC1_x5 ~ x$age.maturity)
-plot(x$PC1_x ~ x$age.maturity)
 
-plot(x$PC2_x50 ~ x$fecundity)
-plot(x$PC2_x20 ~ x$fecundity)
-plot(x$PC2_x10 ~ x$fecundity)
-plot(x$PC2_x5 ~ x$fecundity)
-plot(x$PC2_x ~ x$fecundity)
 
-plot(x$PC3_x50 ~ x$tl)
-plot(x$PC3_x20 ~ x$tl)
-plot(x$PC3_x10 ~ x$tl)
-plot(x$PC3_x5 ~ x$tl)
-plot(x$PC3_x ~ x$tl)
 
 ## run models ----------------------
 
+## run in terminal
+
 # setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
-# source("R_Scripts/14cwm_analysis.R")
+# source("R_Scripts/14a_1cwm_analysis.R")
 # Sys.sleep(60)
 # gc
 # source("R_Scripts/14b_5scale_analysis.R")
@@ -705,30 +668,16 @@ plot(x$PC3_x ~ x$tl)
 # source("R_Scripts/14e_50scale_analysis.R")
 
 
+## end ----------------
 
 
-# par(mfrow=c(4,4))
-# for (i in names(Filter(is.numeric, cwm))) {
-#   hist(cwm[,i], breaks = 1000, main = paste(i))
-#   #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
-#   gc()
-# }
 
 
-# x <- unique(abundance[, c("tl", "offspring.size", "body.shape", "spawning.type", "feeding.mode", 
-#                           "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-#                           "age.max","PC1", "PC2", "PC3")])
-# 
-# par(mfrow =c (2,3))
-# plot(x$PC2 ~ x$PC1)
-# plot(x$PC3 ~ x$PC1)
-# plot(x$PC3 ~ x$PC2)
-# 
-# plot(a$PC2 ~ a$PC1)
-# plot(a$PC3 ~ a$PC1)
-# plot(a$PC3 ~ a$PC2)
 
 
+
+
+## further things for the future ------------------
 
 ## presense absense ---------
 
