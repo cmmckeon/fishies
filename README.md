@@ -58,7 +58,7 @@ nc files (easily rasterised)
 WAY better than copernicus for my purposes
 
 ## Depth
-- 
+- obtained in script
 
 ## trait data
 - beukhof_fish_traits.csv from Beukhof et al., (2019) https://doi.pangaea.de/10.1594/PANGAEA.900866 
