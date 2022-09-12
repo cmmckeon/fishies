@@ -7,17 +7,14 @@
 
 # LOAD PACKAGES --------------
 library("worms")
-library(plyr)
+library("plyr")
 library("rfishbase")
-
+source("1_Housekeeping.R")
 
 # LOAD DATA ------------------------ 
 
-HL1 <- readRDS("clean_HL.rds")
+HL1 <- readRDS("HL1.rds")
 h <- readRDS("clean_HH.rds")
-
-h <- h[h$Survey != "DYFS",]
-HL1 <- HL1[HL1$NewUniqueID2 %in% h$NewUniqueID2,]
 
 length(unique(HL1$Valid_Aphia)) ## 1383 unique species
 num_ids <- unique(HL1$Valid_Aphia) 
@@ -26,25 +23,35 @@ bio <- HL1
 ## test
 #x <- wormsbyid(num_ids[1:10], verbose = TRUE, ids = FALSE, sleep_btw_chunks_in_sec = 0.01)
 
-## gotta catch 'em all - get full taxonomic record for the 1383 aphia id records
-AphiaRecords <- wormsbyid(num_ids, verbose = TRUE, ids = FALSE, sleep_btw_chunks_in_sec = 0.01)
 
-head(AphiaRecords)
+#### Connection to the Worms database won't connect on AFBI network, 
+# Therefore, these have been run on Carolines laptop and 
+# transferred via read.csv line below
+
+## gotta catch 'em all - get full taxonomic record for the 1383 aphia id records
+# AphiaRecords <- wormsbyid(num_ids, verbose = TRUE, ids = FALSE, sleep_btw_chunks_in_sec = 0.01)
+# 
+# head(AphiaRecords)
 # write a table to save the information
-# write.csv(AphiaRecords, "biodiversity/AphiaRecords_all_species.csv")
-# AphiaRecords <- read.csv("biodiversity/AphiaRecords_all_species.csv")
+#write.csv(AphiaRecords, "biodiversity/AphiaRecords_all_species.csv")
+
+AphiaRecords <- read.csv("biodiversity/AphiaRecords_all_species.csv")
 
 # attach the Aphia records to the biological data 
 bio$AphiaID <- bio$Valid_Aphia 
 MySpecList <- merge(bio, AphiaRecords, by="AphiaID")
 
 head(MySpecList)
+
 # write a table to save the all the information
 #write.csv(MySpecList, "biodiversity/HL_tax_all_species.csv") 
 
+
 # Delete non fish records from bio file (MySpecList)
 MyFishList <- subset(MySpecList, phylum=="Chordata")
-MyFishList$TotalNo <- as.numeric(MyFishList$TotalNo)
+MyFishList$totalno <- as.numeric(MyFishList$TotalNo)
+
+head(MyFishList)
 
 write.csv(MyFishList, "biodiversity/HL_tax_fish_species.csv") 
 #fish <- read.csv("biodiversity/HL_tax_fish_species.csv")
@@ -52,10 +59,10 @@ write.csv(MyFishList, "biodiversity/HL_tax_fish_species.csv")
 length(unique(MyFishList$AphiaID)) ## only 457 species in chordata....
 #length(unique(AphiaRecords$AphiaID))
 
-# levels(MyFishList$Country)
+ levels(MyFishList$Country)
 # 
 # summaryfish <- ddply(MyFishList, c( "Country", "Survey", "Quarter", "Year",
-#                                   "Valid_Aphia","rank","scientificname" ), 
+#                                   "Valid_Aphia","rank","scientificname" ),
 #                    summarise, sumtotalno=sum(totalno))
 # nospecies <- ddply(summaryfish, c("Country", "Survey", "Quarter", 
 #                                 "rank", "Year"), summarise, 
@@ -117,12 +124,9 @@ length(unique(MyFishList$AphiaID)) ## only 457 species in chordata....
 
 # 
 MyFishBaseFishList <- species(MyFishList$scientificname)
-gc()
-write.csv(MyFishBaseFishList, "biodiversity/FishBaseSpeciesData.csv")
+write.csv(MyFishBaseFishList, "FishBaseSpeciesData.csv")
 MyFishBaseFishDistribution <- distribution(MyFishBaseFishList$sciname)
-write.csv(MyFishBaseFishDistribution, "biodiversity/MyFishBaseFishDistribution.csv")
 MyFishBaseLengthWeight <- length_weight(MyFishBaseFishList$sciname)
-write.csv(MyFishBaseLengthWeight, "biodiversity/MyFishBaseLengthWeight.csv")
 
 
 # str(MyFishList)

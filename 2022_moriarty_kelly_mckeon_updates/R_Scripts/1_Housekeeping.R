@@ -10,7 +10,11 @@
 ## Housekeeping ---------------
 
 # set working directory
-setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+
+#setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+
+setwd("C:/Users/2345983/R/2022/fishies/2022_moriarty_kelly_mckeon_updates")
+
 
 # Remove files from R Global Environment 
 rm(list = ls())
@@ -121,4 +125,3 @@ setSeed <- set.seed(627)
 
 save(list=ls(all=T), file = "./script1_output.rda")
 #load("./script1_output.rda")
-

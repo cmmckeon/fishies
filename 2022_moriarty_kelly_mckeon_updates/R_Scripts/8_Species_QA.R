@@ -1,5 +1,5 @@
 # title: "8_Species_QA.R"
-# last updated: "08/04/2022"
+# last updated: "27/04/2022"
 
 # This is Script 8 of 13 
 # We now correct the biological data for each of the surveys
@@ -38,8 +38,14 @@
 #   "setSeed", "ships", "speed_none", "sweepcatsummary", "sweepsummary",
 #   "the_gov", "train", "withSpeedShip", "ws_dat", "ws_model1", "wx",
 #   "x", "y")
-
+library("plyr")
 library("dplyr")
+
+
+source("R-Scripts/1_Housekeeping.R")
+
+
+diag_files <- "Data_QA_Process_V5_2022/Diagnostics/HL_biological"
 
 hauls <- readRDS("clean_HH.rds")
 MyFishList <- read.csv("biodiversity/HL_tax_fish_species.csv")
@@ -83,7 +89,7 @@ hauls1 <- hauls
 rm(hauls)
 
 # write a table to save the all the information
-#saveRDS(hauls1, "clean_hh_fish_only.rds")
+#write.csv(hauls1, "clean_hh_fish_only.csv")
 #write.csv(dat, "biodiversity/all_hh_hl_fish_data.csv") 
 
 # remove any SpecVal==0, these P/A values are rubbish - connect to the CA records
@@ -370,7 +376,7 @@ speciesx <- select(dat, valid_name, estsciname, AphiaID)
 speciesx <- unique(speciesx)
 #write.csv(speciesx, "Species_list_post_cleaning_forfishbase_24_05_2021.csv")
 
-## subsetting to exclude chordata that are not really fish (tunicates and gulls)
+## Subsetting to exclude chordata that are not really fish (tunicates and gulls)
 
 dat <- dat[dat$estsciname %nin% c("Laridae", "Aplidium", "Ascidia", "Ascidia conchilega", "Ascidia mentula", 
                                 "Ascidia prunum", "Ascidia virginea", "Ascidiacea", "Ascidiella", 
@@ -386,43 +392,56 @@ dat <- dat[dat$estsciname %nin% c("Laridae", "Aplidium", "Ascidia", "Ascidia con
 
 ### Exclude - tunicates and a gull genus
 
-## start
+
 # Check LMax - step 1 -------------------
 
 ## add in Meadhbh's trait data and a few rows from rfishbase for length checking
 x <- setdiff(dat$estsciname, traits$valid_name)
 length(unique(MyFishBaseLengthWeight$Species[MyFishBaseLengthWeight$Species %in% x]))
-traitsLen <- traits[,which(names(traits) %in% c("valid_name", "LmaxFB", "LWRa", "LWRb"))]
+
+traitsLen <- traits[,which(names(traits) %in% c("valid_name", "LmaxFB", "LWRa", "LWRb", "Lmin"))]
 
 x <- unique(MyFishBaseLengthWeight[, which(names(MyFishBaseLengthWeight) %in% 
-                                             c("Species", "LengthMax",  "a",  "b", "Method"))])
+                                             c("Species", "LengthMax",  "a",  "b", "LengthMin","Method"))])
 
 missed <- setdiff(dat$estsciname, traits$valid_name)
-fishbase_fillers <- x[x$Species %in% missed,]
+missed
 
+fishbase_fillers <- x[x$Species %in% missed,]
 fishbase_fillers <- subset(fishbase_fillers, Method == "type I linear regression")
 
 fishbase_fillers <- fishbase_fillers %>%
   group_by(Species) %>%
   summarise(LmaxFB = max(LengthMax, na.rm = T),
+            Lmin = min(LengthMin, na.rm = T),
             LWRa = mean(a, na.rm = T),
             LWRb = mean(b, na.rm = T))
 
 fishbase_fillers$LmaxFB[fishbase_fillers$LmaxFB == "-Inf"] <- NA
-names(fishbase_fillers) <- c("valid_name", "LmaxFB",  "LWRa" ,   "LWRb") 
+names(fishbase_fillers) <- c("valid_name", "LmaxFB", "Lmin" , "LWRa" ,   "LWRb") 
+
 traitsLen <- rbind(traitsLen, fishbase_fillers)
 
-dat <- merge(dat, traitsLen, by.x = "estsciname", by.y = "valid_name", all.x = T)
-rm(fishbase_fillers,new,missed,x)
+summary(traitsLen)
 
+traitsLen$LmaxFB[which(traitsLen$LmaxFB == 0)] <- NA
+traitsLen$Lmin[which(traitsLen$Lmin == "Inf")] <- NA
+
+dat <- merge(dat, traitsLen, by.x = "estsciname", by.y = "valid_name", all.x = T)
+rm(fishbase_fillers,missed,x)
+
+gc()
+head(dat)
+
+#setdiff(dat$estsciname, traitsLen$valid_name)
 
 # Read in fish Max data
-plot(dat$LmaxFB*1.1, dat$newLngtClass, pch=19, xlim=c(1,500), 
-     ylim=c(1,500), xlab="Species LMax + 10%",
-    ylab="Species Recorded Length",
-    #col=cols[dat$valid_name], 
-    main="Species Length Classes")
-abline(0, 1, col="red")
+# plot(dat$LmaxFB*1.1, dat$newLngtClass, pch=19, xlim=c(1,500), 
+#      ylim=c(1,500), xlab="Species LMax + 10%",
+#     ylab="Species Recorded Length",
+#     #col=cols[dat$valid_name], 
+#     main="Species Length Classes")
+# abline(0, 1, col="red")
 #plot(dat$MaxLngt, dat$newLngtClass, pch=19, xlim=c(1,75)
 #     , ylim=c(1,75), xlab="Species LMax + 10%",
 #     ylab="Species Recorded Length",
@@ -431,6 +450,17 @@ abline(0, 1, col="red")
 # write a piece of code to capture all records that exceed lmax
 summary(dat$FishLength_cm)
 summary(dat$LmaxFB)
+dat[dat$FishLength_cm > 1000,]
+
+dat[which(dat$LmaxFB > 500),]
+
+###  much too long, setting LMax. check with data submitter later
+dat$FishLength_cm[dat$NewUniqueID2 == "FR-CGFS_2018_4_35HT_6_GOV_W0456_FR" 
+    & dat$estsciname == "Galeorhinus galeus"] <- dat$LmaxFB[dat$NewUniqueID2 == "FR-CGFS_2018_4_35HT_6_GOV_W0456_FR" & dat$estsciname == "Galeorhinus galeus"]
+    
+    
+    
+    
 test1 <- dat[which(dat$FishLength_cm > dat$LmaxFB*1.4),]
 unique(test1$valid_name[test1$family=="Macrouridae"])
 unique(test1$Year[test1$family=="Macrouridae"])
@@ -595,6 +625,7 @@ dat$estsciname[dat$UniqueIDP=="SWC-IBTS_2011_1_SCO3_29_GOV"&
                   dat$newLngtClass==24]<-"Callionymus lyra"
 dat$QC_Length[dat$UniqueIDP=="SWC-IBTS_2011_1_SCO3_29_GOV"&
                  dat$AphiaID==126793&dat$newLngtClass==24]<-"Species_changed(DP)"
+
 #length change 20.Callionymus maculatus to Callionymuslyra
 dat$estAphia_Code[dat$UniqueIDP=="NS-IBTS_2011_3_SCO3_34_GOV"&
                          dat$AphiaID==126793&
@@ -638,7 +669,8 @@ list<-c('SWC-IBTS_2006_4_SCO3_14_GOV','NS-IBTS_2007_3_SCO3_23_GOV',
         'SWC-IBTS_2009_4_SCO3_56_GOV','NS-IBTS_2010_1_SCO3_36_GOV',
         'NS-IBTS_2010_1_SCO3_54_GOV','SWC-IBTS_2010_1_SCO3_32_GOV',
         'SWC-IBTS_2010_1_SCO3_33_GOV')
-dat$QC_Length[dat$UniqueIDP%in%list&
+
+dat$QC_Length[dat$UniqueIDP%in%list &
                  dat$AphiaID==126754]<-"Length_changed(DP)"
 
 dat$FishLength_cm[dat$UniqueIDP=="SWC-IBTS_2006_4_SCO3_14_GOV"
@@ -1000,19 +1032,29 @@ dat$FishLength_cm[dat$UniqueIDP=="SWC-IBTS_2013_1_SCO3_55_GOV"
 dat$FishLength_cm[dat$UniqueIDP=="SWC-IBTS_2013_1_SCO3_55_GOV"
                   & dat$AphiaID==126755
                   & dat$LngtClass==490]<-26.5
+
 #check length of Leucoraja naevus has been reuploaded
 check<-dat[dat$Year==1989
-            & dat$AphiaID==127139, ]
+            & dat$estsciname=="Leucoraja naevus", ]
+
+
 # reuploaded sucessfully 
 #check 54cm Limanda limanda has been removed
 check<-dat[dat$UniqueIDP=="NS-IBTS_2015_3_SCO3_223_GOV"
             & dat$AphiaID==127139, ]
 # gone  
+
 dat <- dat
+
 #check oversized Pearlside has been removed
 check<-dat[dat$UniqueIDP=="SWC-IBTS_1997_1_SCO2_13_GOV"
             & dat$AphiaID==127312, ]
+
+hist(check$FishLength_cm)
 # still there remove or change to Pearlfish???
+
+
+
 #length change 21.Echiichthys vipera to Trachinus draco 
 dat$estAphia_Code[dat$UniqueIDP=="NS-IBTS_1991_1_SCO2_53_GOV"&
                          dat$AphiaID==127147&
@@ -1070,6 +1112,7 @@ dat$estsciname[dat$UniqueIDP=="SWC-IBTS_2009_4_SCO3_74_GOV"&
                   dat$newLngtClass==128]<-"Dipturus batis"
 dat$QC_Length[dat$UniqueIDP=="SWC-IBTS_2009_4_SCO3_74_GOV"&
                  dat$AphiaID==105883&dat$newLngtClass==128]<-"Species_changed(DP)"
+
 #Species change 21.Raja montagui to Raja brachyura
 dat$estAphia_Code[dat$UniqueIDP=="SWC-IBTS_1990_4_SCO2_45_GOV"&
                          dat$AphiaID==105887&
@@ -1274,11 +1317,12 @@ dat$FishLength_cm[dat$UniqueIDP=="EVHOE_2013_4_THA2_21_GOV"
 # Could not delete length from FSS, as this would affect weight.
 check<-dat[dat$UniqueIDP=="BTS-VIIa_2007_3_COR_45_BT4A"&
               dat$AphiaID==127126,]
-# still in database
-#delete 
-dat<-dat[ !(dat$UniqueIDP=="BTS-VIIa_2007_3_COR_45_BT4A"&
-                dat$AphiaID==127126   &
-                dat$newLngtClass==44),]
+
+# gone 
+
+## We don't have this Unique ID - Could be due to changes in the BTS
+## structures on DATRAS - 
+
 # Probable typo. Probably SDR (spotted ray) and not SPR. 
 # The catch was also sexed. Changed to SDR on FSS
 # Check
@@ -1307,6 +1351,7 @@ check<-dat[dat$UniqueIDP=="BTS_2008_3_END_80_BT4A" &
 dat<-dat[!(dat$UniqueIDP=="BTS_2008_3_END_80_BT4A" & 
                dat$AphiaID==127153 &
                dat$newLngtClass==50),]
+
 check<-dat[dat$UniqueIDP=="BTS_2010_3_END_4_BT4A" & 
               dat$AphiaID==127153,]
 dat<-dat[!(dat$UniqueIDP=="BTS_2010_3_END_4_BT4A" & 
@@ -1318,11 +1363,12 @@ check<-dat[dat$UniqueIDP=="BTS_2002_3_COR_12_BT4A" &
 dat<-dat[!(dat$UniqueIDP=="BTS_2002_3_COR_12_BT4A" & 
                dat$AphiaID==274304 &
                dat$newLngtClass==56),]
+
 # CGFS - errors in lmax
 # yves has sent me lots of corrections 
 # get these included.
 # Change Alosa agone to Alosa fallax
-dat$estAphia_Code[dat$UniqueIDP=="NS-IBTS_2005_1_THA2_53_GOV"&
+dat$estAphia_Code[dat$UniqueIDP=="NS-IBTS_2005_1_THA2_53_GOV" &
                          dat$AphiaID==416357 &
                          dat$newLngtClass==46]<-126415     
 dat$estsciname[dat$UniqueIDP=="NS-IBTS_2005_1_THA2_53_GOV"&
@@ -1348,6 +1394,7 @@ dat$estsciname[dat$UniqueIDP=="NS-IBTS_2009_1_THA2_79_GOV"&
                   dat$newLngtClass==43]<-"Alosa fallax"
 dat$QC_Length[dat$UniqueIDP=="NS-IBTS_2009_1_THA2_79_GOV"&
                  dat$AphiaID==416357&dat$newLngtClass==43]<-"Species_changed(DP)"
+
 # change Sprattus sprattus to Clupea Harengus
 dat$estAphia_Code[dat$UniqueIDP=="NS-IBTS_1983_1_THA_8_GOV"&
                          dat$AphiaID==126425 &
@@ -1443,6 +1490,7 @@ dat$estsciname[dat$UniqueIDP=="NS-IBTS_1999_1_THA2_17_GOV"&
                   dat$newLngtClass==24.5]<-"Clupea harengus"
 dat$QC_Length[dat$UniqueIDP=="NS-IBTS_1999_1_THA2_17_GOV"&
                  dat$AphiaID==126425&dat$newLngtClass==24.5]<-"Species_changed(DP)"
+
 # change Taurulus bubalis to Myoxocephalus scorpius
 dat$estAphia_Code[dat$UniqueIDP=="NS-IBTS_1992_1_THA_31_GOV"&
                          dat$AphiaID==127204 &
@@ -1528,6 +1576,7 @@ list<-c('NS-IBTS_1995_1_THA_27_GOV', 'NS-IBTS_1995_1_THA_28_GOV',
         'NS-IBTS_2000_1_THA2_30_GOV', 'NS-IBTS_2000_1_THA2_31_GOV',
         'NS-IBTS_2000_1_THA2_32_GOV', 'NS-IBTS_2000_1_THA2_41_GOV',
         'NS-IBTS_2000_1_THA2_42_GOV', 'NS-IBTS_2000_1_THA2_43_GOV')
+
 #dat <- dat
 dat$estAphia_Code[dat$UniqueIDP%in%list&
                          dat$AphiaID==127204 &
@@ -1665,6 +1714,7 @@ dat$FishLength_cm[dat$UniqueIDP=="FR-CGFS_2006_4_GWD_47_GOV"
 dat$QC_Length[dat$UniqueIDP=="FR-CGFS_2006_4_GWD_47_GOV"&
                  dat$AphiaID==127126&dat$LngtClass==150]<-"Length_changed(DP)"
 
+gc()
 # Check LMax - step 2 ---------------------
 
 # Fill in rest of data into new Valid name and id and QC length
@@ -1692,28 +1742,40 @@ dat$QC_Length[is.na(dat$QC_Length)]<-"no_change"
 # names(dat)
 
 test1<-dat[which(dat$newLngtClass > dat$LmaxFB*1.1),]
-# 1962 observations 
+# 1793 observations 
 
 test2<-dat[which(dat$newLngtClass > dat$LmaxFB*1.4),]
-# 354 observations
+# 319 observations
+
 summary(as.factor(test2$Country))
 summary(as.factor(test2$estsciname))
 summary(as.factor(test2$estrank))
 
  
-Problem_Lenghts<-ddply(test1[!is.na(HLNoAtLngtkm2)],
-                       c("Survey", "Year", "estsciname", "rank"),
-                       summarise, 
-                       totalnopofsamples=length(as.numeric(HLNoAtLngtkm2)))
-write.csv(Problem_Lenghts, "Summary_probelm_lengths_10-10-2016.csv")
-summarysppnosatLngtperyerandcon<-ddply(dat[!is.na(HLNoAtLngtkm2)],
-                                       c("valid_name", "rank", 
-                                         "Country", "Year",
-                                         "newLngtClass"),
-                                       summarise, totalnopofsamples=length(as.numeric(HLNoAtLngtkm2)))
-write.csv(summarysppnosatLngtperyerandcon, "Summary_Fish_at_Length.csv")
+# Problem_Lenghts<-plyr::ddply(test1[!is.na(test1$HLNoAtLngtkm2),],
+#                        c("Survey", "Year", "estsciname", "rank"),
+#                        summarise, 
+#                        totalnopofsamples=length(as.numeric(HLNoAtLngtkm2)))
+
+# Problem_Lenghts<-plyr::ddply(test1,
+#                              c("Survey", "Year", "estsciname", "rank"),
+#                              summarise, 
+#                              totalnopofsamples=length(as.numeric(HLNoAtLngtkm2)))
+
+
+#diag_files <- "Data_QA_Process_V5_2022/Diagnostics/HL_biological"
+#write.csv(Problem_Lenghts, paste0(diag_files,"/Summary_problem_lengths_10-10-2016.csv"))
+
+# summarysppnosatLngtperyerandcon<-ddply(dat,
+#                                        c("valid_name", "rank", 
+#                                          "Country", "Year",
+#                                          "newLngtClass"),
+#                                        summarise, totalnopofsamples=length(as.numeric(HLNoAtLngtkm2)))
+# #write.csv(summarysppnosatLngtperyerandcon, paste0(diag_files,"/Summary_Fish_at_Length.csv"))
+
 # take a copy of the lengths
 dat$newLngtClass_10<-dat$newLngtClass_10
+
 # next fit all the Coelorinchus caelorhincus lenghts
 list<-c('Length_changed(DP)', 'no_change','Species&Lenght_changed(DP)',
         'Species_changed(DP)', 'Species_changed_to_genus(DP)' )
@@ -1721,27 +1783,34 @@ dat$Use_Lenght_cm[dat$QC_Length%in%list] <- dat$FishLength_cm[dat$QC_Length%in%l
 summary(dat$Use_Lenght_cm)
 # have we got them all now?
 test1 <- dat[ which(dat$Use_Lenght_cm > dat$LmaxFB*1.1),]
-# still 2052 
+# still 1693
 test2<-dat[ which(dat$Use_Lenght_cm > dat$LmaxFB*1.4),]
-# 305 are outwith criteria for "big fish" 
+# 214 are outwith criteria for "big fish" 
 summary(as.factor(test1$Survey))
-# again spain is causing the major concens here
-summary(dat$LmaxFB)
-write.csv(test2, "more_lenghts_to_check-10-10-2016.csv")
+
+
 #lets get these ones sorted out
 # more Engraulis encrasicolus needing division
 list<-c("NS-IBTS_2000_3_DAN2_31_GOV", "NS-IBTS_2000_3_DAN2_31_GOV", 
         "NS-IBTS_2000_3_DAN2_31_GOV", "NS-IBTS_2000_3_DAN2_31_GOV", 
         "NS-IBTS_2005_3_WAH3_151_GOV")
 find<-dat[dat$UniqueIDP%in%list &
-             dat$AphiaID==126426]
+             dat$AphiaID==126426,]
+
 dat$QC_Length[dat$UniqueIDP%in%list&
                  dat$AphiaID==126426]<-"Length/10"
+
+
 find<-dat[dat$UniqueIDP=="PT-IBTS_2013_4_NOR_73_NCT" &
              dat$AphiaID==126426 & dat$newLngtClass==155]
 dat$QC_Length[dat$UniqueIDP=="PT-IBTS_2013_4_NOR_73_NCT" &
                  dat$AphiaID==126426 & dat$newLngtClass==155]<-"Length/10"
+
+
+
 find<-subset(dat, dat$UniqueIDP=="NS-IBTS_1995_1_WAH3_1_GOV",)
+
+
 # Callionymus maculatus oversized records
 cm<-subset(dat, AphiaID==126793,)
 plot(cm$Use_Lenght_cm, cm$HLNoAtLngtkm2)
@@ -1757,8 +1826,10 @@ list<-c("IE-IGFS_2008_4_CEXP_84_GOV","NS-IBTS_2000_1_ARG_27_GOV",
         "IE-IGFS_2005_4_CEXP_4_GOV","NS-IBTS_2001_3_CIR_69_GOV",
         "NS-IBTS_1995_1_WAH3_4_GOV","IE-IGFS_2005_3_CEXP_4_GOV",
         "IE-IGFS_2005_3_CEXP_3_GOV")
+
 find <- dat[dat$UniqueIDP%in%list &
-             dat$AphiaID==126793]
+             dat$AphiaID==126793,]
+
 # more likely to be C. Lyra at that size not C.maculatus
 dat$estAphia_Code[dat$UniqueIDP%in%list&
                          dat$AphiaID==126793 &
@@ -1789,8 +1860,10 @@ dat$estsciname[dat$UniqueIDP%in%list&
 dat$QC_Length[dat$UniqueIDP%in%list&
                  dat$AphiaID==126795 &
                  dat$newLngtClass>14]<-"Species_changed(DP)"
+
 plot(dat$Use_Lenght_cm[dat$estAphia_Code==126795], 
      dat$HLNoAtLngtkm2[dat$estAphia_Code==126795])
+
 # that looks grand and sensible, nach bhfuil muid go hiontach 
 summary(as.factor(cm$Survey))
 at<-subset(dat, AphiaID==126752,)
@@ -1813,18 +1886,21 @@ plot(dat$Use_Lenght_cm[dat$AphiaID==126642],
 summary(dat$newLngtClass)
 
 find<-dat[dat$UniqueIDP=="NS-IBTS_2016_1_SCO3_46_GOV" &
-             dat$AphiaID==126792 & dat$newLngtClass==95]
+             dat$AphiaID==126792 & dat$newLngtClass==95,]
 #dat$QC_Length[dat$UniqueIDP=="NS-IBTS_2016_1_SCO3_46_GOV" &
 #                 dat$AphiaID==126792 & dat$newLngtClass==95]<-"Length_10"
+
 find<-dat[dat$UniqueIDP=="NS-IBTS_2000_1_WAH3_59_GOV" &
-             dat$AphiaID==126928 & dat$newLngtClass==55]
+             dat$AphiaID==126928 & dat$newLngtClass==55,]
+
 dat$QC_Length[dat$UniqueIDP=="NS-IBTS_2000_1_WAH3_59_GOV" &
                  dat$AphiaID==126928 & dat$newLngtClass==55]<-"Length_10"
 
 dat$LMax1.1<-dat$LmaxFB*1.1
-# if lenght is more than 1.4 lmax and change to 1.1 Lmax 
+
+# if length is more than 1.4 lmax and change to 1.1 Lmax 
 summary(as.factor(dat$QC_Length))
-dat$Use_Lenght_cm[dat$QC_Length=="Length_10"]<- dat$newLngtClass_10[dat$QC_Length=="Length_10"]
+dat$Use_Lenght_cm[dat$QC_Length=="Length_10"] <- dat$LmaxFB[dat$QC_Length=="Length_10"]### set to species max
 #dat$Use_Lenght_cm[dat$QC_Length=='Lmax+40%']<- dat$LMax1.4[dat$QC_Length=='Lmax+40%']
 
 summary(dat$Use_Lenght_cm)
@@ -1834,18 +1910,20 @@ summary(dat$Use_Lenght_cm)
 #summary(dat$Use_Lenght_cm)
 # have we got them all now?
 test1 <- dat[ which(dat$Use_Lenght_cm > dat$LmaxFB*1.1),]
-# still 2049 oversized fish getting closer
+# still 1676 oversized fish getting closer
 test2<-dat[ which(dat$Use_Lenght_cm > dat$LmaxFB*1.4),]
-# 1747 are within criteria for "big fish" and can be accepted as such
-# 302 the fish are still "too big" based on lmax
+# 1676 are within criteria for "big fish" and can be accepted as such
+# 204 the fish are still "too big" based on lmax
 # combination of missidentifications, poor estimate of Lmax and possibly 
 # lenght problems???
-summary(as.factor(test2$AphiaID))
-dat$LmaxFB[dat$AphiaID==126662]<-NA
-dat$LmaxFB[dat$AphiaID==126642]<-NA
-dat$LmaxFB[dat$AphiaID==126752]<-NA
-dat$LmaxFB[dat$AphiaID==126751]<-NA
-dat$LmaxFB[dat$AphiaID==126756]<-NA
+# summary(as.factor(test2$AphiaID))
+# dat$LmaxFB[dat$AphiaID==126662]<-NA
+# dat$LmaxFB[dat$AphiaID==126642]<-NA
+# dat$LmaxFB[dat$AphiaID==126752]<-NA
+# dat$LmaxFB[dat$AphiaID==126751]<-NA
+# dat$LmaxFB[dat$AphiaID==126756]<-NA
+
+dat$LmaxFB[which(dat$LmaxFB == 0)] <- NA  ## move this line up the script
 # Echiodon dentatus:Lmax is potentially strange, so Ill leave records as is
 # Notacanthus bonaparte:Lmax is potentially strange,  so Ill leave records as is
 # all Ammodytes are going to family level so not messing with the recorded lenghts
@@ -1859,6 +1937,9 @@ plot(dat$Use_Lenght_cm[dat$AphiaID==105851],
      dat$HLNoAtLngt[dat$AphiaID==105851],
      pch=19, col="green")
 
+
+
+
 # change oversized Taurulus bubalis to Myoxocephalus scorpius in line 
 # with DP decisions
 names(dat)
@@ -1870,11 +1951,11 @@ dat$QC_Length[dat$AphiaID==127204&
                  dat$newLngtClass>24.5]<-"Species_changed(DP)"
 
 find<-dat[dat$UniqueIDP=="NIGFS_2007_4_CO_19_ROT" &
-             dat$AphiaID==126417 & dat$newLngtClass==935]
+             dat$AphiaID==126417 & dat$newLngtClass==935,]
 dat$QC_Length[dat$UniqueIDP=="NIGFS_2007_4_CO_19_ROT" &
                  dat$AphiaID==126417 & dat$newLngtClass==935]<-"Length/10"
 
-dat$Use_Lenght_cm[dat$QC_Length=="Length/10"]<- dat$newLngtClass_10[dat$QC_Length=="Length/10"]
+dat$Use_Lenght_cm[dat$QC_Length=="Length/10"]<- dat$newLngtClass[dat$QC_Length=="Length/10"]/10
 #dat$Use_Lenght_cm[dat$QC_Length=='Lmax+40%']<- dat$LMax1.4[dat$QC_Length=='Lmax+40%']
 
 summary(dat$Use_Lenght_cm)
@@ -1892,6 +1973,7 @@ dat$QC_Length[(dat$Use_Lenght_cm > dat$LmaxFB*1.4) &
 dat$Use_Lenght_cm1<-as.numeric(dat$Use_Lenght_cm)
 dat$LMax1.1<-as.numeric(dat$LMax1.1)
 summary(dat$Use_Lenght_cm1)
+
 dat$Use_Lenght_cm1[dat$QC_Length=="length_unrelibable"]<-dat$LMax1.1[dat$QC_Length=="length_unrelibable"]
 # all spp above the max lenght now gone
 # replaced using 1.1Lmax
@@ -1900,51 +1982,62 @@ dat$Use_Lenght_cm1[is.na(dat$Use_Lenght_cm1)]<-0
 summary(dat$Use_Lenght_cm1)
 test2<-dat[which(dat$Use_Lenght_cm1 > dat$LmaxFB*1.4),]
 summary(as.factor(test2$estsciname))
+# 81
+summary(as.factor(test2$Year))
 #write.csv(dat, "Species_data_lngt_checked_10_10_2016.csv")
-write.csv(dat, "dat_2766.csv")
+#write.csv(dat, "dat_2766.csv")
 
+test2[test2$Year > 2019,]
 
-# Check Lmin #
+### RK leaving 'Buenia jeffreysii' as is, 39cm vs max 27 as this is grouped
+#  into the family level at 'Gobidae'
+#  Leaving Myoxocephalus scorpius at  25 cm, has had this estimated species 
+#  changed and the new species is within the range on fishbase for this fish 
 
+#### Check Lmin #
+
+# update to Lmin/Lmax/a and b factors to matched to updates made to the estsciname 
+# column in dat. 
+
+gc()
 
 names(traits)
 names(dat)
-traits$estsciname<-traits$valid_name
-dat$LmaxFB<-NULL
-dat$valid_name<-NULL
-dat$valid_authority<-NULL
-dat$kingdom<-NULL
-dat$phylum<-NULL
-dat$order<-NULL
-dat$family<-NULL
-dat$genus<-NULL
-dat$rank<-NULL
-dat$FRS_Common.Name<-NULL
-dat$CLASS<-NULL
-dat$Lmin<-NULL
-dat$LMax1.4<-NULL
-dat$LMax1.1<-NULL
-dat$LWRa<-NULL
-dat$LWRb<-NULL
+
+traitsLen$estsciname <- traitsLen$valid_name
+dat <- dat[, which(names(dat) %nin% c("LmaxFB", "Lmin", "LMax1.1", "LWRa", "LWRb"))]
+
 # new data frame
-dat<-join(dat, traits, by="estsciname")
+dat<-join(dat, traitsLen, by="estsciname")
 names(dat)
+
+summary(traitsLen)
+
 # have we got them all now?
-test1 <- dat[ which(dat$Use_Lenght_cm1 > dat$LmaxFB*1.1),]
+test1 <- dat[which(dat$Use_Lenght_cm1 > dat$LmaxFB*1.1),]
 test2<-dat[ which(dat$Use_Lenght_cm1 > dat$LmaxFB*1.4),]
+
+
 dat$Use_Lenght_cm1[dat$FishLength_cm==171&dat$valid_name=="Ammodytidae"]<-17.5
+
 dat$QC_Length[which(dat$Use_Lenght_cm1 > dat$LmaxFB*1.4)]<-"length_unrelibable"
 summary(as.factor(dat$QC_Length))
 dat$Lmax1.1<-dat$LmaxFB*1.1
 dat$Use_Lenght_cm1[dat$QC_Length=="length_unrelibable"]<-dat$Lmax1.1[dat$QC_Length=="length_unrelibable"]
 test2<-dat[ which(dat$Use_Lenght_cm1 > dat$LmaxFB*1.4),]
 dat$QC_Length[dat$QC_Length=="length_unrelibable"]<-"Lmax+10%"
-# now Lmin 
+
+#### now Lmin ####
+
 # Is length less that 0.9 time species known Lmin
 test1<-dat[which(dat$Use_Lenght_cm1 < dat$Lmin*0.9),]
+
 # I don't believe some of these Lmins - larger than L max!
 dat$Lmin[dat$estsciname=="Petromyzon marinus"]<-1.35
 dat$Lmin[dat$estsciname=="Lampetra fluviatilis"]<-1.3
+
+#dat[dat$Lmin > dat$Lmax,]
+
 test1<-dat[which(dat$Use_Lenght_cm1 < dat$Lmin*0.9),]
 summary(as.factor(test1$estsciname))
 summary(dat$Lmin)
@@ -1963,7 +2056,6 @@ dat$QC_Length[dat$Use_Lenght_cm1==0]<-"No_Len_Data"
 summary(as.factor(dat$QC_Length))
 
 # Lengths - Catch Weights 
-#start
 
 dat$CatCatchWgt_N<-as.numeric(dat$CatCatchWgt)
 summary(dat$CatCatchWgt_N)
@@ -1987,8 +2079,9 @@ list<-c("Length/10","Lmax+10%","No_Len_Data", "Questionalble_Lmin")
 LFDab<-subset(dat, QC_Length%in%list&NewTotalNo<2, )
 # If Length is missing or questionable then replace where possible with a 
 # lenght dervied using the LWR a and b paramaters
-dat$FishLength_cm_below[dat$QC_Length%in%list&dat$NewTotalNo<2&!dat$fish_len_est_catch_weight==0]<-dat$fish_len_est_catch_weight_round[dat$QC_Length%in%list&dat$NewTotalNo<2&!dat$fish_len_est_catch_weight==0]
+dat$FishLength_cm_below[dat$QC_Length%in%list&dat$NewTotalNo<2&!dat$fish_len_est_catch_weight==0 & !is.na(dat$fish_len_est_catch_weight_round)]<-dat$fish_len_est_catch_weight_round[dat$QC_Length%in%list&dat$NewTotalNo<2&!dat$fish_len_est_catch_weight==0 &!is.na(dat$fish_len_est_catch_weight_round)]
 dat$QC_Length[dat$QC_Length%in%list&dat$NewTotalNo<2&!dat$fish_len_est_catch_weight==0]<-"Lenght_Weight_Relationship"
+
 # check wee fish
 find<-subset(dat, dat$FishLength_cm_below<3,)
 # remove the 0 lengths
@@ -1998,7 +2091,7 @@ summary(as.factor(find1$QC_Length))
 # all BTS could get 1 - 2cm fish - accept these records
 find2<-subset(find1, !Survey=="BTS",)
 find2<-subset(find2, !Survey=="BTS-VIIa",)
-# leaves 1077 records
+# leaves 1027 records
 summary(as.factor(find2$estsciname))
 # Gobiidae and Caprosaper are okay
 find2<-subset(find2, !estsciname=="Gobiidae",)
@@ -2020,7 +2113,7 @@ find2<-subset(find2, !family=="Chimaeridae",)
 find2<-subset(find2, !family=="Macrouridae",)
 find2<-subset(find2, !family=="Alepocephalidae",)
 find2<-subset(find2, !family=="Searsidae",)
-write.csv(find2, "Very_small_fish_11-10-2016.csv")
+#write.csv(find2, "Very_small_fish_11-10-2016.csv")
 unique(as.factor(find2$family))
 summary(as.factor(find2$SciName))
 summary(find1$NewHLNoAtLngt)
@@ -2141,20 +2234,20 @@ dat$FishLength_cm_below[dat$estsciname=="Alosa alosa" &
 find<-subset(dat, dat$estsciname=="Clupea harengus" & 
                dat$Year==1985 & dat$Country=="NOR",)
 find<-subset(dat, dat$estsciname=="Clupea harengus" ,)
-plot(find$FishLength_cm_below, find$HLNoAtLngtkm2)
+#plot(find$FishLength_cm_below, find$HLNoAtLngtkm2)
 find<-subset(dat, dat$estsciname=="Zeus faber" & 
                dat$UniqueIDP=="SWC-IBTS_2003_1_SCO3_99_GOV" ,)
 
 #Chelidonichthysobscurus
 find<-subset(dat, dat$estsciname=="Trisopterus esmarkii" & 
                dat$Year==2013 & dat$Country=="NOR",)
-plot(find$LngtClass, find$HLNoAtLngtkm2)
+#plot(find$LngtClass, find$HLNoAtLngtkm2)
 # really looks like some of the samples lost the 1 at the front of them
 
 find<-subset(dat, dat$estsciname=="Squalus acanthias" & 
                dat$UniqueIDP=="SWC-IBTS_2007_1_SCO3_64_GOV",)
 
-plot(find$LngtClass, find$HLNoAtLngtkm2)
+#plot(find$LngtClass, find$HLNoAtLngtkm2)
 # let length = 1 equal length 0 and estimate sensible length
 dat$FishLength_cm_below[dat$estsciname=="Squalus acanthias" &
                                dat$LngtClass=="1"]<-0
@@ -2172,11 +2265,11 @@ dat$FishLength_cm_below[dat$estsciname=="Raja clavata" &
 # poor cod
 find<-subset(dat, dat$estsciname=="Trisopterus minutus" & 
                dat$Survey=="ROCKALL",)
-plot(find$FishLength_cm_below, find$HLNoAtLngtkm2, pch=19)
+#plot(find$FishLength_cm_below, find$HLNoAtLngtkm2, pch=19)
 
 find<-subset(dat, dat$estsciname=="Sprattus sprattus" & 
                dat$UniqueIDP=="NS-IBTS_1995_1_MIC_15_GOV",)
-plot(find$FishLength_cm_below, find$HLNoAtLngtkm2, pch=19)
+#plot(find$FishLength_cm_below, find$HLNoAtLngtkm2, pch=19)
 # should be 12	NS-IBTS_1995_1_MIC_15_GOV
 dat$FishLength_cm_below[dat$estsciname=="Sprattus sprattus" &
                                dat$UniqueIDP=="NS-IBTS_1995_1_MIC_15_GOV"&
@@ -2200,9 +2293,9 @@ dat$FishLength_cm_below[dat$estsciname=="Micromesistius poutassou" &
 
 
 # Copy the working file
-write.csv(dat, "dat_workingHL_11-10-2016.csv")
-#
-dat<-read.csv("dat_workingHL_11-10-2016.csv")
+# write.csv(dat, "dat_workingHL_11-10-2016.csv")
+# #
+# dat<-read.csv("dat_workingHL_11-10-2016.csv")
 find<-subset(dat, dat$UniqueIDP=="NS-IBTS_2005_1_DAN2_44_GOV")
 
 dat$FishLength_cm_below[dat$UniqueIDP=="NS-IBTS_2005_1_DAN2_44_GOV"&
@@ -2302,6 +2395,8 @@ summary(as.factor(dat$Filter))
 
 # Abundance of Fish --------------------
 
+gc()
+
 # Plot Summed Biomass at Lenght for a species in a hauls
 # against Reported Catch Weight
 names(dat)
@@ -2311,8 +2406,8 @@ dat$kingdom<-NULL
 dat$phylum<-NULL
 dat$CLASS<-NULL
 dat$valid_authority<-NULL
-dat$SweptArea_wing_m_sqrd<-NULL
-dat$HaulVal<-NULL
+#dat$SweptArea_wing_m_sqrd<-NULL
+#dat$HaulVal<-NULL
 summary((dat$FishLength_cm_below))
 summary(dat$LWRa)
 
@@ -2335,55 +2430,56 @@ dat$LWRa.1<-NULL
 dat$LWRb<-NULL
 dat$Lmin<-NULL
 dat$Lmax1.1<-NULL                        
-dat.1<-merge(dat, traits, by="AphiaID")
-names(dat.1)
-summary(dat.1$FishLength_cm_below)
-summary(dat.1$Density_Km2)
-Weight_Check<-ddply(dat.1, c("NewUniqueID2", "Survey", "Country",
-                            "Year", "estsciname", "HLNoAtLngtkm2", 
-                            "FishLength_cm_below", "CatCatchWgt_per_km2", 
+dat<-merge(dat, traits, by.x="AphiaID", by.y = "ValidAphiaID")
+names(dat)
+summary(dat$FishLength_cm_below)
+summary(dat$Density_Km2)
+Weight_Check<-ddply(dat, c("NewUniqueID2", "Survey", "Country",
+                            "Year", "estsciname", "HLNoAtLngtkm2",
+                            "FishLength_cm_below", "CatCatchWgt_per_km2",
                             "CatIdentifier"),
                        summarise, EstimatedWeight=sum(LWRa*FishLength_cm_below^LWRb))
-write.csv(Weight_Check, "Summary_weights_lengths_15-110-2016.csv")
+# write.csv(Weight_Check, "Summary_weights_lengths_15-110-2016.csv")
+
 summaryweight<-ddply(Weight_Check, c("NewUniqueID2", "Survey", "Country",
                                      "Year", "estsciname","CatCatchWgt_per_km2",
                                      "CatIdentifier"),
-                                      summarise, 
+                                      summarise,
                                       EstimatedCatchWeight=sum(as.numeric(EstimatedWeight*HLNoAtLngtkm2)))
 summaryweight1<-ddply(summaryweight, c("NewUniqueID2", "Survey", "Country",
-                                     "Year", "estsciname","EstimatedCatchWeight"),      
+                                     "Year", "estsciname","EstimatedCatchWeight"),
                      summarise, AggCatCatchWgt_per_km2=sum(CatCatchWgt_per_km2))
 
-write.csv(summaryweight, "Summary_Fish_CatchWeight.csv")
-write.csv(summaryweight1, "Summary1_Fish_CatchWeight.csv")
+# write.csv(summaryweight, "Summary_Fish_CatchWeight.csv")
+# write.csv(summaryweight1, "Summary1_Fish_CatchWeight.csv")
 summary(summaryweight1$AggCatCatchWgt_per_km2)
 summaryweight1<-subset(summaryweight1, !is.na(AggCatCatchWgt_per_km2),)
 summaryweight1<-subset(summaryweight1, !(AggCatCatchWgt_per_km2==0),)
 summaryweight1<-subset(summaryweight1, !is.na(EstimatedCatchWeight),)
 summaryweight1<-subset(summaryweight1, !(EstimatedCatchWeight==0),)
-plot(summaryweight1$CatCatchWgt_per_km2, summaryweight1$EstimatedCatchWeight, pch=19)
+#plot(summaryweight1$CatCatchWgt_per_km2, summaryweight1$EstimatedCatchWeight, pch=19)
 
-for (cat in unique(summaryweight1$estsciname)){
-  mypath <- file.path(paste("Weight_Check_", cat, ".jpeg", sep = ""))
-  jpeg(file=mypath)
-    d <- subset(summaryweight1, estsciname == cat)
-    plot(d$AggCatCatchWgt_per_km2, d$EstimatedCatchWeight, 
-       main=unique(d$estsciname), pch=19, xlab="Recorded Catch Weight (g/Km2)", 
-       ylab="Estimated Catch Weight (g/Km2)")
-    abline(0,1, col="red")
-    abline(0,0.75, col='red', lty=2)
-    abline(0,1.25, col='red', lty=2)
-  dev.off()
-}
+# for (cat in unique(summaryweight1$estsciname)){
+#   mypath <- file.path(paste("Weight_Check_", cat, ".jpeg", sep = ""))
+#   jpeg(file=mypath)
+#     d <- subset(summaryweight1, estsciname == cat)
+#     plot(d$AggCatCatchWgt_per_km2, d$EstimatedCatchWeight,
+#        main=unique(d$estsciname), pch=19, xlab="Recorded Catch Weight (g/Km2)",
+#        ylab="Estimated Catch Weight (g/Km2)")
+#     abline(0,1, col="red")
+#     abline(0,0.75, col='red', lty=2)
+#     abline(0,1.25, col='red', lty=2)
+#   dev.off()
+# }
 
 # Plot Summed Densities at lenght against reported Catch weight
 Weight_Check1<-ddply(dat, c("NewUniqueID2", "Survey", "Country",
-                             "Year", "estsciname", "CatCatchWgt_per_km2", 
+                             "Year", "estsciname", "CatCatchWgt_per_km2",
                              "TotalNoKm2", "CatIdentifier" ),
                       summarise, SummedHLNoLng=sum(HLNoAtLngtkm2))
 
 Weight_Check2<-ddply(Weight_Check1, c("NewUniqueID2", "Survey", "Country",
-                                      "Year", "estsciname",  
+                                      "Year", "estsciname",
                                       "TotalNoKm2", "SummedHLNoLng" ),
                      summarise, SummedCatCatchWgt=sum(CatCatchWgt_per_km2))
 
@@ -2392,37 +2488,39 @@ Weight_Check1<-subset(Weight_Check1, !(CatCatchWgt_per_km2==0),)
 Weight_Check1<-subset(Weight_Check1, !is.na(SummedHLNoLng),)
 Weight_Check1<-subset(Weight_Check1, !(SummedHLNoLng==0),)
 
-write.csv(Weight_Check1, "Weight_Density_Checks.csv")
+# write.csv(Weight_Check1, "Weight_Density_Checks.csv")
 
-plot(Weight_Check1$CatCatchWgt_per_km2, Weight_Check1$SummedHLNoLng)
-summary(as.factor(Weight_Check1$Survey))
+#plot(Weight_Check1$CatCatchWgt_per_km2, Weight_Check1$SummedHLNoLng)
+#summary(as.factor(Weight_Check1$Survey))
 
-for (cat in unique(Weight_Check2$estsciname)){
-  mypath <- file.path(paste("Density_at_Weight_Check_", cat, ".jpeg", sep = ""))
-  jpeg(file=mypath)
-  d <- subset(Weight_Check2, estsciname == cat)
-  plot(d$SummedCatCatchWgt, d$SummedHLNoLng, 
-       main=unique(d$estsciname), pch=19, xlab="Recorded Catch Weight (g/Km2)", 
-       ylab="Density (no/km2)")
-  dev.off()
-}
+# for (cat in unique(Weight_Check2$estsciname)){
+#   mypath <- file.path(paste("Density_at_Weight_Check_", cat, ".jpeg", sep = ""))
+#   jpeg(file=mypath)
+#   d <- subset(Weight_Check2, estsciname == cat)
+#   plot(d$SummedCatCatchWgt, d$SummedHLNoLng, 
+#        main=unique(d$estsciname), pch=19, xlab="Recorded Catch Weight (g/Km2)", 
+#        ylab="Density (no/km2)")
+#   dev.off()
+# }
 
 # plot Lenght frequency distributions per species per counrty per year.
-for (cat in unique(dat$estsciname)){
-  mypath <- file.path(paste("Length_Frequency_", cat, ".jpeg", sep = ""))
-  jpeg(file=mypath)
-  d <- subset(dat, estsciname == cat)
-  plot(d$FishLength_cm_below, d$HLNoAtLngtkm2, 
-       main=unique(d$estsciname), pch=19, xlab="Length (cm)", 
-       ylab="Density at Lenght (km2)")
-  dev.off()
-}
+# for (cat in unique(dat$estsciname)){
+#   mypath <- file.path(paste("Length_Frequency_", cat, ".jpeg", sep = ""))
+#   jpeg(file=mypath)
+#   d <- subset(dat, estsciname == cat)
+#   plot(d$FishLength_cm_below, d$HLNoAtLngtkm2, 
+#        main=unique(d$estsciname), pch=19, xlab="Length (cm)", 
+#        ylab="Density at Lenght (km2)")
+#   dev.off()
+# }
 
 # Change CatchWeights to LFD --------------
 
 find<-subset(dat, dat$Filter=="CatchWeight",)
 dat<-subset(dat, !(dat$Filter=="CatchWeight"&is.na(dat$CatCatchWgt)),)
+
 nrow(dat)-nrow(dat)
+
 find<-subset(dat, dat$Filter=="CatchWeight",)
 list<-unique(as.factor(dat$estsciname[dat$Filter=="CatchWeight"]))
 find<-subset(dat, dat$Density_Km2==0,)
@@ -2436,8 +2534,9 @@ meancatchweight1<-subset(meancatchweight1, meancatchweight1$Year%in%list,)
 list<-unique(as.factor(dat$Survey[dat$Filter=="CatchWeight"]))
 meancatchweight1<-subset(meancatchweight1, meancatchweight1$Survey%in%list,)
 
-write.csv(find, "Catch_Weight_only_11-10-2016.csv")
-write.csv(meancatchweight, "mean_catchweight-11-10-2016.csv")
+#write.csv(find, "Catch_Weight_only_11-10-2016.csv")
+#write.csv(meancatchweight, "mean_catchweight-11-10-2016.csv")
+
 find<-subset(dat, Filter=="CatchWeight",)
 # Fix Catch weights
 summary(as.factor(dat$Filter))
@@ -2681,7 +2780,7 @@ dat$FishLength_cm_below[dat$UniqueIDP=="BTS_2003_3_SOL_23_BT7"&
 dat$Filter[dat$UniqueIDP=="BTS_2003_3_SOL_23_BT7"&
               dat$estsciname=="Limanda limanda"&dat$Filter=="CatchWeight"]<-"LFD"
 
-1_0.04944979
+1/0.04944979
 dat$Density_Km2[dat$UniqueIDP=="NIGFS_2001_4_LF_33_ROT"&
                    dat$estsciname=="Gobiidae"&dat$Filter=="CatchWeight"]<-20.22253
 dat$HLNoAtLngtkm2[dat$UniqueIDP=="NIGFS_2001_4_LF_33_ROT"&
@@ -2690,7 +2789,7 @@ dat$FishLength_cm_below[dat$UniqueIDP=="NIGFS_2001_4_LF_33_ROT"&
                            dat$estsciname=="Gobiidae"&dat$Filter=="CatchWeight"]<-10
 dat$Filter[dat$UniqueIDP=="NIGFS_2001_4_LF_33_ROT"&
               dat$estsciname=="Gobiidae"&dat$Filter=="CatchWeight"]<-"0K"
-1_0.04909500
+1/0.04909500
 dat$Density_Km2[dat$UniqueIDP=="NS-IBTS_2012_1_THA2_58_GOV"&
                    dat$estsciname=="Osmerus eperlanus"&dat$Filter=="CatchWeight"]<-20.36867
 dat$HLNoAtLngtkm2[dat$UniqueIDP=="NS-IBTS_2012_1_THA2_58_GOV"&
@@ -2708,7 +2807,7 @@ dat$FishLength_cm_below[dat$UniqueIDP=="NS-IBTS_2012_1_THA2_58_GOV"&
                            dat$estsciname=="Alosa agone"&dat$Filter=="CatchWeight"]<-8
 dat$Filter[dat$UniqueIDP=="NS-IBTS_2012_1_THA2_58_GOV"&
               dat$estsciname=="Alosa agone"&dat$Filter=="CatchWeight"]<-"0K"
-1_0.08594431
+1/0.08594431
 dat$Density_Km2[dat$UniqueIDP=="NIGFS_2004_1_LF_20_ROT"&
                    dat$estsciname=="Hippoglossoides platessoides"&dat$Filter=="CatchWeight"]<-11.63544
 dat$HLNoAtLngtkm2[dat$UniqueIDP=="NIGFS_2004_1_LF_20_ROT"&
@@ -2790,13 +2889,13 @@ summary(dat$TotalNoKm2)
 summary(dat$Difference_in_Density_weight)
 summary(dat$Difference_in_total_weight)
 
-boxplot(dat$Difference_in_total_weight~dat$Survey)
+#boxplot(dat$Difference_in_total_weight~dat$Survey)
 
-ggplot(dat, aes(x=CatCatchWgt_per_km2, y=TotalNo_km2_derived_from_weight, colour=Survey))+
-  geom_jitter()
-
-ggplot(dat, aes(x=TotalNoKm2, y=TotalNo_km2_derived_from_weight, colour=Survey))+
-  geom_jitter()
+# ggplot(dat, aes(x=CatCatchWgt_per_km2, y=TotalNo_km2_derived_from_weight, colour=Survey))+
+#   geom_jitter()
+# 
+# ggplot(dat, aes(x=TotalNoKm2, y=TotalNo_km2_derived_from_weight, colour=Survey))+
+#   geom_jitter()
 
 
 find<-subset(dat, dat$Difference_in_total_weight>1000000,)
@@ -2807,9 +2906,9 @@ find<-subset(dat, Density_Km2==0,)
 find<-subset(dat, dat$HLNoAtLngtkm2>dat$TotalNoKm2)
 summary(dat$Density_Km2)
 #summary(dat$Density_Km21)
-#Weight_Check<-ddply(dat, c("NewUniqueID2", "Survey", "Country",
-#                            "Year", "estsciname", "Density_Km21", 
-##                            "FishLength_cm_below", "CatCatchWgt_per_km2", 
+# Weight_Check<-ddply(dat, c("NewUniqueID2", "Survey", "Country",
+#                            "Year", "estsciname", "Density_Km21",
+#                            "FishLength_cm_below", "CatCatchWgt_per_km2",
 #                            "CatIdentifier"),
 #                    summarise, EstimatedWeight=sum(LWRa*FishLength_cm_below^LWRb))
 #write.csv(Weight_Check, "Summary_weights_lengths_10-10-2016.csv")
@@ -2831,18 +2930,18 @@ summary(dat$Density_Km2)
 #summaryweight1<-subset(summaryweight1, !(EstimatedCatchWeight==0),)
 #plot(summaryweight1$CatCatchWgt_per_km2, summaryweight1$EstimatedCatchWeight, pch=19)
 
-for (cat in unique(summaryweight1$estsciname)){
-  mypath <- file.path(paste("C1_Weight_Check_", cat, ".jpeg", sep = ""))
-  jpeg(file=mypath)
-  d <- subset(summaryweight1, estsciname == cat)
-  plot(d$AggCatCatchWgt_per_km2, d$EstimatedCatchWeight, 
-       main=unique(d$estsciname), pch=19, xlab="Recorded Catch Weight (g/Km2)", 
-       ylab="Estimated Catch Weight (g/Km2)")
-  abline(0,1, col="red")
-  abline(0,0.75, col='red', lty=2)
-  abline(0,1.25, col='red', lty=2)
-  dev.off()
-}
+# for (cat in unique(summaryweight1$estsciname)){
+#   mypath <- file.path(paste("C1_Weight_Check_", cat, ".jpeg", sep = ""))
+#   jpeg(file=mypath)
+#   d <- subset(summaryweight1, estsciname == cat)
+#   plot(d$AggCatCatchWgt_per_km2, d$EstimatedCatchWeight, 
+#        main=unique(d$estsciname), pch=19, xlab="Recorded Catch Weight (g/Km2)", 
+#        ylab="Estimated Catch Weight (g/Km2)")
+#   abline(0,1, col="red")
+#   abline(0,0.75, col='red', lty=2)
+#   abline(0,1.25, col='red', lty=2)
+#   dev.off()
+# }
 
 # Plot Summed Densities at lenght against reported Catch weight
 #Weight_Check1<-ddply(dat, c("NewUniqueID2", "Survey", "Country",
@@ -2864,30 +2963,30 @@ for (cat in unique(summaryweight1$estsciname)){
 
 #plot(Weight_Check1$CatCatchWgt_per_km2, Weight_Check1$SummedHLNoLng)
 #summary(as.factor(Weight_Check1$Survey))
-
-for (cat in unique(Weight_Check2$estsciname)){
-  mypath <- file.path(paste("C1_Density_at_Weight_Check_", cat, ".jpeg", sep = ""))
-  jpeg(file=mypath)
-  d <- subset(Weight_Check2, estsciname == cat)
-  plot(d$SummedCatCatchWgt, d$SummedHLNoLng, 
-       main=unique(d$estsciname), pch=19, xlab="Recorded Catch Weight (g/Km2)", 
-       ylab="Density (no/km2)")
-  dev.off()
-}
-
-# plot Lenght frequency distributions per species per counrty per year.
-for (cat in unique(dat$estsciname)){
-  mypath <- file.path(paste("C2_Length_Frequency_", cat, ".jpeg", sep = ""))
-  jpeg(file=mypath)
-  d <- subset(dat, estsciname == cat)
-  plot(d$FishLength_cm_below, d$Density_Km22, 
-       main=unique(d$estsciname), pch=19, xlab="Length (cm)", 
-       ylab="Density at Lenght (km2)")
-  dev.off()
-}
-
-#summary(dat$Density_Km21)
-#dat$Density_Km22<-dat$Density_Km21
+# 
+# for (cat in unique(Weight_Check2$estsciname)){
+#   mypath <- file.path(paste("C1_Density_at_Weight_Check_", cat, ".jpeg", sep = ""))
+#   jpeg(file=mypath)
+#   d <- subset(Weight_Check2, estsciname == cat)
+#   plot(d$SummedCatCatchWgt, d$SummedHLNoLng, 
+#        main=unique(d$estsciname), pch=19, xlab="Recorded Catch Weight (g/Km2)", 
+#        ylab="Density (no/km2)")
+#   dev.off()
+# }
+# 
+# # plot Lenght frequency distributions per species per counrty per year.
+# for (cat in unique(dat$estsciname)){
+#   mypath <- file.path(paste("C2_Length_Frequency_", cat, ".jpeg", sep = ""))
+#   jpeg(file=mypath)
+#   d <- subset(dat, estsciname == cat)
+#   plot(d$FishLength_cm_below, d$Density_Km22, 
+#        main=unique(d$estsciname), pch=19, xlab="Length (cm)", 
+#        ylab="Density at Lenght (km2)")
+#   dev.off()
+# }
+# 
+# #summary(dat$Density_Km21)
+# #dat$Density_Km22<-dat$Density_Km21
 #dat$Density_Km22[dat$Density_Km21==0]<-dat$HLNoAtLngtkm2[dat$Density_Km21==0]
 #summary(dat$Density_Km22)
 
@@ -2926,7 +3025,7 @@ names(dat)
 summary(dat$TotalNo_N)
 summary(dat$HLNoAtLngtkm2)
 summary(dat$TotalNoKm2)
-write.csv(smallfish, "Small_fish_removed_from_DP_12-10-2016.csv")
+#write.csv(smallfish, "Small_fish_removed_from_DP_12-10-2016.csv")
 dat<-subset(dat, FishLength_cm_below>2|FishLength_cm_below==0,)
 dat$LmaxFB
 
@@ -2937,8 +3036,8 @@ test2<-dat[which(dat$FishLength_cm_below > dat$LmaxFB*1.4),]
 summary(as.factor(dat$FishLength_cm_below[dat$estsciname=="Lepadogaster lepadogaster"]))
 
 write.csv(dat, "dat_HL_16-11-2016.csv")
-
-dat<-read.csv("dat_HL_08-11-2016.csv")
+gc()
+#dat<-read.csv("dat_HL_08-11-2016.csv")
 memory.size(10000000000000)
 names(dat)
 summary(dat$FishLength_cm_below)
