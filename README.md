@@ -28,68 +28,44 @@ Goal 5. Estimate missing/incorrect biological parameters
 
 Goal 6. Calculate Swept Area densities
 
-## DATA NEEDED:
-
-# DATRAS DOWNLOAD 04/2022
-
 ## scripts we use
 
 Haul data cleaning: 1 - 7
 
-Biological data cleaning: 8a & 8
+Biological data cleaning: 8 and 9
 
 Covariate wrangling: 13
 
+Analysis: 14a_e - 15
 
-We are subsetting all available DATRAS data to just surveys in the North East Atlantic (i.e. not the North sea) in order to establish our modelling pipeline. We would currently 
-like to expand to modelling all available data if this goes well (i.e. after Caroline finished her PhD).
+Plotting: 16
 
-Covariates will be modelled at 10km2 spatial and mean monthly values temporal resolution.
+We are subsetting all available DATRAS data to just surveys in the North East Atlantic (i.e. not the North sea) in order to establish our modelling pipeline. We would currently like to expand to modelling all available data if this goes well (i.e. after Caroline finished her PhD).
 
-The DATRAS data provides us with a response variable (fish occurrence or abundance, and maybe some tratis)
+Covariates will be modeled at 10km2 spatial and mean monthly values temporal resolution.
+
+The DATRAS data provides us with a response variable (fish occurrence and abundance)
+
+Trait data
 
 We must search the internet for our co-variates
 
-# Fishing pressure
+# DATA NEEDED:
 
-# OSPAR spatial data layers of fishing intensity/pressure - oh my god why was that so incredibly hard to find on the internet
-2009 - 2020
-https://ices-library.figshare.com/articles/dataset/Data_for_OSPAR_request_on_the_production_of_spatial_data_layers_of_fishing_intensity_pressure/18601508
+## DATRAS DOWNLOAD 04/2022
 
+## Fishing pressure
+- OSPAR spatial data layers of fishing intensity/pressure 2009 - 2020 https://ices-library.figshare.com/articles/dataset/Data_for_OSPAR_request_on_the_production_of_spatial_data_layers_of_fishing_intensity_pressure/18601508
 
-EMODnet Vessel density EU
-- https://www.emodnet-humanactivities.eu/search-results.php?dataname=Vessel+Density+#ID0EAEA
-One year one month = 30 MB
-can include "service" vessels and underwater opperations vessels
-
-Global fish watch
-- https://globalfishingwatch.org/data-download/datasets/public-fishing-effort
-
-# Sea surface temperature
-
-Ocean colour NASA - sea surface temperature from 2002 - 2022
-https://oceancolor.gsfc.nasa.gov/l3/
-
+## Sea surface temperature
+- Ocean colour NASA - sea surface temperature from 2002 - 2022 https://oceancolor.gsfc.nasa.gov/l3/
 can extract seasonal SST (as per Lousie Rutterford) at 9km resolution within boundary box of your choosing
 nc files (easily rasterised)
 1 season of data for my study area = approx 240KB. 240*4*13 = 12.5 MB total (they also send nighttime sst so double that) 
 WAY better than copernicus for my purposes
 
+## trait data
+- beukhof_fish_traits.csv from Beukhof et al., (2019)
 
-# COPERNICUS - Sea surface temperature daily data from 1981 to present derived from satellite observations
-# https://cds.climate.copernicus.eu/cdsapp#!/dataset/satellite-sea-surface-temperature?tab=form
-# one  year one month all days = 511 MB
-
-
-
-
-Offshore infrastructure (not today)
-pH?
-Green index (primary productivity)
-Substrate 
-
-in DATRAS dataset
- - depth
- 
 
 
