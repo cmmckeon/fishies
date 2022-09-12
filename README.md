@@ -42,13 +42,6 @@ Plotting: 16
 
 We are subsetting all available DATRAS data to just surveys in the North East Atlantic (i.e. not the North sea) in order to establish our modelling pipeline. We would currently like to expand to modelling all available data if this goes well (i.e. after Caroline finished her PhD).
 
-Covariates will be modeled at 10km2 spatial and mean monthly values temporal resolution.
-
-The DATRAS data provides us with a response variable (fish occurrence and abundance)
-
-Trait data
-
-We must search the internet for our co-variates
 
 # DATA NEEDED:
 
@@ -64,8 +57,11 @@ nc files (easily rasterised)
 1 season of data for my study area = approx 240KB. 240*4*13 = 12.5 MB total (they also send nighttime sst so double that) 
 WAY better than copernicus for my purposes
 
+## Depth
+- 
+
 ## trait data
-- beukhof_fish_traits.csv from Beukhof et al., (2019)
+- beukhof_fish_traits.csv from Beukhof et al., (2019) https://doi.pangaea.de/10.1594/PANGAEA.900866 
 
 
 
