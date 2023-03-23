@@ -32,7 +32,7 @@ lapply(list, require, character.only=T)
 '%nin%' = Negate('%in%')
 
 ## pairs function
-upper.panel<-function(x, y){
+upper.panel <-function(x, y){
   points(x,y, pch=21, col=c("grey"), cex = 0.5)
   r <- round(cor(x, y), digits=2)
   txt <- paste0("R = ", r)
@@ -43,45 +43,16 @@ upper.panel<-function(x, y){
 
 ## read in data --------------
 
-h <- read.csv("~/Desktop/covars/BiologicalInfo_per_species_2009_on_30_05_2022.csv")
+h <- readRDS("biodiversity/NE_atlantic_per_species_march_2023.rds")
 ## all relevant cleaned DATRAS hauls, biological and taxmonic data from 2009 - 2021
-#h <- read.csv("~/Desktop/covars/BiologicalInfo_withlengths_2009_on_30_05_2022.csv")
-
-#summary(h)
-
-## cleaned hauls to check some things --------
-
-## ask Ruth about using check_StatRec instead of StNo
-hh <- readRDS("clean_HH.rds")
-#check <- hh[grep("NA", hh$HaulID),] ## 4054 hauls with no station number
-#length(which(is.na(hh$StNo))) ## 26674
-#check <- hh[grep("NA", hh$NewUniqueID2),]
-
-## add check_StatRec from HH to the cleaned Biodiversity data
-x <- unique(hh[,which(names(hh) %in% c("check_StatRec", "HaulID"))])
-h <- merge(h, x, by = "HaulID")
-
-## end checking ----------------
-
-## get boundary box (lat long) of relevant surveys
-box <- h[h$Survey %in% c("EVHOE", "FR-CGFS", "IE-IGFS", "NIGFS",  "ROCKALL", "SCOROC", "SCOWCGFS",  "SWC-IBTS"),]
-
-h <- h[h$check_StatRec %in% box$check_StatRec,]
-rm(box, x)
 
 ## unique hauls locations for extracting sst and fp data
 sp_co <- unique(h[, c("ShootLong", "ShootLat")]) 
 names(sp_co) <- c("x", "y")
+sp_co <- drop_na(sp_co)
 gc()
 
 #saveRDS(sp_co, "Data_sp_co.rds")
-
-# summary(h$ShootLat)
-# summary(h$ShootLong)
-
-## North East Atlantic study area extent
-#map <- crop(map, extent(-17, 4, 42, 61))
-
 
 ## SST: sea surface temperature -------------------
 Sys.time()
@@ -89,7 +60,7 @@ Sys.time()
 ## 0.08333333 for 5 min seconds resolution "10km" bioclim data
 
 ## get one season in one year to have a look
-tmp_raster <- stack("~/Desktop/covars/sst_aquamodis_seasonal_2009_2021/AQUA_MODIS.20081221_20090320.L3m.SNWI.SST.x_sst.nc", varname="sst")
+tmp_raster <- stack("covars/sst_aquamodis_seasonal_2008_2021_NEA/AQUA_MODIS.20080321_20080620.L3m.SNSP.SST.x_sst.nc", varname="sst")
 tmp_raster <- brick(tmp_raster, varname="sst")
 
 ## aggregating resolutions ---------
@@ -110,20 +81,20 @@ res <- cbind(sp_co, res5, res10, res20, res50, res100)
 rm(r5, r10, r20, r50, r100, res5, res10, res20, res50, res100)
 
 
-#plot(tmp_raster)
-#points(sp_co$x, sp_co$y, type = "p", col = "black", lwd = 0.1) ## these points are unique locations, we have a good bit more data than this
-#points(h$ShootLong, h$ShootLat, col="green") ## all points. SCOROC and EVHOE are responsible for the points way out top left
+# plot(tmp_raster)
+# points(sp_co$x, sp_co$y, type = "p", col = "black", lwd = 0.1) ## these points are unique locations, we have a good bit more data than this
+# points(h$ShootLong, h$ShootLat, col="green") ## all points. SCOROC and EVHOE are responsible for the points way out top left
 
 
-## get all seasons all years 2009 - 2021
+## get all seasons all years 2008 - 2021
 
-files <- list.files("~/Desktop/covars/sst_aquamodis_seasonal_2009_2021", pattern = "\\.SST") ## daytime only ## pattern = "*SNSP*\\.SST*")) ## summer and daytime only
+files <- list.files("covars/sst_aquamodis_seasonal_2008_2021_NEA", pattern = "\\.SST") ## daytime only ## pattern = "*SNSP*\\.SST*")) ## summer and daytime only
 
 ## make a stack of rasters
 rast_list <- list()
 
 for(i in files){
-  sst <- stack(paste("~/Desktop/covars/sst_aquamodis_seasonal_2009_2021/", i, sep = "") , varname="sst")
+  sst <- stack(paste("covars/sst_aquamodis_seasonal_2008_2021_NEA/", i, sep = "") , varname="sst")
   rast_list[[i]] <- brick(sst, varname="sst")
   gc()}
 
@@ -177,29 +148,29 @@ rm(rat, d, sst, rast_list)
 ## FP: fishing pressure ------------------------
 
 ## one file test
-# fp <- read.dbf("~/Desktop/covars/fp_ICES_2009_2020/shapefiles/total-2020.dbf")
-# f <- fp[, c("lon","lat", "kWH_upp")]
+fp <- read.dbf("covars/fp_ICES_2009_2020/shapefiles/total-2020.dbf")
+f <- fp[, c("lon","lat", "kWH_upp")]
 # 
 # ## subset by North East Atlantic box
 # f <- f[f$lon <= max(sp_co$x)  & f$lon >= min(sp_co$x) & f$lat <= max(sp_co$y)  & f$lat >= min(sp_co$y),]
 # 
-# # plot(aqua_modis)
-# # points(sp_co$x, sp_co$y, type = "p", col = "black", lwd = 0.1) ## these points are unique locations, we have a good bit more data than this
+# plot(aquamodis)
+# points(sp_co$x, sp_co$y, type = "p", col = "black", lwd = 0.1) ## these points are unique locations, we have a good bit more data than this
 # # points(f$lon, f$lat, type = "p", col = "green", lwd = 0.1) 
 # 
 # f <- rasterFromXYZ(f)
 # f <- projectRaster(f, tmp_raster)
 
 
-## get all years 2009 - 2020
+## get all years 2008 - 2020
 
-files <- list.files("~/Desktop/covars/fp_ICES_2009_2020/shapefiles", pattern = glob2rx("total*dbf$")) 
+files <- list.files("covars/fp_ICES_2009_2020/shapefiles", pattern = glob2rx("total*dbf$")) 
 
 ## make a stack of rasters
 rast_list <- list()
 
 for(i in files){
-  fp <- read.dbf(paste("~/Desktop/covars/fp_ICES_2009_2020/shapefiles/", i, sep = ""))
+  fp <- read.dbf(paste("covars/fp_ICES_2009_2020/shapefiles/", i, sep = ""))
   f <- fp[, c("lon","lat", "kWH_upp")]
   ## subset by North East Atlantic box
   f <- f[f$lon <= max(sp_co$x)  & f$lon >= min(sp_co$x) & f$lat <= max(sp_co$y)  & f$lat >= min(sp_co$y),]
@@ -274,8 +245,8 @@ b <- h[h$Survey == "BTS",]
 summary(b$StNo)
 x <- b[which(is.na(b$StNo)),]
 
-length(unique(x$HaulID)) ## 263
-length(unique(x[, c("ShootLong", "ShootLat")])) ## also 263
+length(unique(x$HaulID)) ## 1435
+y <- unique(x[,c("ShootLong", "ShootLat")]) ## also 1435
 
 ## all hauls where station number is NA have unique latlons, so i THINK we can use HaulID for 
 ## location level random effect....
@@ -310,7 +281,7 @@ modeldf$gear_ship_loc <- paste(modeldf$gear_ship, modeldf$location_re, sep = "_"
 modeldf <- unique(modeldf[, which(names(modeldf) %in% c("Year", "Gear", "HaulID",
                                                   "Quarter", "DepthNew", "SciName", "ShootLat", 
                                                   "ShootLong", "Total_DensAbund_N_Sqkm", 
-                                                  "SNAU", "SNSP", "SNSU", "SNWI", 
+                                                  "SNSP", "SNWI", 
                                                   "season", "fp", "gear_ship",  "gear_ship_loc"))])
 
 ## get seasonal variation in temp
@@ -320,19 +291,19 @@ modeldf <- drop_na(modeldf)
 
 ## traits -------------------------
 
-traits <- read.csv("~/Desktop/covars/traits/beukhof_fish_traits.csv")
+traits <- read.csv("covars/traits/beukhof_fish_traits.csv")
 #theirfish <- unique(traits$taxon) 
 #myfish <- unique(modeldf$SciName) ## only missing seven species from my list
 traits <- traits[traits$taxon %in% modeldf$SciName,]
-traits <- unique(traits[traits$LME %in% c(24),]) ## trait values for celtic-biscay shelf LME
+traits <- unique(traits[traits$LME %in% c(22,24),]) ## trait values for celtic-biscay shelf LME
 
 ## come back for these few if you can
 #setdiff(modeldf$SciName, x$taxon)
 
-traits <- traits[, c("taxon", "habitat","feeding.mode", 
+traits <- unique(traits[, c("taxon", "habitat","feeding.mode", 
                      "tl", "body.shape", "offspring.size", "spawning.type",
                      "age.maturity", "fecundity",
-                     "growth.coefficient", "length.max", "age.max")]
+                     "growth.coefficient", "length.max", "age.max")])
 
 list <- c()
 for (i in names(traits)){
@@ -354,11 +325,13 @@ for (i in names(Filter(is.numeric, a))) {
   gc()
 }
 
-for (i in c("tl",  "offspring.size", "age.maturity", "fecundity", "growth.coefficient", 
+for (i in c("offspring.size", "age.maturity", "fecundity", "growth.coefficient", 
             "length.max", "age.max")) {
-  a[, i] <- c(log(a[,i]))
-  a[, i] <- c(scale(a[,i]))
-}
+  a[, i] <- c(log(a[,i]))}
+
+for (i in c("tl", "offspring.size", "age.maturity", "fecundity", "growth.coefficient", 
+            "length.max", "age.max")) {
+  a[, i] <- c(scale(a[,i]))}
 
 pairs(a[, which(names(a) %in% c("tl",  "offspring.size", 
                                 "age.maturity", "fecundity", "growth.coefficient", 
@@ -400,13 +373,10 @@ for (i in names(Filter(is.numeric, modeldf))) {
 }
 
 ## transform
-## make a presense absense of fishing pressure column
-# modeldf$fp_yn[is.na(modeldf$fp)] <- 0 
-# modeldf$fp_yn[!is.na(modeldf$fp)] <- 1 
 
 abundance <- drop_na(modeldf)
 
-l <- c("DepthNew","SNSP", "SNAU", "sst_var", "fp")
+l <- c("DepthNew","SNSP", "sst_var", "fp")
 
 for (i in l) {
   abundance[, i] <- c(log(abundance[,i]))
@@ -422,33 +392,33 @@ abundance$Quarter <- as.numeric(factor(abundance$Quarter))
 ## scale
 
 for (i in c("Year", "Quarter", "DepthNew",
-            "SNAU", "SNSP", "SNSU", "SNWI", 
+             "SNSP", "SNWI", 
             "fp", "sst_var", "abund")) {
   abundance[, i] <- c(scale(abundance[,i]))
 }
 
-## make the response variable
-abundance$resp_total <- abundance$abund - min(abundance$abund)
-
-
-## abundance by location
-for(i in unique(abundance$HaulID)){
-  print(i)
-  abundance$ab_haul_total[abundance$HaulID == i] <- sum(abundance$Total_DensAbund_N_Sqkm[abundance$HaulID == i])
-}
-abundance$rel_ab <-  abundance$Total_DensAbund_N_Sqkm/abundance$ab_haul_total
-
-abundance <- drop_na(abundance) 
-
-abundance$ab <- abundance$abund-min(abundance$abund)
-abundance$rel_ab <- abundance$rel_ab - 1.727584e-08
-
-par(mfrow=c(4,4))
-for (i in names(Filter(is.numeric, abundance))) {
-  hist(abundance[,i], breaks = 1000, main = paste(i))
-  #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
-  gc()
-}
+## don't think i need this given the way i do the community weighted means
+# ## make the response variable
+# abundance$resp_total <- abundance$abund - min(abundance$abund)
+# 
+# ## abundance by location
+# for(i in unique(abundance$HaulID)){
+#   print(i)
+#   abundance$ab_haul_total[abundance$HaulID == i] <- sum(abundance$Total_DensAbund_N_Sqkm[abundance$HaulID == i])
+# }
+# abundance$rel_ab <-  abundance$Total_DensAbund_N_Sqkm/abundance$ab_haul_total
+# 
+# abundance <- drop_na(abundance) 
+# 
+# abundance$ab <- abundance$abund-min(abundance$abund)
+# abundance$rel_ab <- log(abundance$rel_ab) - mean(log(abundance$rel_ab))
+# 
+# par(mfrow=c(4,4))
+# for (i in names(Filter(is.numeric, abundance))) {
+#   hist(abundance[,i], breaks = 1000, main = paste(i))
+#   #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
+#   gc()
+# }
 
 abundance <- merge(abundance, res, by.x = c("ShootLat", "ShootLong"), by.y = c("y", "x"))
 
@@ -458,81 +428,82 @@ abundance <- merge(abundance, res, by.x = c("ShootLat", "ShootLong"), by.y = c("
 
 
 ## ordiantation object
-or <- metaMDS(a[,c("tl", "offspring.size","age.maturity", "fecundity", 
-                   "growth.coefficient", "length.max", "age.max")], distance = "jaccard")
 
-## Nonmetric Multidimensional Scaling of compositional dissimilarity by treatment
-ordiplot(pc, type = "n", main = NULL)
-ordiellipse(pc, groups = b$feeding.mode, draw = "polygon", lty = 1, 
-            col = cl,
-            alpha = 0.2)
-points(pc[["x"]], display = "sites", 
-       pch = c(16, 8, 17, 18, 20)[as.numeric(b$feeding.mode)], 
-       col = cl[as.numeric(b$feeding.mode)], 
-       cex =1.2)
-
-legend("topright", legend = levels(b$feeding.mode), pch = c(16, 8, 17, 18, 20), 
-       col = cl,
-       bty = "n", cex = 1) # displays symbol and colour legend
-legend("topleft", legend = "A", bty = "n")
+# or <- metaMDS(a[,c("tl", "offspring.size","age.maturity", "fecundity", 
+#                    "growth.coefficient", "length.max", "age.max")], distance = "jaccard")
+# 
+# ## Nonmetric Multidimensional Scaling of compositional dissimilarity by treatment
+# ordiplot(pc, type = "n", main = NULL)
+# ordiellipse(pc, groups = b$feeding.mode, draw = "polygon", lty = 1, 
+#            # col = cl,
+#             alpha = 0.2)
+# points(pc[["x"]], display = "sites", 
+#        pch = c(16, 8, 17, 18, 20)[as.numeric(b$feeding.mode)], 
+#        col = cl[as.numeric(b$feeding.mode)], 
+#        cex =1.2)
+# 
+# legend("topright", legend = levels(b$feeding.mode), pch = c(16, 8, 17, 18, 20), 
+#        col = cl,
+#        bty = "n", cex = 1) # displays symbol and colour legend
+# legend("topleft", legend = "A", bty = "n")
 
 
 ## archetype analysis -------------------
 
-#range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+# #range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+# 
+# # a$PC1 <- (pc[["x"]][,1])
+# # a$PC2 <- (pc[["x"]][,2])
+# # a$PC3 <- (pc[["x"]][,3])
 
-# a$PC1 <- (pc[["x"]][,1])
-# a$PC2 <- (pc[["x"]][,2])
-# a$PC3 <- (pc[["x"]][,3])
-
-a$PC1 <- scale(pc[["x"]][,1])
-a$PC2 <- scale(pc[["x"]][,2])
-a$PC3 <- scale(pc[["x"]][,3])
-
-
-arch2 <- archetypes(a[,c("tl", "offspring.size",  
-                         "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-                         "age.max")],  2)
-
-arch3 <- archetypes(a[,c("tl", "offspring.size",  
-                          "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-                          "age.max")], 3)
-
-arch4 <- archetypes(a[,c("tl", "offspring.size",  
-                         "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-                         "age.max")], 4)
-
-xyplot(arch2, a[,c("tl", "offspring.size",  
-                  "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-                  "age.max")], chull = chull(a[,c("tl", "offspring.size",  
-                                                  "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-                                                  "age.max")]))
-
-par(mfrow=c(4,4))
-for (i in names(Filter(is.numeric, a))) {
-  hist(a[,i], breaks = 1000, main = paste(i))
-  #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
-  gc()
-}
-
-save <- a
-par(mfrow =c(1,1))
-a$PC2 <- a$PC2 + 1
-xyplot(arch4, a[, c("PC1", "PC2")]) #, chull = chull(a[, c("PC1", "PC2")]))
-xyplot(arch4, a[, c("PC2", "PC3")]) #, chull = chull(a[, c("PC1", "PC2")]))
-xyplot(arch4, a[, c("age.maturity", "fecundity")]) #, chull = chull(a[, c("PC1", "PC2")]))
-xyplot(arch4, a[, c("tl", "fecundity")]) #, chull = chull(a[, c("PC1", "PC2")]))
-
-
-xyplot(arch4, a[, c("PC1", "PC2")], adata.show = TRUE)
-
-as <- stepArchetypes(data = a[,c("tl", "offspring.size",  
-                                 "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-                                 "age.max")], k = 1:10)
-rss(as)
-screeplot(as)
-
-ternaryplot(coef(arch4, 'alphas'))
+# a$PC1 <- scale(pc[["x"]][,1])
+# a$PC2 <- scale(pc[["x"]][,2])
+# a$PC3 <- scale(pc[["x"]][,3])
+# 
+# 
+# arch2 <- archetypes(a[,c("tl", "offspring.size",  
+#                          "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+#                          "age.max")],  2)
+# 
+# arch3 <- archetypes(a[,c("tl", "offspring.size",  
+#                           "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+#                           "age.max")], 3)
+# 
+# arch4 <- archetypes(a[,c("tl", "offspring.size",  
+#                          "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+#                          "age.max")], 4)
+# 
+# xyplot(arch2, a[,c("tl", "offspring.size",  
+#                   "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+#                   "age.max")], chull = chull(a[,c("tl", "offspring.size",  
+#                                                   "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+#                                                   "age.max")]))
+# 
+# par(mfrow=c(4,4))
+# for (i in names(Filter(is.numeric, a))) {
+#   hist(a[,i], breaks = 1000, main = paste(i))
+#   #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
+#   gc()
+# }
+# 
+# save <- a
+# par(mfrow =c(1,1))
+# a$PC2 <- a$PC2 + 1
+# xyplot(arch4, a[, c("PC1", "PC2")]) #, chull = chull(a[, c("PC1", "PC2")]))
+# xyplot(arch4, a[, c("PC2", "PC3")]) #, chull = chull(a[, c("PC1", "PC2")]))
+# xyplot(arch4, a[, c("age.maturity", "fecundity")]) #, chull = chull(a[, c("PC1", "PC2")]))
+# xyplot(arch4, a[, c("tl", "fecundity")]) #, chull = chull(a[, c("PC1", "PC2")]))
+# 
+# 
+# xyplot(arch4, a[, c("PC1", "PC2")], adata.show = TRUE)
+# 
+# as <- stepArchetypes(data = a[,c("tl", "offspring.size",  
+#                                  "age.maturity", "fecundity", "growth.coefficient", "length.max", 
+#                                  "age.max")], k = 1:10)
+# rss(as)
+# screeplot(as)
+# 
+# ternaryplot(coef(arch4, 'alphas'))
 
 
 ## cwm ------------
@@ -652,18 +623,18 @@ for (i in names(Filter(is.numeric, cwm))) {
 # setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 # source("R_Scripts/14a_1cwm_analysis.R")
 # Sys.sleep(60)
-# gc
+# gc()
 # source("R_Scripts/14b_5scale_analysis.R")
 # Sys.sleep(60)
-# gc
+# gc()
 # setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 # source("R_Scripts/14c_10scale_analysis.R")
 # Sys.sleep(60)
-# gc
+# gc()
 # setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 # source("R_Scripts/14d_20scale_analysis.R")
 # Sys.sleep(60)
-# gc
+# gc()
 # setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 # source("R_Scripts/14e_50scale_analysis.R")
 
@@ -672,78 +643,3 @@ for (i in names(Filter(is.numeric, cwm))) {
 
 
 
-
-
-
-
-
-## further things for the future ------------------
-
-## presense absense ---------
-
-# length(unique(modeldf$HaulID))
-# 
-# occ <- modeldf[, c("SciName", "Total_DensAbund_N_Sqkm", "HaulID")]
-# 
-# occ <- as.data.frame(cbind(rep(unique(modeldf$SciName), length(unique(modeldf$SciName)))),
-#                      rep(1:length(unique(modeldf$SciName))))
-# 
-# ##  get occurrence for all species in each Haul
-# occ <- as.data.frame(rep(1:250, length(unique(modeldf$HaulID))))
-# occ <- as.data.frame(occ[order(occ[,1]),])
-# occ$HaulID <- rep(unique(modeldf$HaulID), length(unique(modeldf$SciName)))
-# occ <- as.data.frame(occ[order(occ[,2]),])
-# occ$SciName <- rep(unique(modeldf$SciName), length(unique(modeldf$HaulID)))
-# 
-# occ$pres_abs <- 0
-# 
-# for(i in unique(modeldf$SciName)){
-#   for(j in unique(modeldf$HaulID)){
-#     if(is.numeric(modeldf$Total_DensAbund_N_Sqkm[modeldf$SciName == i & modeldf$HaulID == j])){
-#     occ$pres_abs[occ$SciName == i & occ$HaulID == j] <- 1}
-#     else {occ$pres_abs[occ$SciName == i & occ$HaulID == j] <- 0}
-#   }
-# }
-# 
-# save <- occ
-# 
-# occ <- occ[,-1]
-# occ <- merge(occ, modeldf, by = c("HaulID"), all.x =T)
-# occ$pres_abs[!is.na(occ$Total_DensAbund_N_Sqkm)] <- 1
-# occ$pres_abs[is.na(occ$Total_DensAbund_N_Sqkm)] <- 0
-# 
-# names(occ) <- c("SciName", "HaulID", "order", "pres_abs")
-# 
-# occ <- merge(occ, modeldf, by = c("SciName", "HaulID"), all.x =T)
-# 
-
-
-
-
-# pc <- prcomp(abundance[,c("SNSP", "SNWI","sst_var")])
-# print(pc)
-# summary(pc)
-# 
-# pairs.panels(pc$x,
-#              gap=0,
-#              bg = cl[a$body.shape],
-#              pch=21)
-
-
-#b1 <- 
-# g1$res <- as.numeric(g1$res)
-#   ggplot(g1,  aes(term, estimate, colour = main1, size = (log(res)+1))) +
-#       geom_hline(yintercept= 0, alpha = 0.8) +
-#   geom_line() +
-#   geom_pointrange(data = g1,
-#                     aes(term, estimate, colour = main1, ymin= conf.low, ymax= conf.high, size = (log(res)+1)),
-#                     position = position_dodge(0.5))  + #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
-# geom_point(data = g1,
-#                 aes(term, estimate, colour = main2, size = (log(res)+1)), position = position_dodge(0.5))  +
-# scale_color_manual(values = c("SNSP" = "#414487FF",
-#                               "SNWI" = "#2A788EFF",
-#                               "sst_var" = "#7AD151FF",
-#                               "DepthNew" =  "orange",
-#                               "fp" = "#FDE725FF",
-#                               "Quarter" = "light grey",
-#                               "Year" = "dark grey"))

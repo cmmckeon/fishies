@@ -7,7 +7,7 @@
 # set working directory
 setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 
-list<-c("lme4", "plyr",  "tidyverse", "glmmTMB") #, "DHARMa")
+list<-c("lme4", "plyr",  "tidyverse", "glmmTMB") 
 
 lapply(list, require, character.only=T)
 #lapply(list, citation)
@@ -34,7 +34,7 @@ PC1_null <- glmmTMB(PC1_cwm ~  1 +
                                              profile = FALSE, collect = FALSE),
                      data = cwm)
 
-saveRDS(PC1_null, "cwm_models/PC1_null.rds")
+saveRDS(PC1_null, "cwm_1/PC1_null.rds")
 
 # full model
 # PC1_full <- glmmTMB(PC1_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
@@ -67,7 +67,7 @@ PC1_2way <- glmmTMB(PC1_cwm ~
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
 
-saveRDS(PC1_2way, "cwm_models/PC1_2way.rds")
+saveRDS(PC1_2way, "cwm_1/PC1_2way.rds")
 
 ## PC2 ------------
 
@@ -77,7 +77,7 @@ PC2_null <- glmmTMB(PC2_cwm ~  1 +
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                      data = cwm)
-saveRDS(PC2_null, "cwm_models/PC2_null.rds")
+saveRDS(PC2_null, "cwm_1/PC2_null.rds")
 
 # full model
 # PC2_full <- glmmTMB(PC2_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
@@ -108,7 +108,7 @@ PC2_2way <- glmmTMB(PC2_cwm ~
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
-saveRDS(PC2_2way, "cwm_models/PC2_2way.rds")
+saveRDS(PC2_2way, "cwm_1/PC2_2way.rds")
 
 ## PC3 ------------
 
@@ -119,7 +119,7 @@ PC3_null <- glmmTMB(PC3_cwm ~  1 +
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
 
-saveRDS(PC3_null, "cwm_models/PC3_null.rds")
+saveRDS(PC3_null, "cwm_1/PC3_null.rds")
 
 # full model
 # PC3_full <- glmmTMB(PC3_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
@@ -150,7 +150,7 @@ PC3_2way <- glmmTMB(PC3_cwm ~
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
-saveRDS(PC3_2way, "cwm_models/PC3_2way.rds")
+saveRDS(PC3_2way, "cwm_1/PC3_2way.rds")
 
 
 

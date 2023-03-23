@@ -5,7 +5,8 @@ date: "15/08/2022"
 output:
   word_document: default
   pdf_document: default
-  html_document: default
+  html_document: default 
+always_allow_html: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -66,10 +67,11 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 mydata <- readRDS("Data_modeldf_abundance.rds")
 cwm <- readRDS("Data_cwm_PCA.rds")
 a <- readRDS("Data_pca_traits.rds")
+sp_co <- readRDS("Data_sp_co.rds")
 ```
 
 ```{r}
-setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates/cwm_models")
+setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates/cwm_1")
 pc1_null <- readRDS("PC1_null.rds")
 pc2_null <- readRDS("PC2_null.rds")
 pc3_null <- readRDS("PC3_null.rds")
@@ -229,21 +231,21 @@ g_pc3$main <- factor(g_pc3$main)
 g_pc1$main1 <-  gsub(":.*", "", g_pc1$main, ignore.case = TRUE)
 g_pc1$main2 <-  gsub(".*:", "", g_pc1$main, ignore.case = TRUE)
 
-g_pc1$term <- factor(g_pc1$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+g_pc1$term <- factor(g_pc1$term, levels = c("fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp", "Depth", "SNSP", "SNWI", "sst_var",
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 
 g_pc2$main1 <-  gsub(":.*", "", g_pc2$main, ignore.case = TRUE)
 g_pc2$main2 <-  gsub(".*:", "", g_pc2$main, ignore.case = TRUE)
 
-g_pc2$term <- factor(g_pc2$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+g_pc2$term <- factor(g_pc2$term, levels = c("fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp", "Depth", "SNSP", "SNWI", "sst_var", 
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 
 g_pc3$main1 <-  gsub(":.*", "", g_pc3$main, ignore.case = TRUE)
 g_pc3$main2 <-  gsub(".*:", "", g_pc3$main, ignore.case = TRUE)
 
-g_pc3$term <- factor(g_pc3$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+g_pc3$term <- factor(g_pc3$term, levels = c("fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp", "Depth", "SNSP", "SNWI", "sst_var", 
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 
@@ -277,7 +279,7 @@ a1 <- ggplot(g_pc1,  aes(term, estimate)) +
                     position = position_dodge(0.5), size = 1.5) + 
     geom_point(data = g_pc1, 
                     aes(term, estimate, colour = main2),
-                    position = position_dodge(0.5), size = 4) +  ylim(-0.15, 0.12) +  
+                    position = position_dodge(0.5), size = 4) +
    labs(colour = "Model terms", y = "Effect size PC1") + 
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
@@ -300,7 +302,7 @@ a2 <- ggplot(g_pc2,  aes(term, estimate)) +
                     position = position_dodge(0.5), size = 1.5) +
     geom_point(data = g_pc2,
                     aes(term, estimate, colour = main2),
-                    position = position_dodge(0.5), size = 4) +  ylim(-0.15, 0.12) +  
+                    position = position_dodge(0.5), size = 4) +   
      labs(colour = "Model terms", y = "Effect size PC2") + 
   scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
@@ -324,7 +326,7 @@ a3 <- ggplot(g_pc3,  aes(term, estimate)) +
                     position = position_dodge(0.5), size = 1.5) +
     geom_point(data = g_pc3,
                     aes(term, estimate, colour = main2),
-                    position = position_dodge(0.5), size = 4) + ylim(-0.15, 0.12) +  
+                    position = position_dodge(0.5), size = 4) + 
      labs(colour = "Model terms", y = "Effect size PC3") + 
     scale_color_manual(values = c("SNSP" = "#414487FF",
                                   "SNWI" = "#2A788EFF",
@@ -340,9 +342,10 @@ a3 <- ggplot(g_pc3,  aes(term, estimate)) +
 ## stack 'em
 ```{r fig.height= 15, fig.width= 10}
 
-a1 <- a1 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
-a2 <- a2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
-a3 <- a3 + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), axis.title.x = element_blank()) 
+a1 <- a1 + theme(axis.text.x = element_blank(), axis.title.x = element_blank()) + ylim(-0.18, 0.115) 
+a2 <- a2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank()) + ylim(-0.18, 0.115) 
+a3 <- a3 + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), 
+                 axis.title.x = element_blank()) + ylim(-0.18, 0.115) 
 
 resp <-ggarrange(a1, a2, a3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, common.legend = TRUE, legend = "bottom")
 # annotate_figure(resp, top = text_grob("Effects of climate and human footprint on range metrics", #color = "black", 
@@ -444,21 +447,21 @@ g3$main <- factor(g3$main)
 g1$main1 <-  gsub(":.*", "", g1$main, ignore.case = TRUE)
 g1$main2 <-  gsub(".*:", "", g1$main, ignore.case = TRUE)
 
-g1$term <- factor(g1$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+g1$term <- factor(g1$term, levels = c("fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp", "Depth", "SNSP", "SNWI", "sst_var", 
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 
 g2$main1 <-  gsub(":.*", "", g2$main, ignore.case = TRUE)
 g2$main2 <-  gsub(".*:", "", g2$main, ignore.case = TRUE)
 
-g2$term <- factor(g2$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+g2$term <- factor(g2$term, levels = c("fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp", "Depth", "SNSP", "SNWI", "sst_var", 
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 
 g3$main1 <-  gsub(":.*", "", g3$main, ignore.case = TRUE)
 g3$main2 <-  gsub(".*:", "", g3$main, ignore.case = TRUE)
 
-g3$term <- factor(g3$term, levels = c("Depth", "SNSP", "SNWI", "sst_var", "fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp",
+g3$term <- factor(g3$term, levels = c("fp", "Depth:fp", "SNSP:fp", "SNWI:fp",  "sst_var:fp", "Depth", "SNSP", "SNWI", "sst_var", 
                                              "SNSP:SNWI", "SNSP:sst_var", "SNWI:sst_var", "SNSP:Depth",  "SNWI:Depth", "sst_var:Depth", 
                                               "Quarter", "Year"))
 ## create column for grey bars
@@ -479,65 +482,6 @@ g3$cat <- as.numeric(g3$term)
 g1$res <- as.numeric(as.character(g1$res))/10
 g2$res <- as.numeric(as.character(g2$res))/10
 g3$res <- as.numeric(as.character(g3$res))/10
-
-```
-
-
-```{r, fig.width= 20, fig.height= 7}
-# ggplot(g_pc1,  aes(term, estimate)) +
-#   
-#   geom_pointrange(data = g_pc1, shape = 1,
-#                     aes(term, estimate, colour = main1, 
-#                         ymin= conf.low, ymax= conf.high),
-#                     position = position_dodge(0.5), size = 1.5) + 
-#     geom_point(data = g_pc1, 
-#                     aes(term, estimate, colour = main2),
-#                     position = position_dodge(0.5), size = 4) + ylim(-0.075, 0.11) +      
-#    labs(colour = "Model terms", y = "Effect size PC1") + 
-#   scale_color_manual(values = c("SNSP" = "#414487FF",
-#                                   "SNWI" = "#2A788EFF",
-#                                   "sst_var" = "#7AD151FF",
-#                                   "Depth" =  "orange",
-#                                   "fp" = "#FDE725FF",
-#                                   "Quarter" = "light grey",
-#                                   "Year" = "dark grey"))
-# 
-#   ggplot(g1,  aes(term, estimate)) +
-#     geom_hline(yintercept= 0, alpha = 0.8) +
-# geom_line() +
-# geom_pointrange(data = g1, #shape = 1,
-#                   aes(term, estimate, colour = main1, ymin= conf.low, ymax= conf.high, shape = res),
-#                   position = position_dodge(0.5), size = 1.5) +
-#   geom_point(data = g1,
-#                   aes(term, estimate, colour = main2, shape = factor(res)),
-#              position = position_dodge(0.5), size = 4) +
-#   scale_color_manual(values = c("SNSP" = "#414487FF",
-#                                 "SNWI" = "#2A788EFF",
-#                                 "sst_var" = "#7AD151FF",
-#                                 "Depth" =  "orange",
-#                                 "fp" = "#FDE725FF",
-#                                 "Quarter" = "light grey",
-#                                 "Year" = "dark grey"))
-
- # ggplot(g1,  aes(term, estimate, group = res)) +
- #  geom_hline(yintercept= 0, alpha = 0.8) +
- #           geom_rect(data = g1[g1$rep != "white",],
- #             aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
- #            colour = NA, alpha = 0.01) +
- #  geom_pointrange(data = g1, shape = 1,
- #                    aes(term, estimate, colour = main1, size = res,
- #                        ymin= conf.low, ymax= conf.high),
- #                    position = position_dodge(0.7)) +
- #     geom_point(data = g1,
- #                    aes(term, estimate, colour = main2, size = res),
- #                    position = position_dodge(0.7)) +
- #  scale_color_manual(values = c("SNSP" = "#414487FF",
- #                                "SNWI" = "#2A788EFF",
- #                                "sst_var" = "#7AD151FF",
- #                                "Depth" =  "orange",
- #                                "fp" = "#FDE725FF",
- #                                "Quarter" = "light grey",
- #                                "Year" = "dark grey"))
 
 ```
 
@@ -610,118 +554,16 @@ b3 <- ggplot(g3,  aes(term, estimate, group = res)) +
                                   "Year" = "purple"))
 ```
 
-
-```{r eval=FALSE, include=FALSE}
-b1 <- ggplot(g1,  aes(term, estimate, colour = res)) +
-      geom_hline(yintercept= 0, alpha = 0.8) +
-  geom_line() +
-  geom_pointrange(data = g1,
-                    aes(term, estimate, colour = res, ymin= conf.low, ymax= conf.high),
-                    position = position_dodge(0.5), size = 1) #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
-
-b2 <- ggplot(g2,  aes(term, estimate, colour = res)) +
-      geom_hline(yintercept= 0, alpha = 0.8) +
-  geom_line() +
-  geom_pointrange(data = g2,
-                    aes(term, estimate, colour = res, ymin= conf.low, ymax= conf.high),
-                    position = position_dodge(0.5), size = 1) #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
-
-b3 <- ggplot(g3,  aes(term, estimate, colour = res)) +
-      geom_hline(yintercept= 0, alpha = 0.8) +
-  geom_line() +
-  geom_pointrange(data = g3,
-                    aes(term, estimate, colour = res, ymin= conf.low, ymax= conf.high),
-                    position = position_dodge(0.5), size = 1) #+ ylim(-0.25, 0.25) #+ ylim(-0.15, 0.25)
-```
-
 ```{r, fig.width= 14, fig.height= 20}
-b1 <- b1 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
-b2 <- b2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
-b3 <- b3 + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), axis.title.x = element_blank()) 
+b1 <- b1 + theme(axis.text.x = element_blank(), axis.title.x = element_blank()) + ylim(-0.33, 0.22) 
+b2 <- b2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank()) + ylim(-0.33, 0.22) 
+b3 <- b3 + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), axis.title.x = element_blank()) + ylim(-0.33, 0.22) 
 
 resp <-ggarrange(b1, b2, b3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, common.legend = TRUE, legend = "bottom")
-# annotate_figure(resp, top = text_grob("Effects of climate and human footprint on range metrics", #color = "black", 
-#                                       face = "bold", size = 20)
+
 resp
 ```
 
-## shape-based plot of all resolution models
-
-```{r fig.width= 14, fig.height= 20}
-# b1 <- ggplot(g1,  aes(term, estimate, group = res)) +
-#     geom_hline(yintercept= 0, alpha = 0.8) +
-#              geom_rect(data = g1[g1$rep != "white",],
-#              aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
-#             colour = NA, alpha = 0.01) +
-# geom_pointrange(data = g1, 
-#                   aes(term, estimate, colour = main1, ymin= conf.low, ymax= conf.high, shape = factor(res)),
-#                   position = position_dodge(0.9), size = 1.5) +
-#   geom_point(data = g1,
-#                   aes(term, estimate, colour = main2, shape = factor(res)),
-#              position = position_dodge(0.9), size = 4) +
-#   labs(colour = "Model terms", y = "Effect size PC1", group = "resolution") + 
-#   scale_color_manual(values = c("SNSP" = "#414487FF",
-#                                 "SNWI" = "#2A788EFF",
-#                                 "sst_var" = "#7AD151FF",
-#                                 "Depth" =  "orange",
-#                                 "fp" = "#FDE725FF",
-#                                 "Quarter" = "light grey",
-#                                 "Year" = "dark grey"))
-# 
-# b2 <- ggplot(g2,  aes(term, estimate, group = res)) +
-#       geom_hline(yintercept= 0, alpha = 0.8) +
-#              geom_rect(data = g2[g2$rep != "white",],
-#              aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
-#             colour = NA, alpha = 0.01) +
-#   geom_pointrange(data = g2, 
-#                     aes(term, estimate, colour = main1,ymin= conf.low, ymax= conf.high, shape = factor(res)),
-#                     position = position_dodge(0.9), size = 1.5) +
-#     geom_point(data = g2,
-#                   aes(term, estimate, colour = main2, shape = factor(res)),
-#                 position = position_dodge(0.9), size = 4) +
-#   labs(colour = "Model terms", y = "Effect size PC2", group = "resolution") + 
-#     scale_color_manual(values = c("SNSP" = "#414487FF",
-#                                   "SNWI" = "#2A788EFF",
-#                                   "sst_var" = "#7AD151FF",
-#                                   "Depth" =  "orange",
-#                                   "fp" = "#FDE725FF",
-#                                   "Quarter" = "light grey",
-#                                   "Year" = "dark grey"))
-# 
-# 
-# b3 <- ggplot(g3,  aes(term, estimate, group = res)) +
-#       geom_hline(yintercept= 0, alpha = 0.8) +
-#              geom_rect(data = g3[g3$rep != "white",],
-#              aes(NULL, NULL, xmin = cat - 0.5, xmax = cat + 0.5, ymin = -Inf, ymax = Inf, alpha = 0.01),
-#             colour = NA, alpha = 0.01) +
-#   geom_pointrange(data = g3, 
-#                     aes(term, estimate, colour = main1,ymin= conf.low, ymax= conf.high, shape = factor(res)),
-#                     position = position_dodge(0.9), size = 1.5) +
-#     geom_point(data = g3,
-#                   aes(term, estimate, colour = main2, shape = factor(res)),
-#                 position = position_dodge(0.9), size = 4) +
-#   labs(colour = "Model terms", y = "Effect size PC3", group = "resolution") + 
-#     scale_color_manual(values = c("SNSP" = "#414487FF",
-#                                   "SNWI" = "#2A788EFF",
-#                                   "sst_var" = "#7AD151FF",
-#                                   "Depth" =  "orange",
-#                                   "fp" = "#FDE725FF",
-#                                   "Quarter" = "light grey",
-#                                   "Year" = "dark grey"))
-```
-
-```{r eval=FALSE, include=FALSE}
-b1 <- b1 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
-b2 <- b2 + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
-b3 <- b3 + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), axis.title.x = element_blank()) 
-
-resp <-ggarrange(b1, b2, b3, labels = c("A", "B", "C"), nrow = 3, ncol = 1, common.legend = TRUE, legend = "bottom")
-# annotate_figure(resp, top = text_grob("Effects of climate and human footprint on range metrics", #color = "black", 
-#                                       face = "bold", size = 20)
-resp
-```
-
-##Start
 
 ## tabulate model outputs
 ```{r}
@@ -836,15 +678,18 @@ autoplot(pc, data = a,
 
 read in map data
 ```{r}
-tmp_raster <- stack("~/Desktop/covars/sst_aquamodis_seasonal_2009_2021/AQUA_MODIS.20081221_20090320.L3m.SNWI.SST.x_sst.nc", varname="sst")
+setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+## sst
+tmp_raster <- stack("covars/sst_aquamodis_seasonal_2008_2021_NEA/AQUA_MODIS.20080321_20080620.L3m.SNSP.SST.x_sst.nc", varname="sst")
 tmp_raster <- brick(tmp_raster, varname="sst")
-fp <- read.dbf("~/Desktop/covars/fp_ICES_2009_2020/shapefiles/total-2020.dbf")
+tmp_raster <- crop(tmp_raster, extent(dput(c(min(sp_co$x)-2, max(sp_co$x)+2, min(sp_co$y)-2, max(sp_co$y)+2))))
+
+## fishing pressure
+fp <- read.dbf("covars/fp_ICES_2009_2020/shapefiles/total-2020.dbf")
   f <- fp[, c("lon","lat", "kWH_upp")]
-  ## subset by North East Atlantic box
-  f <- f[f$lon <= tmp_raster@extent@xmax  & f$lon >= tmp_raster@extent@xmin & f$lat <= tmp_raster@extent@ymax  & f$lat >= tmp_raster@extent@ymin,]
   f <- rasterFromXYZ(f, crs = tmp_raster@crs)
   f <- projectRaster(f, tmp_raster) 
-setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+## depth
 depth <- readRDS("./Regional Boundaries Maps and Data/papoue_bathy_map.rds")
 depth <- as.raster(depth)
 depth <- projectRaster(depth, tmp_raster) 
@@ -858,6 +703,7 @@ sp_co <- readRDS("Data_sp_co.rds")
 t50 <- aggregate(tmp_raster, 50)
 fp50 <- aggregate(f, 50)
 d50 <- aggregate(depth, 50)
+
 ```
 
 
@@ -879,23 +725,20 @@ plot(land, col = "grey", add =T,
 
 plot(land, col = "grey", #add =T, 
      ext=extent(tmp_raster),xaxs="i",yaxs="i")
-points(x$x, x$y, cex = 5, pch  = 0)
+points(x$x, x$y, cex = 4, pch  = 0)
 plot(land, col = "grey", add =T, 
      ext=extent(tmp_raster),xaxs="i",yaxs="i")
 
 plot(land, col = "grey", #add =T, 
      ext=extent(tmp_raster),xaxs="i",yaxs="i")
 points(-15, 55.5, cex = 0.2, pch  = 0, col = "black",  lwd = 2)
-points(-15, 55.5, cex = 5, pch  = 0, col = "black",  lwd = 2)
-points(-15, 54, cex = 5*(218/250), pch  = 0, col = "orange",  lwd = 2)
-points(-15, 52.5, cex = 5*(197/250), pch  = 0, col = "orange",  lwd = 2)
-points(-15, 51, cex = 5*(183/250), pch  = 0, col = "orange",  lwd = 2)
-points(-15, 49.5, cex = 5*(210/250), pch  = 0, col = "orange",  lwd = 2)
-points(-15, 48, cex = 5*(138/250), pch  = 0, col = "orange",  lwd = 2)
-points(-15, 46.5, cex = 5*(150/250), pch  = 0, col = "red",  lwd = 2)
-
-
-#scalebar(250, xy=NULL, type='bar', divs=2, label = "0  20  40",adj=c(1, 1), cex = 0.5)
+points(-15, 55.5, cex = 4, pch  = 0, col = "black",  lwd = 2)
+points(-15, 54, cex = 4*(218/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 52.5, cex = 4*(197/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 51, cex = 4*(183/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 49.5, cex = 4*(210/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 48, cex = 4*(138/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 46.5, cex = 4*(150/250), pch  = 0, col = "red",  lwd = 2)
 
 ```
 
@@ -905,21 +748,38 @@ pal <- colorRampPalette(viridis_pal(option = "D", direction = -1)(5))
 ```
 
 ```{r fig.width= 4, fig.height= 8}
-par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n", mar = c(0.5,0,0.5,0.5))
+par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n", mar = c(0,0,0,0))
 
-plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE)
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
-plot(t50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50))
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
-plot(-depth, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE)
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
-plot(-d50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50))
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
-plot(f, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE)
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
-plot(fp50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50))
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE)
+plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i",  legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(t50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50),   xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(-depth, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50),  legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i",  legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(-d50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(f, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE,xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(fp50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
+```
 
+
+
+```{r}
+par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n")
+plot(tmp_raster, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i",  legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(t50, xaxs="i",yaxs="i", col = pal(50), xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(-depth, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i",  legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(-d50, xaxs="i",yaxs="i", col = pal(50), xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(f, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(fp50, xaxs="i",yaxs="i", col = pal(50), xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
 ```
 
 ```{r}
@@ -944,7 +804,8 @@ x <- unique(cwm[, c("Year", "HaulID", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Gear", "
 
 ## home ranges
 ```{r}
-hr <- read.csv("~/Desktop/covars/probst2021_northseahomeranges.csv")
+setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
+hr <- read.csv("covars/probst2021_northseahomeranges.csv")
 hr <- drop_na(hr[,c("Species", "Area.CCA.w", "Area.CCA.S", "Area.CCA.WS")])
 hr <- hr[1:53,]
 
@@ -1107,10 +968,6 @@ a1
 a2
 a3
 ```
-
-
-
-
 
 
 
