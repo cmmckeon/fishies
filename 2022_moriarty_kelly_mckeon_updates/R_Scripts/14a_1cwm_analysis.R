@@ -121,14 +121,6 @@ PC3_null <- glmmTMB(PC3_cwm ~  1 +
 
 saveRDS(PC3_null, "cwm_1/PC3_null.rds")
 
-# full model
-# PC3_full <- glmmTMB(PC3_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-#                       (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
-#                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-#                                              profile = FALSE, collect = FALSE),
-#                     data = cwm)
-# saveRDS(PC3_full, "cwm_models/PC3_full.rds")
-
 ## 2 way
 PC3_2way <- glmmTMB(PC3_cwm ~ 
                       SNSP*SNWI +
@@ -152,6 +144,77 @@ PC3_2way <- glmmTMB(PC3_cwm ~
                     data = cwm)
 saveRDS(PC3_2way, "cwm_1/PC3_2way.rds")
 
+
+# ## year_interaction
+# PC1_year_interaction <- glmmTMB(PC1_cwm ~ 
+#                                   SNSP*SNWI +
+#                                   SNSP*sst_var +
+#                                   SNSP*DepthNew +
+#                                   SNSP*fp +
+#                                   
+#                                   SNWI*sst_var +
+#                                   SNWI*DepthNew +
+#                                   SNWI*fp +
+#                                   
+#                                   sst_var*DepthNew +
+#                                   sst_var*fp +
+#                                   
+#                                   DepthNew*fp +
+#                                   Year*fp +
+#                                   
+#                                   Quarter +
+#                                   (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+#                                 control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+#                                                          profile = FALSE, collect = FALSE),
+#                                 data = cwm)
+# 
+# PC2_year_interaction <- glmmTMB(PC2_cwm ~ 
+#                                   SNSP*SNWI +
+#                                   SNSP*sst_var +
+#                                   SNSP*DepthNew +
+#                                   SNSP*fp +
+#                                   
+#                                   SNWI*sst_var +
+#                                   SNWI*DepthNew +
+#                                   SNWI*fp +
+#                                   
+#                                   sst_var*DepthNew +
+#                                   sst_var*fp +
+#                                   
+#                                   DepthNew*fp +
+#                                   Year*fp +
+#                                   
+#                                   Quarter +
+#                                   (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+#                                 control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+#                                                          profile = FALSE, collect = FALSE),
+#                                 data = cwm)
+# 
+# PC3_year_interaction <- glmmTMB(PC3_cwm ~ 
+#                                   SNSP*SNWI +
+#                                   SNSP*sst_var +
+#                                   SNSP*DepthNew +
+#                                   SNSP*fp +
+#                                   
+#                                   SNWI*sst_var +
+#                                   SNWI*DepthNew +
+#                                   SNWI*fp +
+#                                   
+#                                   sst_var*DepthNew +
+#                                   sst_var*fp +
+#                                   
+#                                   DepthNew*fp +
+#                                   Year*fp +
+#                                   
+#                                   Quarter +
+#                                   (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+#                                 control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+#                                                          profile = FALSE, collect = FALSE),
+#                                 data = cwm)
+# 
+# saveRDS(PC1_year_interaction, "cwm_1/PC1_year_interaction.rds")
+# saveRDS(PC2_year_interaction, "cwm_1/PC2_year_interaction.rds")
+# saveRDS(PC3_year_interaction, "cwm_1/PC3_year_interaction.rds")
 
 
 ## end ---------

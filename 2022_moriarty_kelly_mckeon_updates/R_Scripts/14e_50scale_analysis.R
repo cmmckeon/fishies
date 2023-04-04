@@ -172,6 +172,69 @@ PC3_2way <- glmmTMB(PC3_cwm ~
                     data = cwm)
 saveRDS(PC3_2way, "PC3_2way.rds")
 
+## year_interaction
+PC1_year_interaction <- glmmTMB(PC1_cwm ~
+                                  SNSP*SNWI +
+                                  SNSP*sst_var +
+                                  SNSP*DepthNew +
+                                  SNSP*fp +
+                                  
+                                  SNWI*sst_var +
+                                  SNWI*DepthNew +
+                                  SNWI*fp +
+                                  
+                                  sst_var*DepthNew +
+                                  sst_var*fp +
+                                  
+                                  DepthNew*fp +
+                                  Year*fp +
+                                  
+                                  Quarter,
+                                control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+                                                         profile = FALSE, collect = FALSE),
+                                data = cwm)
+
+PC2_year_interaction <- glmmTMB(PC2_cwm ~
+                                  SNSP*SNWI +
+                                  SNSP*sst_var +
+                                  SNSP*DepthNew +
+                                  SNSP*fp +
+                                  
+                                  SNWI*sst_var +
+                                  SNWI*DepthNew +
+                                  SNWI*fp +
+                                  
+                                  sst_var*DepthNew +
+                                  sst_var*fp +
+                                  
+                                  DepthNew*fp +
+                                  Year*fp +
+                                  
+                                  Quarter,
+                                control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+                                                         profile = FALSE, collect = FALSE),
+                                data = cwm)
+
+PC3_year_interaction <- glmmTMB(PC3_cwm ~
+                                  SNSP*SNWI +
+                                  SNSP*sst_var +
+                                  SNSP*DepthNew +
+                                  SNSP*fp +
+                                  
+                                  SNWI*sst_var +
+                                  SNWI*DepthNew +
+                                  SNWI*fp +
+                                  
+                                  sst_var*DepthNew +
+                                  sst_var*fp +
+                                  
+                                  DepthNew*fp +
+                                  Year*fp +
+                                  
+                                  Quarter,
+                                control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+                                                         profile = FALSE, collect = FALSE),
+                                data = cwm)
 
 
 ## end ---------

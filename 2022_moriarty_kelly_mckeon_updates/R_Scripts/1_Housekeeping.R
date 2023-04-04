@@ -13,7 +13,7 @@
 
 #setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 
-setwd("C:/Users/2345983/R/2022/fishies/2022_moriarty_kelly_mckeon_updates")
+setwd("/Users/macbookpro/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 
 
 # Remove files from R Global Environment 

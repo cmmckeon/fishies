@@ -9,19 +9,20 @@
 library("worms")
 library("plyr")
 library("rfishbase")
-source("1_Housekeeping.R")
+source("2022_moriarty_kelly_mckeon_updates/R_Scripts/1_Housekeeping.R")
 
+setwd("2022_moriarty_kelly_mckeon_updates/")
 # LOAD DATA ------------------------ 
 
-HL1 <- readRDS("HL1.rds")
+HL <- readRDS("clean_HL.rds")
 h <- readRDS("clean_HH.rds")
 
-length(unique(HL1$Valid_Aphia)) ## 1383 unique species
-num_ids <- unique(HL1$Valid_Aphia) 
+length(unique(HL$Valid_Aphia)) ## 1383 unique species
+num_ids <- unique(HL$Valid_Aphia) 
 
-bio <- HL1
+bio <- HL
 ## test
-#x <- wormsbyid(num_ids[1:10], verbose = TRUE, ids = FALSE, sleep_btw_chunks_in_sec = 0.01)
+x <- wormsbyid(num_ids[1:10], verbose = TRUE, ids = FALSE, sleep_btw_chunks_in_sec = 0.01)
 
 
 #### Connection to the Worms database won't connect on AFBI network, 

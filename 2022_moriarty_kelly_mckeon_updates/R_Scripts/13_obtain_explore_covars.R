@@ -295,7 +295,7 @@ traits <- read.csv("covars/traits/beukhof_fish_traits.csv")
 #theirfish <- unique(traits$taxon) 
 #myfish <- unique(modeldf$SciName) ## only missing seven species from my list
 traits <- traits[traits$taxon %in% modeldf$SciName,]
-traits <- unique(traits[traits$LME %in% c(22,24),]) ## trait values for celtic-biscay shelf LME
+traits <- unique(traits[traits$LME %in% c(22,24),]) ## trait values for celtic-biscay shelf and north sea LMEs
 
 ## come back for these few if you can
 #setdiff(modeldf$SciName, x$taxon)
