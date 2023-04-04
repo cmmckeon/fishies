@@ -8,7 +8,7 @@ and
 R version 4.2.0 "Vigorous Calestetics" (for using the rfishbase package, then back to 3.6.3 for using raster)
 
 There are two sections to this work 
-  - cleaning and standardising survey effort (scripts 1 - 7)
+  - cleaning and standardising survey effort (scripts 1 - 7) 
   - cleaning and standardising biodiversity data (scripts 8 - 12)
 
 Code is adapted from work by Meadhbh Moriarty in 2016 and built on by Ruth Kelly 2021.
