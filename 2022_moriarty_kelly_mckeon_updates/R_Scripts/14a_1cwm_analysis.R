@@ -29,7 +29,8 @@ cwm <- unique(cwm_main[, c("Year", "HaulID", "PC1_cwm", "PC2_cwm", "PC3_cwm", "G
 #null model
 
 PC1_null <- glmmTMB(PC1_cwm ~  1 +
-                       (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+                      (1|Gear) + 
+                      (1|gear_ship) + (1|gear_ship_loc),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                      data = cwm)
@@ -62,7 +63,8 @@ PC1_2way <- glmmTMB(PC1_cwm ~
                       DepthNew*fp +
                       
                       Year + Quarter +
-                      (1|Gear) + (1|gear_ship) + (1|gear_ship_loc),
+                     (1|Gear) + 
+                     (1|gear_ship) + (1|gear_ship_loc),
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)

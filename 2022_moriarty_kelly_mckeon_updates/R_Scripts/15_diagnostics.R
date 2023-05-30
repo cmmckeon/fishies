@@ -5,7 +5,7 @@
 # set working directory
 setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 
-list<-c("lme4", "plyr",  "tidyverse", "glmmTMB", "DHARMa")
+list<-c("lme4", "plyr",  "tidyverse", "glmmTMB", "DHARMa", "performace")
 
 lapply(list, require, character.only=T)
 #lapply(list, citation)
@@ -209,5 +209,79 @@ beep()
 gc()
 
 
+
+## r2 calculations
+
+
+r2_nakagawa(pc1)
+r2_nakagawa(pc2)
+r2_nakagawa(pc3)
+
+r2_nakagawa(pc1_5)
+r2_nakagawa(pc2_5)
+r2_nakagawa(pc3_5)
+
+r2_nakagawa(pc1_10)
+r2_nakagawa(pc2_10)
+r2_nakagawa(pc3_10)
+
+r2_nakagawa(pc1_20)
+r2_nakagawa(pc2_20)
+r2_nakagawa(pc3_20)
+
+r2_nakagawa(pc1_50)
+r2_nakagawa(pc2_50)
+r2_nakagawa(pc3_50)
+
+
+MuMIn::r.squaredGLMM(pc1)
+MuMIn::r.squaredGLMM(pc2)
+MuMIn::r.squaredGLMM(pc3)
+
+MuMIn::r.squaredGLMM(pc1)
+MuMIn::r.squaredGLMM(pc2)
+MuMIn::r.squaredGLMM(pc3)
+
+
+## start
+# ## null
+# rsqrd <- as.data.frame(r)
+# for(i in r){
+#   mmF <- m_metric_null[[i]][["hf"]][[1]]
+#   
+#   # MCMCglmm - marginal with crebile intervals
+#   vmVarF<-numeric(1000)
+#   for(j in 1:1000){
+#     Var<-var(as.vector(mmF$Sol[j,] %*% t(mmF$X)))
+#     vmVarF[j]<-Var}
+#   
+#   R2m<-vmVarF/(vmVarF+mmF$VCV[,1]+mmF$VCV[,2])
+#   rsqrd$mean_r2_mar[rsqrd$r == i] <- mean(R2m)
+#   rsqrd$mode_r2_mar[rsqrd$r == i] <-  posterior.mode(R2m)
+#   rsqrd$lower_r2_mar[rsqrd$r == i] <- HPDinterval(R2m)[1]
+#   rsqrd$upper_r2_mar[rsqrd$r == i] <- HPDinterval(R2m)[2]
+#   
+#   # MCMCglmm - conditional with crebile intervals
+#   R2c<-(vmVarF+mmF$VCV[,1])/(vmVarF+mmF$VCV[,1]+mmF$VCV[,2])
+#   rsqrd$mean_r2_cond[rsqrd$r == i] <-mean(R2c)
+#   rsqrd$mode_r2_cond[rsqrd$r == i] <-posterior.mode(R2c)
+#   rsqrd$lower_r2_cond[rsqrd$r == i] <-HPDinterval(R2c)[1]
+#   rsqrd$upper_r2_cond[rsqrd$r == i] <-HPDinterval(R2c)[2]
+# }
+# 
+# r2_null <- rsqrd
+# r2_null$model <- "null"
+
 ## end ---------------
+
+
+
+
+
+
+
+
+
+
+
 

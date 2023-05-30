@@ -68,6 +68,7 @@ mydata <- readRDS("Data_modeldf_abundance.rds")
 cwm <- readRDS("Data_cwm_PCA.rds")
 a <- readRDS("Data_pca_traits.rds")
 sp_co <- readRDS("Data_sp_co.rds")
+h <- readRDS("biodiversity/NE_atlantic_per_species_march_2023.rds")
 ```
 
 ```{r}
@@ -637,6 +638,21 @@ sum.df <- as_tibble(m1[m1$res == 5,])
 tab(sum.df, caption = "Table C.3.5. PC3 model outputs for communities in grid cells aggregated by a factor of 50")
 ```
 
+```{r}
+m1 <- g1[, c("term", "estimate", "std.error", "statistic", "p.value", "res")]
+sum.df <- as_tibble(m1[m1$res == 5,])
+x1 <- sum.df[sum.df$p.value <= 0.05,]
+
+m1 <- g2[, c("term", "estimate", "std.error", "statistic", "p.value", "res")]
+sum.df <- as_tibble(m1[m1$res == 5,])
+x2 <- sum.df[sum.df$p.value <= 0.05,]
+
+m1 <- g3[, c("term", "estimate", "std.error", "statistic", "p.value", "res")]
+sum.df <- as_tibble(m1[m1$res == 5,])
+x3 <- sum.df[sum.df$p.value <= 0.05,]
+
+```
+
 ## PCA
 
 ```{r}
@@ -692,6 +708,7 @@ fp <- read.dbf("covars/fp_ICES_2009_2020/shapefiles/total-2020.dbf")
 ## depth
 depth <- readRDS("./Regional Boundaries Maps and Data/papoue_bathy_map.rds")
 depth <- as.raster(depth)
+e <- depth
 depth <- projectRaster(depth, tmp_raster) 
 land <- depth
 land <- calc(land, fun=function(x){ x[x <= 0] <- NA; return(x)} )
@@ -731,14 +748,14 @@ plot(land, col = "grey", add =T,
 
 plot(land, col = "grey", #add =T, 
      ext=extent(tmp_raster),xaxs="i",yaxs="i")
-points(-15, 55.5, cex = 0.2, pch  = 0, col = "black",  lwd = 2)
+points(-15, 55.5, cex = 0.2, pch  = 0, col = "black",  lwd = 0.7)
 points(-15, 55.5, cex = 4, pch  = 0, col = "black",  lwd = 2)
 points(-15, 54, cex = 4*(218/250), pch  = 0, col = "orange",  lwd = 2)
 points(-15, 52.5, cex = 4*(197/250), pch  = 0, col = "orange",  lwd = 2)
 points(-15, 51, cex = 4*(183/250), pch  = 0, col = "orange",  lwd = 2)
-points(-15, 49.5, cex = 4*(210/250), pch  = 0, col = "orange",  lwd = 2)
-points(-15, 48, cex = 4*(138/250), pch  = 0, col = "orange",  lwd = 2)
-points(-15, 46.5, cex = 4*(150/250), pch  = 0, col = "red",  lwd = 2)
+points(-15, 49.5, cex = 4*(244/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 48, cex = 4*(143/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 46.5, cex = 4*(156/250), pch  = 0, col = "red",  lwd = 2)
 
 ```
 
@@ -747,48 +764,20 @@ pal <- colorRampPalette(viridis_pal(option = "D", direction = -1)(5))
 
 ```
 
-## start
-```{r fig.width= 4, fig.height= 8}
-par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n", mar = c(0,0,0,0))
-
-plot(tmp_raster, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i",  legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(t50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50),   xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(-depth, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50),  legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i",  legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(-d50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(f, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE,xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(fp50, ext=extent(tmp_raster),xaxs="i",yaxs="i", col = pal(50), xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-plot(land, col = "grey", add =T, ext=extent(tmp_raster),xaxs="i",yaxs="i", legend=FALSE, xlim = c(tmp_raster@extent@xmin, 13), ylim = c(tmp_raster@extent@ymin, 62))
-```
-
-
-
-```{r}
-par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n")
-plot(tmp_raster, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(land, col = "grey", add =T, xaxs="i",yaxs="i",  legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(t50, xaxs="i",yaxs="i", col = pal(50), xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(-depth, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(land, col = "grey", add =T, xaxs="i",yaxs="i",  legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(-d50, xaxs="i",yaxs="i", col = pal(50), xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(f, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(fp50, xaxs="i",yaxs="i", col = pal(50), xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, xlim = c(-17.79942, 12.8), ylim = c(41.3, 62))
-```
-
-```{r}
-
-
-x <- unique(cwm[, c("Year", "HaulID", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Gear", "Quarter", "DepthNew", 
-"SNSP",  "SNWI", "fp", "gear_ship", "gear_ship_loc", 
-"sst_var")])
+```{r fig.width= 8, fig.height= 11}
+par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n", mar = c(3,3,3,3))
+plot(tmp_raster, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i",  legend=FALSE, ext=extent(e))
+plot(t50, xaxs="i",yaxs="i", col = pal(50), ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, ext=extent(e))
+plot(-depth, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i",  legend=FALSE, ext=extent(e))
+plot(-d50, xaxs="i",yaxs="i", col = pal(50), ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, ext=extent(e))
+plot(f, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, ext=extent(e))
+plot(fp50, xaxs="i",yaxs="i", col = pal(50), ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, ext=extent(e))
 ```
 
 
@@ -844,7 +833,7 @@ hr <- hr[order(-hr$max_ab),]
 sum.df <- as_tibble(hr[, c("SciName","w_range", "s_range", "range")])
 
 sum.df %>% 
-  kable(booktabs = T, caption = "Table C.2. Consistent core areas of 48 species after Probst et al., 2021") %>%
+  kable(booktabs = T, caption = "Table C.2. Consistent core areas of 50 species after Probst et al., 2021") %>%
   kable_styling(bootstrap_options = "striped", full_width = T) %>%
   kable_styling(font_size = 11)
 ```
@@ -865,6 +854,64 @@ hist(com$tl)
  
 ```
 
+## make a table of species' PC values 
+```{r}
+abundance <- as_tibble(unique(mydata[, c("SciName", "PC1", "PC2", "PC3")]))
+abundance$PC1 <- round(abundance$PC1, 4)
+abundance$PC2 <- round(abundance$PC2, 4)
+abundance$PC3 <- round(abundance$PC3, 4)
+abundance <- abundance[order(abundance$SciName),] 
+names(abundance) <- c("taxon", "PC1", "PC2", "PC3")
+#write.csv(abundance, "McKeon_fishing_lifehistory_scale_SI_dataset.csv")
+```
+
+
+## look at which species were lost as they had no trait data
+```{r}
+# x <- drop_na(as.data.frame(unique(h[h$SciName %nin% abundance$taxon, c("SciName")])))
+# names(x) <- "taxon"
+# library(worrms)
+# worms_taxonomy <- wm_records_taxamatch(x$taxon)
+# 
+# c <- as.data.frame(t(1:length((worms_taxonomy[[1]]))))
+# names(c) <- names(worms_taxonomy[[1]])
+# c <- c[0,]
+# for(i in 1:length(worms_taxonomy)){
+#   c <- rbind(c, worms_taxonomy[[i]])
+# }
+# missed_taxa <- c
+# 
+# worms_taxonomy <- wm_records_taxamatch(x$taxon[x$taxon %nin% missed_taxa$scientificname])
+# c <- as.data.frame(t(1:length((worms_taxonomy[[1]]))))
+# names(c) <- names(worms_taxonomy[[1]])
+# c <- c[0,]
+# for(i in 1:length(worms_taxonomy)){
+#   c <- rbind(c, worms_taxonomy[[i]])
+# }
+# 
+# missed_taxa <- rbind(missed_taxa, c)
+# 
+# worms_taxonomy <- wm_records_taxamatch(abundance$taxon[1:50])
+# worms_taxonomy <- wm_records_taxamatch(abundance$taxon[51:100])
+# worms_taxonomy <- wm_records_taxamatch(abundance$taxon[101:150])
+# worms_taxonomy <- wm_records_taxamatch(abundance$taxon[151:200])
+# worms_taxonomy <- wm_records_taxamatch(abundance$taxon[200:220])
+# 
+# 
+# c <- as.data.frame(t(1:length((worms_taxonomy[[1]]))))
+# names(c) <- names(worms_taxonomy[[1]])
+# c <- c[0,]
+# for(i in 1:length(worms_taxonomy)){
+#   c <- rbind(c, worms_taxonomy[[i]])
+# }
+# 
+# d <- rbind(d,c)
+# 
+# taxa <- d
+
+# saveRDS(taxa, "Data_taxa_analysed.rds")
+# saveRDS(missed_taxa, "Data_taxa_not_analysed.rds")
+```
 
 
 #FDBA00 - yellow
