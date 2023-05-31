@@ -23,23 +23,13 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "Hmisc", "vegan", "viridis", "ggfortify",
         "lme4", "plyr", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
         "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "raster", "ncdf4", "marmap", "rgdal", "foreign",
-        "sf", "archetypes") # "rst")
+        "sf", "archetypes", "rnaturalearth") # "rst")
 
 lapply(list, require, character.only=T)
 #lapply(list, citation)
 
 ## create "not in" operator
 '%nin%' = Negate('%in%')
-
-## pairs function
-upper.panel <-function(x, y){
-  points(x,y, pch=21, col=c("grey"), cex = 0.5)
-  r <- round(cor(x, y), digits=2)
-  txt <- paste0("R = ", r)
-  usr <- par("usr"); on.exit(par(usr))
-  par(usr = c(0, 1, 0, 1))
-  text(0.8, 0.9, txt, cex =0.7)
-}
 
 ## read in data --------------
 
@@ -63,19 +53,35 @@ Sys.time()
 tmp_raster <- stack("covars/sst_aquamodis_seasonal_2008_2021_NEA/AQUA_MODIS.20080321_20080620.L3m.SNSP.SST.x_sst.nc", varname="sst")
 tmp_raster <- brick(tmp_raster, varname="sst")
 
-## aggregating resolutions ---------
-r5 <- aggregate(tmp_raster, 5)
-r10 <- aggregate(tmp_raster, 10)
-r10 <- aggregate(tmp_raster, 10)
-r20 <- aggregate(tmp_raster, 20)
-r50 <- aggregate(tmp_raster, 50)
-r100 <- aggregate(tmp_raster, 100)
+## get template raster in equal area projection for correct area aggragating 
+world <- ne_countries(scale = "medium", returnclass = "sf")
+Europe <- world[which(world$continent == "Europe"),]
+e <- Europe$geometry
+e = st_as_sf(e)
+e <- st_transform(e,"+proj=laea +lat_0=53 +lon_0=9 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ")
 
-res5  <- extract(r5, sp_co)
-res10  <- extract(r10, sp_co)
-res20  <- extract(r20, sp_co)
-res50  <- extract(r50, sp_co)
-res100  <- extract(r100, sp_co)
+sp_co_laea <- st_as_sf(sp_co, coords = c(1,2), crs = crs(tmp_raster))
+sp_co_laea <- st_transform(sp_co_laea, crs = st_crs(e))
+
+tmp_raster_laea <- projectRaster(tmp_raster, crs = crs(e))
+# plot(tmp_raster)
+# plot(sp_co, add =T)
+
+
+## aggregating resolutions ---------
+r5 <- aggregate(tmp_raster_laea, 5)
+r10 <- aggregate(tmp_raster_laea, 10)
+r20 <- aggregate(tmp_raster_laea, 20)
+r50 <- aggregate(tmp_raster_laea, 50)
+r100 <- aggregate(tmp_raster_laea, 100)
+
+res5  <- extract(r5, sp_co_laea)
+res10  <- extract(r10, sp_co_laea)
+res20  <- extract(r20, sp_co_laea)
+res50  <- extract(r50, sp_co_laea)
+res100  <- extract(r100, sp_co_laea)
+
+writeRaster(tmp_raster_laea, "repro_tmp_raster.tif")
 
 res <- cbind(sp_co, res5, res10, res20, res50, res100)
 rm(r5, r10, r20, r50, r100, res5, res10, res20, res50, res100)
@@ -98,7 +104,7 @@ for(i in files){
   rast_list[[i]] <- brick(sst, varname="sst")
   gc()}
 
-sst_brick <- brick(rast_list)   
+sst_brick <- brick(rast_list) 
 
 #plot(sst_brick)
 
@@ -115,32 +121,21 @@ files <- gsub(".*\\_20", "20", files, ignore.case = TRUE)
 names(sst_data) <- c(names(sp_co), files)
 
 ## reformat dataset
-rat <- data.frame()
-for (i in names(sst_data)[which(names(sst_data) %nin% c("x", "y"))]){
-  d <- cbind(sst_data[, which(names(sst_data) %in% c("x", "y"))], sst_data[,i])
-  d$time <- i
-  rat <- rbind(rat, d)
-}
+rat <- sst_data %>%
+  pivot_longer(!c(x,y), names_to = "time", values_to = "sst")
 
 ## name and give year and season columns
-names(rat) <- c("x", "y", "sst", "time")
 rat$year <- substr(rat$time,1,4)
 rat$season <- str_sub(rat$time, -4, -1)
+rat <- rat[, c("x", "y", "sst", "year", "season")]
 
 ## reformat by quarter
-for(i in levels(factor(rat$season))){
-  rat[,paste(i)] <- NA
-  rat[,paste(i)][rat$season == i] <- rat$sst[rat$season == i]}
+rat <- rat %>%
+  pivot_wider(names_from = "season", values_from = "sst")
 
-x <- unique(rat[, c("x", "y", "year")])
-for(i in levels(factor(rat$season))){
-  x <- merge(x, 
-             rat[,c("x", "y", "year", i)][!is.na(rat[,i]),], 
-             by = c("x", "y", "year"), all.x = T)}
+sst_data <- rat
 
-sst_data <- x
-
-rm(rat, d, sst, rast_list)
+rm(rat, sst, rast_list)
 
 ## sst dataset made ---------------------
 
@@ -173,7 +168,7 @@ for(i in files){
   fp <- read.dbf(paste("covars/fp_ICES_2009_2020/shapefiles/", i, sep = ""))
   f <- fp[, c("lon","lat", "kWH_upp")]
   ## subset by North East Atlantic box
-  f <- f[f$lon <= max(sp_co$x)  & f$lon >= min(sp_co$x) & f$lat <= max(sp_co$y)  & f$lat >= min(sp_co$y),]
+  f <- f[f$lon <= max(sp_co$x)  & f$lon >= min(sp_co$x) & f$lat <= max(sp_co$y) & f$lat >= min(sp_co$y),]
   f <- rasterFromXYZ(f, crs = tmp_raster@crs)
   f <- projectRaster(f, tmp_raster) 
   rast_list[[i]] <- f
@@ -194,29 +189,25 @@ files <- gsub(paste(gone, collapse = "|"), "", files, ignore.case = TRUE)
 names(fp_data) <- c(names(sp_co), files)
 
 ## reformat dataset
-rat <- data.frame()
-for (i in names(fp_data)[which(names(fp_data) %nin% c("x", "y"))]){
-  d <- cbind(fp_data[, which(names(fp_data) %in% c("x", "y"))], fp_data[,i])
-  d$year <- i
-  rat <- rbind(rat, d)
-}
+rat <- fp_data %>%
+  pivot_longer(!c("x", "y"), names_to = "year", values_to = "fp")
 
 ## rename 
-names(rat) <- c("x", "y", "fp", "year")
+names(rat) <- c("x", "y", "year", "fp")
 fp_data <- rat
 
-rm(rat, d, rast_list, f)
+rm(rat, rast_list, f)
 
 ## fish pressure dataset made -------------------
 Sys.time()
 
-covars <- merge(sst_data, fp_data, by = c("x", "y", "year"), all.x = T)
+covars <- left_join(sst_data, fp_data)
 #saveRDS(covars, "Data_covars_sst_fp.rds")
 
-par(bty = "l", bg = "transparent")
-plot(tmp_raster)
-points(sp_co$x, sp_co$y, type = "p", col = "blue", lwd = 0.1)
-points(fp_data$x, fp_data$y, type = "p", col = "light blue", lwd = 0.3)
+# par(bty = "l", bg = "transparent")
+# plot(tmp_raster)
+# points(sp_co$x, sp_co$y, type = "p", col = "blue", lwd = 0.1)
+# points(fp_data$x, fp_data$y, type = "p", col = "light blue", lwd = 0.3)
 
 
 ## Covars extracted -----------------------------
@@ -248,7 +239,7 @@ x <- b[which(is.na(b$StNo)),]
 length(unique(x$HaulID)) ## 1435
 y <- unique(x[,c("ShootLong", "ShootLat")]) ## also 1435
 
-## all hauls where station number is NA have unique latlons, so i THINK we can use HaulID for 
+## all hauls where station number is NA have unique latlons, so i think we can use HaulID for 
 ## location level random effect....
 
 ## data handling -----------
@@ -258,16 +249,12 @@ covars$m <- paste(covars$y, covars$x, sep = "_")
 covars <- covars %>%  rename(Year = year)
 h$m <- paste(h$ShootLat, h$ShootLong, sep = "_")
 
-#covars <- covars %>%  rename(Quarter = season)
 
 h$Quarter <- as.character(h$Quarter)
 h$Quarter[h$Quarter == "1"] <- "SNSP"
 h$Quarter[h$Quarter == "2"] <- "SNSU"
 h$Quarter[h$Quarter == "3"] <- "SNAU"
 h$Quarter[h$Quarter == "4"] <- "SNWI"
-
-## only one year has summer data - drop this quarter
-h <- h[h$Quarter %nin% c("SNSU", "SNAU"),]
 
 modeldf <- merge(h, covars, by = c("m", "Year"), all.x = T)
 
@@ -281,11 +268,12 @@ modeldf$gear_ship_loc <- paste(modeldf$gear_ship, modeldf$location_re, sep = "_"
 modeldf <- unique(modeldf[, which(names(modeldf) %in% c("Year", "Gear", "HaulID",
                                                   "Quarter", "DepthNew", "SciName", "ShootLat", 
                                                   "ShootLong", "Total_DensAbund_N_Sqkm", 
-                                                  "SNSP", "SNWI", 
+                                                  "SNSP", "SNWI", "SNSU",
                                                   "season", "fp", "gear_ship",  "gear_ship_loc"))])
 
 ## get seasonal variation in temp
 modeldf$sst_var <- modeldf$SNSU - modeldf$SNWI
+modeldf <- unique(modeldf[modeldf$Quarter %nin% c("SNSU", "SNAU"),])
 
 modeldf <- drop_na(modeldf)
 
@@ -314,9 +302,15 @@ traits <- drop_na(traits)
 
 ## trait PCA ---------------
 
-a <- unique(traits[,c("tl",  "offspring.size", "body.shape", "spawning.type",
-                         "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
+a <- unique(traits[,c("tl",  "offspring.size", #"body.shape", "spawning.type","feeding.mode", 
+                      "age.maturity", "fecundity", "growth.coefficient", 
                          "length.max", "age.max", "taxon")])
+
+## get trait average over the two Large Marine Ecosystems where there are slight differences in the values
+a <- unique(a %>% group_by(taxon) %>% mutate(growth.coefficient = mean(growth.coefficient)) %>% 
+  mutate(length.max = mean(length.max)) %>% mutate(fecundity = mean(fecundity)) %>% 
+    mutate(age.max = mean(age.max)) %>% mutate(age.maturity = mean(age.maturity)) %>% 
+    mutate(offspring.size = mean(offspring.size)))
 
 par(mfrow=c(4,4))
 for (i in names(Filter(is.numeric, a))) {
@@ -425,6 +419,7 @@ abundance <- merge(abundance, res, by.x = c("ShootLat", "ShootLong"), by.y = c("
 
 ## save abundance modeling dataframe --------------
 #saveRDS(abundance, "Data_modeldf_abundance.rds")
+#saveRDS(abundance, "Data_modeldf_abundance_repro_agg.rds")
 
 
 ## ordiantation object
@@ -508,7 +503,7 @@ abundance <- merge(abundance, res, by.x = c("ShootLat", "ShootLong"), by.y = c("
 
 ## cwm ------------
 
-abundance <- readRDS("Data_modeldf_abundance.rds")
+abundance <- readRDS("Data_modeldf_abundance_repro_agg.rds")
 
 cwm <- abundance[, c("SciName", "HaulID", "Year","Quarter", "Total_DensAbund_N_Sqkm", "PC1", "PC2", "PC3", 
                      "res5", "res10", "res20", "res50","res100")]
@@ -572,6 +567,7 @@ gc()
 cwm <- merge(cwm50, cwm, by = c("res50", "Year", "Quarter"))
 
 #saveRDS(cwm, "Data_cwm_PCA.rds")
+#saveRDS(cwm, "Data_cwm_PCA_repro_agg.rds")
 
 par(mfrow=c(4,4))
 for (i in names(Filter(is.numeric, cwm))) {
@@ -641,5 +637,6 @@ for (i in names(Filter(is.numeric, cwm))) {
 
 ## end ----------------
 
-
-
+s <- cbind(sp_co, sp_co_latlon)
+covars <- covars %>% left_join(s)
+covars$m <- paste(covars$y, covars$x, sep = "_")
