@@ -32,17 +32,17 @@ PC3_2way <- readRDS("cwm_1/PC3_2way.rds")
 
 ## summaries -------------------
 
-summary(PC1_null) ## dg AIC 11874.3
-summary(PC1_full) ## dg AIC  3423.4 
-summary(PC1_2way) ## dg AIC  4659.8
+summary(PC1_null) 
+summary(PC1_full)
+summary(PC1_2way)
 
-summary(PC2_null) ## dg AIC 41863.4
-summary(PC2_full) ## dg AIC 38646.7
-summary(PC2_2way) ## dg AIC 39055.5
+summary(PC2_null) 
+summary(PC2_full) 
+summary(PC2_2way) 
 
-summary(PC3_null) ## dg AIC 108068.8
-summary(PC3_full) ## dg AIC  97818.6
-summary(PC3_2way) ## dg AIC  98707.7
+summary(PC3_null) 
+summary(PC3_full)
+summary(PC3_2way) 
 
 
 ## diagnostics ------------------
@@ -70,17 +70,17 @@ PC1_2way <- readRDS("cwm_5/PC1_2way.rds")
 PC2_2way <- readRDS("cwm_5/PC2_2way.rds")
 PC3_2way <- readRDS("cwm_5/PC3_2way.rds")
 
-summary(PC1_null) ## dg AIC 4394.9
-summary(PC1_full) ## dg AIC 3947.3
-summary(PC1_2way) ## dg AIC 3994.6
+summary(PC1_null) 
+summary(PC1_full) 
+summary(PC1_2way) 
 
-summary(PC2_null) ## dg AIC 5099.5
-summary(PC2_full) ## dg AIC 4837.0
-summary(PC2_2way) ## dg AIC 4937.3
+summary(PC2_null) 
+summary(PC2_full) 
+summary(PC2_2way) 
 
-summary(PC3_null) ## dg AIC 7320.0
-summary(PC3_full) ## dg AIC 5903.6
-summary(PC3_2way) ## dg AIC 6033.7
+summary(PC3_null)
+summary(PC3_full) 
+summary(PC3_2way) 
 
 
 ## diagnostics ------------------
@@ -108,17 +108,17 @@ PC1_2way <- readRDS("cwm_10/PC1_2way.rds")
 PC2_2way <- readRDS("cwm_10/PC2_2way.rds")
 PC3_2way <- readRDS("cwm_10/PC3_2way.rds")
 
-summary(PC1_null) ## dg AIC 2987.8
-summary(PC1_full) ## dg AIC 2484.4
-summary(PC1_2way) ## dg AIC 2522.7
+summary(PC1_null) 
+summary(PC1_full) 
+summary(PC1_2way) 
 
-summary(PC2_null) ## dg AIC 2906.0
-summary(PC2_full) ## dg AIC 2638.3
-summary(PC2_2way) ## dg AIC 2729.6
+summary(PC2_null) 
+summary(PC2_full)
+summary(PC2_2way) 
 
-summary(PC3_null) ## dg AIC 4682.6
-summary(PC3_full) ## dg AIC 3685.6
-summary(PC3_2way) ## dg AIC 3769.1
+summary(PC3_null) 
+summary(PC3_full) 
+summary(PC3_2way) 
 
 
 ## diagnostics ------------------
@@ -146,17 +146,17 @@ PC1_2way <- readRDS("cwm_20/PC1_2way.rds")
 PC2_2way <- readRDS("cwm_20/PC2_2way.rds")
 PC3_2way <- readRDS("cwm_20/PC3_2way.rds")
 
-summary(PC1_null) ## dg AIC 1338.5
-summary(PC1_full) ## dg AIC 1040.8
-summary(PC1_2way) ## dg AIC 1043.0
+summary(PC1_null) 
+summary(PC1_full) 
+summary(PC1_2way) 
 
-summary(PC2_null) ## dg AIC 1169.4
-summary(PC2_full) ## dg AIC 967.2
-summary(PC2_2way) ## dg AIC 1016.9
+summary(PC2_null) 
+summary(PC2_full) 
+summary(PC2_2way) 
 
-summary(PC3_null) ## dg AIC 2204.1
-summary(PC3_full) ## dg AIC 1642.9
-summary(PC3_2way) ## dg AIC 1694.1
+summary(PC3_null) 
+summary(PC3_full) 
+summary(PC3_2way) 
 
 
 ## diagnostics ------------------
@@ -184,17 +184,17 @@ PC1_2way <- readRDS("cwm_50/PC1_2way.rds")
 PC2_2way <- readRDS("cwm_50/PC2_2way.rds")
 PC3_2way <- readRDS("cwm_50/PC3_2way.rds")
 
-summary(PC1_null) ## dg AIC 317.6
-summary(PC1_full) ## dg AIC 139.8
-summary(PC1_2way) ## dg AIC 179.0
+summary(PC1_null) 
+summary(PC1_full) 
+summary(PC1_2way) 
 
-summary(PC2_null) ## dg AIC 289.7
-summary(PC2_full) ## dg AIC 150.2
-summary(PC2_2way) ## AIC 198.6
+summary(PC2_null) 
+summary(PC2_full) 
+summary(PC2_2way) 
 
-summary(PC3_null) ## dg AIC 584.3
-summary(PC3_full) ## dg AIC 335.5
-summary(PC3_2way) ## dg AIC 374.5
+summary(PC3_null)
+summary(PC3_full) 
+summary(PC3_2way) 
 
 
 ## diagnostics ------------------
@@ -213,34 +213,34 @@ gc()
 ## r2 calculations
 
 
-r2_nakagawa(pc1)
-r2_nakagawa(pc2)
-r2_nakagawa(pc3)
-
-r2_nakagawa(pc1_5)
-r2_nakagawa(pc2_5)
-r2_nakagawa(pc3_5)
-
-r2_nakagawa(pc1_10)
-r2_nakagawa(pc2_10)
-r2_nakagawa(pc3_10)
-
-r2_nakagawa(pc1_20)
-r2_nakagawa(pc2_20)
-r2_nakagawa(pc3_20)
-
-r2_nakagawa(pc1_50)
-r2_nakagawa(pc2_50)
-r2_nakagawa(pc3_50)
-
-
-MuMIn::r.squaredGLMM(pc1)
-MuMIn::r.squaredGLMM(pc2)
-MuMIn::r.squaredGLMM(pc3)
-
-MuMIn::r.squaredGLMM(pc1)
-MuMIn::r.squaredGLMM(pc2)
-MuMIn::r.squaredGLMM(pc3)
+# r2_nakagawa(pc1)
+# r2_nakagawa(pc2)
+# r2_nakagawa(pc3)
+# 
+# r2_nakagawa(pc1_5)
+# r2_nakagawa(pc2_5)
+# r2_nakagawa(pc3_5)
+# 
+# r2_nakagawa(pc1_10)
+# r2_nakagawa(pc2_10)
+# r2_nakagawa(pc3_10)
+# 
+# r2_nakagawa(pc1_20)
+# r2_nakagawa(pc2_20)
+# r2_nakagawa(pc3_20)
+# 
+# r2_nakagawa(pc1_50)
+# r2_nakagawa(pc2_50)
+# r2_nakagawa(pc3_50)
+# 
+# 
+# MuMIn::r.squaredGLMM(pc1)
+# MuMIn::r.squaredGLMM(pc2)
+# MuMIn::r.squaredGLMM(pc3)
+# 
+# MuMIn::r.squaredGLMM(pc1)
+# MuMIn::r.squaredGLMM(pc2)
+# MuMIn::r.squaredGLMM(pc3)
 
 
 ## start

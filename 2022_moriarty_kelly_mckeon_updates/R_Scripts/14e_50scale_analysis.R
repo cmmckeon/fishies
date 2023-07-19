@@ -1,6 +1,6 @@
-#14d_20scale_analysis
+#14e_50scale_analysis
 # setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
-# source("R_Scripts/14d_20scale_analysis.R")
+# source("R_Scripts/14e_50scale_analysis.R")
 
 ### set up ---------------
 
@@ -25,23 +25,25 @@ cwm_main <- readRDS("Data_cwm_PCA.rds")
 #   gc()
 # }
 
-cwm <- unique(cwm_main[, c("res20", "PC1_cwm20", "PC2_cwm20", "PC3_cwm20", 
-                           "Year", "Quarter", "DepthNew", "SNSP", "SNWI", "fp", 
+
+cwm <- unique(cwm_main[, c("res50", "PC1_cwm50", "PC2_cwm50", "PC3_cwm50", 
+                           "Year", #"Gear",
+                           "Quarter", "DepthNew", "SNSP", "SNWI", "fp", 
                            "sst_var")])
 
 for(i in c("DepthNew", "SNSP", "SNWI", "fp", "sst_var")){
-  for(j in unique(cwm$res20)){
+  for(j in unique(cwm$res50)){
     for(k in unique(cwm$Year)){
-    cwm[,i][cwm$res20 == j & cwm$Year == k] <- mean(cwm[,i][cwm$res20 == j& cwm$Year == k])
-  }}}
+      cwm[,i][cwm$res50 == j& cwm$Year == k] <- mean(cwm[,i][cwm$res50 == j& cwm$Year == k])
+    }}}
 
 cwm <- unique(cwm)
 ## renames to save me retyping everything 
-names(cwm) <- c("res20", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Year", 
+names(cwm) <- c("res50", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Year", #"Gear", 
                 "Quarter", "DepthNew", "SNSP", "SNWI", "fp", "sst_var")
 
 
-setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates/cwm_20")
+setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates/cwm_50")
 
 ## PC1 ---------------------
 
@@ -57,8 +59,7 @@ saveRDS(PC1_null, "PC1_null.rds")
 
 # full model
 # print("pc1 full model")
-# PC1_full <- glmmTMB(PC1_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-#                       (1|Gear),
+# PC1_full <- glmmTMB(PC1_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter,
 #                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
 #                                              profile = FALSE, collect = FALSE),
 #                     data = cwm)
@@ -101,8 +102,7 @@ saveRDS(PC2_null, "PC2_null.rds")
 
 # full model
 # print("pc2 full model")
-# PC2_full <- glmmTMB(PC2_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-#                       (1|Gear),
+# PC2_full <- glmmTMB(PC2_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter,
 #                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
 #                                              profile = FALSE, collect = FALSE),
 #                     data = cwm)
@@ -144,8 +144,7 @@ saveRDS(PC3_null, "PC3_null.rds")
 
 # full model
 # print("pc3 full model")
-# PC3_full <- glmmTMB(PC3_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter +
-#                       (1|Gear),
+# PC3_full <- glmmTMB(PC3_cwm ~ SNSP*SNWI*sst_var*DepthNew*fp + Year + Quarter,
 #                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
 #                                              profile = FALSE, collect = FALSE),
 #                     data = cwm)
@@ -174,75 +173,72 @@ PC3_2way <- glmmTMB(PC3_cwm ~
                     data = cwm)
 saveRDS(PC3_2way, "PC3_2way.rds")
 
-# ## year_interaction
-# PC1_year_interaction <- glmmTMB(PC1_cwm ~
-#                                   SNSP*SNWI +
-#                                   SNSP*sst_var +
-#                                   SNSP*DepthNew +
-#                                   SNSP*fp +
-#                                   
-#                                   SNWI*sst_var +
-#                                   SNWI*DepthNew +
-#                                   SNWI*fp +
-#                                   
-#                                   sst_var*DepthNew +
-#                                   sst_var*fp +
-#                                   
-#                                   DepthNew*fp +
-#                                   Year*fp +
-#                                   
-#                                   Quarter +
-#                                   (1|Gear),
-#                                 control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-#                                                          profile = FALSE, collect = FALSE),
-#                                 data = cwm)
-# 
-# PC2_year_interaction <- glmmTMB(PC2_cwm ~
-#                                   SNSP*SNWI +
-#                                   SNSP*sst_var +
-#                                   SNSP*DepthNew +
-#                                   SNSP*fp +
-#                                   
-#                                   SNWI*sst_var +
-#                                   SNWI*DepthNew +
-#                                   SNWI*fp +
-#                                   
-#                                   sst_var*DepthNew +
-#                                   sst_var*fp +
-#                                   
-#                                   DepthNew*fp +
-#                                   Year*fp +
-#                                   
-#                                   Quarter +
-#                                   (1|Gear),
-#                                 control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-#                                                          profile = FALSE, collect = FALSE),
-#                                 data = cwm)
-# 
-# PC3_year_interaction <- glmmTMB(PC3_cwm ~
-#                                   SNSP*SNWI +
-#                                   SNSP*sst_var +
-#                                   SNSP*DepthNew +
-#                                   SNSP*fp +
-#                                   
-#                                   SNWI*sst_var +
-#                                   SNWI*DepthNew +
-#                                   SNWI*fp +
-#                                   
-#                                   sst_var*DepthNew +
-#                                   sst_var*fp +
-#                                   
-#                                   DepthNew*fp +
-#                                   Year*fp +
-#                                   
-#                                   Quarter +
-#                                   (1|Gear),
-#                                 control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
-#                                                          profile = FALSE, collect = FALSE),
-#                                 data = cwm)
+## year_interaction
+PC1_year_interaction <- glmmTMB(PC1_cwm ~
+                                  SNSP*SNWI +
+                                  SNSP*sst_var +
+                                  SNSP*DepthNew +
+                                  SNSP*fp +
+                                  
+                                  SNWI*sst_var +
+                                  SNWI*DepthNew +
+                                  SNWI*fp +
+                                  
+                                  sst_var*DepthNew +
+                                  sst_var*fp +
+                                  
+                                  DepthNew*fp +
+                                  Year*fp +
+                                  
+                                  Quarter,
+                                control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+                                                         profile = FALSE, collect = FALSE),
+                                data = cwm)
+
+PC2_year_interaction <- glmmTMB(PC2_cwm ~
+                                  SNSP*SNWI +
+                                  SNSP*sst_var +
+                                  SNSP*DepthNew +
+                                  SNSP*fp +
+                                  
+                                  SNWI*sst_var +
+                                  SNWI*DepthNew +
+                                  SNWI*fp +
+                                  
+                                  sst_var*DepthNew +
+                                  sst_var*fp +
+                                  
+                                  DepthNew*fp +
+                                  Year*fp +
+                                  
+                                  Quarter,
+                                control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+                                                         profile = FALSE, collect = FALSE),
+                                data = cwm)
+
+PC3_year_interaction <- glmmTMB(PC3_cwm ~
+                                  SNSP*SNWI +
+                                  SNSP*sst_var +
+                                  SNSP*DepthNew +
+                                  SNSP*fp +
+                                  
+                                  SNWI*sst_var +
+                                  SNWI*DepthNew +
+                                  SNWI*fp +
+                                  
+                                  sst_var*DepthNew +
+                                  sst_var*fp +
+                                  
+                                  DepthNew*fp +
+                                  Year*fp +
+                                  
+                                  Quarter,
+                                control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
+                                                         profile = FALSE, collect = FALSE),
+                                data = cwm)
+
 
 ## end ---------
-
 
 
 

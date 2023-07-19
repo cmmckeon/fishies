@@ -20,7 +20,7 @@
 # set working directory
 setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates")
 
-list<-c("ggplot2", "data.table", "reshape2", "arm","car", "DMwR", "Hmisc", "vegan", "viridis", "ggfortify",
+list<-c("ggplot2", "data.table", "reshape2", "arm","car", "Hmisc", "vegan", "viridis", "ggfortify",
         "lme4", "plyr", "plotrix", "colorspace", "plot3D", "plot3D", "rgl","MuMIn",
         "mapplots", "class", "gridExtra", "ggmap", "tidyverse", "beepr", "raster", "ncdf4", "marmap", "rgdal", "foreign",
         "sf", "archetypes", "rnaturalearth") # "rst")
@@ -81,7 +81,7 @@ res20  <- extract(r20, sp_co_laea)
 res50  <- extract(r50, sp_co_laea)
 res100  <- extract(r100, sp_co_laea)
 
-writeRaster(tmp_raster_laea, "repro_tmp_raster.tif")
+#writeRaster(tmp_raster_laea, "repro_tmp_raster.tif")
 
 res <- cbind(sp_co, res5, res10, res20, res50, res100)
 rm(r5, r10, r20, r50, r100, res5, res10, res20, res50, res100)
@@ -214,23 +214,6 @@ covars <- left_join(sst_data, fp_data)
 
 covars <- readRDS("Data_covars_sst_fp.rds")
 
-c <- c()
-#plot(sum(covars$fp) ~ covars$year)
-for(i in unique(covars$year)){
-  c <- c(c, sum(covars$fp[covars$year == i], na.rm = T))}
-plot(c ~ unique(covars$year))
-
-d <- c()
-for(i in unique(covars$year)){
-  d <- c(d, sum(covars$SNSU[covars$year == i], na.rm = T))}
-plot(d[-15] ~ unique(covars$year[covars$year != "2022"]))
-
-# d <- c()
-# for(i in unique(covars$year)){
-#   d <- c(d, sum(covars$sst[covars$year == i & covars$season == "SNSU"], na.rm = T))}
-# plot(d[-15] ~ unique(covars$year[covars$year != "2022"]))
-
-
 ## map beam trawls 
 b <- h[h$Survey == "BTS",]
 summary(b$StNo)
@@ -238,9 +221,7 @@ x <- b[which(is.na(b$StNo)),]
 
 length(unique(x$HaulID)) ## 1435
 y <- unique(x[,c("ShootLong", "ShootLat")]) ## also 1435
-
-## all hauls where station number is NA have unique latlons, so i think we can use HaulID for 
-## location level random effect....
+## all hauls where station number is NA have unique latlons, so we can use HaulID for location level random effect
 
 ## data handling -----------
 
@@ -327,9 +308,9 @@ for (i in c("tl", "offspring.size", "age.maturity", "fecundity", "growth.coeffic
             "length.max", "age.max")) {
   a[, i] <- c(scale(a[,i]))}
 
-pairs(a[, which(names(a) %in% c("tl",  "offspring.size", 
-                                "age.maturity", "fecundity", "growth.coefficient", 
-                                "length.max", "age.max"))], lower.panel = NULL, upper.panel = upper.panel)
+# pairs(a[, which(names(a) %in% c("tl",  "offspring.size", 
+#                                 "age.maturity", "fecundity", "growth.coefficient", 
+#                                 "length.max", "age.max"))], lower.panel = NULL, upper.panel = upper.panel)
 
 
 
@@ -338,16 +319,6 @@ pc <- prcomp(a[,c("tl", "offspring.size","age.maturity", "fecundity", "growth.co
 print(pc)
 summary(pc)
 #saveRDS(a, "Data_pca_traits.rds")
-
-pairs.panels(pc$x,
-             gap=0,
-             bg = cl[a$body.shape],
-             pch=21)
-
-par(mfrow = c(2,1))
-autoplot(pc, data = a, #colour = cl[a$body.shape], 
-         loadings = TRUE, loadings.label = TRUE, loadings.colour = "dark grey", 
-         loadings.label.size = 4, loadings.label.colour = "black")
 
 a$PC1 <- scale(pc[["x"]][,1])
 a$PC2 <- scale(pc[["x"]][,2])
@@ -391,119 +362,16 @@ for (i in c("Year", "Quarter", "DepthNew",
   abundance[, i] <- c(scale(abundance[,i]))
 }
 
-## don't think i need this given the way i do the community weighted means
-# ## make the response variable
-# abundance$resp_total <- abundance$abund - min(abundance$abund)
-# 
-# ## abundance by location
-# for(i in unique(abundance$HaulID)){
-#   print(i)
-#   abundance$ab_haul_total[abundance$HaulID == i] <- sum(abundance$Total_DensAbund_N_Sqkm[abundance$HaulID == i])
-# }
-# abundance$rel_ab <-  abundance$Total_DensAbund_N_Sqkm/abundance$ab_haul_total
-# 
-# abundance <- drop_na(abundance) 
-# 
-# abundance$ab <- abundance$abund-min(abundance$abund)
-# abundance$rel_ab <- log(abundance$rel_ab) - mean(log(abundance$rel_ab))
-# 
-# par(mfrow=c(4,4))
-# for (i in names(Filter(is.numeric, abundance))) {
-#   hist(abundance[,i], breaks = 1000, main = paste(i))
-#   #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
-#   gc()
-# }
-
+## add in the template for aggregating commmunties to coarser resolutions
 abundance <- merge(abundance, res, by.x = c("ShootLat", "ShootLong"), by.y = c("y", "x"))
 
 
 ## save abundance modeling dataframe --------------
 #saveRDS(abundance, "Data_modeldf_abundance.rds")
-#saveRDS(abundance, "Data_modeldf_abundance_repro_agg.rds")
-
-
-## ordiantation object
-
-# or <- metaMDS(a[,c("tl", "offspring.size","age.maturity", "fecundity", 
-#                    "growth.coefficient", "length.max", "age.max")], distance = "jaccard")
-# 
-# ## Nonmetric Multidimensional Scaling of compositional dissimilarity by treatment
-# ordiplot(pc, type = "n", main = NULL)
-# ordiellipse(pc, groups = b$feeding.mode, draw = "polygon", lty = 1, 
-#            # col = cl,
-#             alpha = 0.2)
-# points(pc[["x"]], display = "sites", 
-#        pch = c(16, 8, 17, 18, 20)[as.numeric(b$feeding.mode)], 
-#        col = cl[as.numeric(b$feeding.mode)], 
-#        cex =1.2)
-# 
-# legend("topright", legend = levels(b$feeding.mode), pch = c(16, 8, 17, 18, 20), 
-#        col = cl,
-#        bty = "n", cex = 1) # displays symbol and colour legend
-# legend("topleft", legend = "A", bty = "n")
-
-
-## archetype analysis -------------------
-
-# #range01 <- function(x){(x-min(x))/(max(x)-min(x))}
-# 
-# # a$PC1 <- (pc[["x"]][,1])
-# # a$PC2 <- (pc[["x"]][,2])
-# # a$PC3 <- (pc[["x"]][,3])
-
-# a$PC1 <- scale(pc[["x"]][,1])
-# a$PC2 <- scale(pc[["x"]][,2])
-# a$PC3 <- scale(pc[["x"]][,3])
-# 
-# 
-# arch2 <- archetypes(a[,c("tl", "offspring.size",  
-#                          "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-#                          "age.max")],  2)
-# 
-# arch3 <- archetypes(a[,c("tl", "offspring.size",  
-#                           "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-#                           "age.max")], 3)
-# 
-# arch4 <- archetypes(a[,c("tl", "offspring.size",  
-#                          "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-#                          "age.max")], 4)
-# 
-# xyplot(arch2, a[,c("tl", "offspring.size",  
-#                   "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-#                   "age.max")], chull = chull(a[,c("tl", "offspring.size",  
-#                                                   "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-#                                                   "age.max")]))
-# 
-# par(mfrow=c(4,4))
-# for (i in names(Filter(is.numeric, a))) {
-#   hist(a[,i], breaks = 1000, main = paste(i))
-#   #hist(log(modeldf[,i]), breaks = 1000, main = paste("log",i))
-#   gc()
-# }
-# 
-# save <- a
-# par(mfrow =c(1,1))
-# a$PC2 <- a$PC2 + 1
-# xyplot(arch4, a[, c("PC1", "PC2")]) #, chull = chull(a[, c("PC1", "PC2")]))
-# xyplot(arch4, a[, c("PC2", "PC3")]) #, chull = chull(a[, c("PC1", "PC2")]))
-# xyplot(arch4, a[, c("age.maturity", "fecundity")]) #, chull = chull(a[, c("PC1", "PC2")]))
-# xyplot(arch4, a[, c("tl", "fecundity")]) #, chull = chull(a[, c("PC1", "PC2")]))
-# 
-# 
-# xyplot(arch4, a[, c("PC1", "PC2")], adata.show = TRUE)
-# 
-# as <- stepArchetypes(data = a[,c("tl", "offspring.size",  
-#                                  "age.maturity", "fecundity", "growth.coefficient", "length.max", 
-#                                  "age.max")], k = 1:10)
-# rss(as)
-# screeplot(as)
-# 
-# ternaryplot(coef(arch4, 'alphas'))
-
 
 ## cwm ------------
 
-abundance <- readRDS("Data_modeldf_abundance_repro_agg.rds")
+abundance <- readRDS("Data_modeldf_abundance.rds")
 
 cwm <- abundance[, c("SciName", "HaulID", "Year","Quarter", "Total_DensAbund_N_Sqkm", "PC1", "PC2", "PC3", 
                      "res5", "res10", "res20", "res50","res100")]
@@ -567,49 +435,12 @@ gc()
 cwm <- merge(cwm50, cwm, by = c("res50", "Year", "Quarter"))
 
 #saveRDS(cwm, "Data_cwm_PCA.rds")
-#saveRDS(cwm, "Data_cwm_PCA_repro_agg.rds")
 
 par(mfrow=c(4,4))
 for (i in names(Filter(is.numeric, cwm))) {
   hist(cwm[,i], breaks = 1000, main = paste(i))
   gc()
 }
-
-
-# par(mfrow = c(1,3))
-# plot(x$PC1 ~ x$age.maturity)
-# plot(x$PC2 ~ x$fecundity)
-# plot(x$PC3 ~ x$tl)
-# 
-# x <- unique(cwm[, c("PC1_cwm50", "PC2_cwm50", "PC3_cwm50", 
-#              "PC1_cwm20", "PC2_cwm20", "PC3_cwm20", 
-#              "PC1_cwm10", "PC2_cwm10", "PC3_cwm10", 
-#              "PC1_cwm5", "PC2_cwm5", "PC3_cwm5", 
-#              "PC1_cwm", "PC2_cwm", "PC3_cwm", 
-#              "tl", "offspring.size", "body.shape", "spawning.type", 
-#              "feeding.mode", "age.maturity", "fecundity", "growth.coefficient", 
-#              "length.max", "age.max", "PC1", "PC2", "PC3")])
-# 
-# par(mfrow =c (3,5))
-# plot(x$PC1_x50 ~ x$age.maturity)
-# plot(x$PC1_x20 ~ x$age.maturity)
-# plot(x$PC1_x10 ~ x$age.maturity)
-# plot(x$PC1_x5 ~ x$age.maturity)
-# plot(x$PC1_x ~ x$age.maturity)
-# 
-# plot(x$PC2_x50 ~ x$fecundity)
-# plot(x$PC2_x20 ~ x$fecundity)
-# plot(x$PC2_x10 ~ x$fecundity)
-# plot(x$PC2_x5 ~ x$fecundity)
-# plot(x$PC2_x ~ x$fecundity)
-# 
-# plot(x$PC3_x50 ~ x$tl)
-# plot(x$PC3_x20 ~ x$tl)
-# plot(x$PC3_x10 ~ x$tl)
-# plot(x$PC3_x5 ~ x$tl)
-# plot(x$PC3_x ~ x$tl)
-
-
 
 
 ## run models ----------------------
@@ -637,6 +468,3 @@ for (i in names(Filter(is.numeric, cwm))) {
 
 ## end ----------------
 
-s <- cbind(sp_co, sp_co_latlon)
-covars <- covars %>% left_join(s)
-covars$m <- paste(covars$y, covars$x, sep = "_")

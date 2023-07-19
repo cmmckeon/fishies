@@ -8,40 +8,25 @@ and
 R version 4.2.0 "Vigorous Calestetics" (for using the rfishbase package, then back to 3.6.3 for using raster)
 
 There are two sections to this work 
+DATRAS data cleaning:
   - cleaning and standardising survey effort (scripts 1 - 7) 
   - cleaning and standardising biodiversity data (scripts 8 - 12)
+Main analysis pipeline:
+  - collating covariates, spatial manipulations, analysis, diagnostics, and plotting and tablulating results
 
-Code is adapted from work by Meadhbh Moriarty in 2016 and built on by Ruth Kelly 2021.
-
-In general the goals of the scripts in series are outline below:
-
-Goal 1. Check survey data for outliers and query with data providers. This code has been re-run to insure all errors that have been 
-            reported have been removed from DATRAS, otherwise a "fix" is used
-            
-Goal 2. Derive Surveys and fix errors not updated in DATRAS
-
-Goal 3. Estimate missing/incorrect gear parameters
-
-Goal 4. Calculate Swept Area and Swepth Volume
-
-Goal 5. Estimate missing/incorrect biological parameters
-
-Goal 6. Calculate Swept Area densities
+DATRAS cleaning code is adapted from work by Meadhbh Moriarty in 2016 and built on by Ruth Kelly 2021. These scripts made available here are for accessibility purposes, but readers are not expected to run them themsevles from scratch. A robust, clean and public version of the DATRAS cleaning pipeline is the work of a separate project that we hope will be available by the time this study is published. If you want to run this analysis yourself, we recommend you start at script 13.
 
 ## scripts we use
 
 Haul data cleaning: 1 - 7
 
-Biological data cleaning: 8 and 9
+Biological data cleaning: 8 & 9
 
 Covariate wrangling: 13
 
-Analysis: 14a_e - 15
+Analysis: 14a-14e & 15
 
-Plotting: 16
-
-We are subsetting all available DATRAS data to just surveys in the North East Atlantic (i.e. not the North sea) in order to establish our modelling pipeline. We would currently like to expand to modelling all available data if this goes well (i.e. after Caroline finished her PhD).
-
+Plotting: 16 & 17
 
 # DATA NEEDED:
 

@@ -26,7 +26,8 @@ cwm_main <- readRDS("Data_cwm_PCA.rds")
 # }
 
 cwm <- unique(cwm_main[, c("res10", "PC1_cwm10", "PC2_cwm10", "PC3_cwm10", 
-                           "Year", "Gear", "Quarter", "DepthNew", "SNSP", "SNWI", "fp", 
+                           "Year", #"Gear", 
+                           "Quarter", "DepthNew", "SNSP", "SNWI", "fp", 
                            "sst_var")])
 
 for(i in c("DepthNew", "SNSP", "SNWI", "fp", "sst_var")){
@@ -37,7 +38,7 @@ for(i in c("DepthNew", "SNSP", "SNWI", "fp", "sst_var")){
 
 cwm <- unique(cwm)
 ## renames to save me retyping everything 
-names(cwm) <- c("res10", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Year", "Gear", 
+names(cwm) <- c("res10", "PC1_cwm", "PC2_cwm", "PC3_cwm", "Year", #"Gear", 
                 "Quarter", "DepthNew", "SNSP", "SNWI", "fp", "sst_var")
 
 
@@ -48,8 +49,7 @@ setwd("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriart
 #null model
 print("pc1 null model")
 
-PC1_null <- glmmTMB(PC1_cwm ~  1 +
-                      (1|Gear),
+PC1_null <- glmmTMB(PC1_cwm ~  1,
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -83,8 +83,7 @@ PC1_2way <- glmmTMB(PC1_cwm ~
                       
                       DepthNew*fp +
                       
-                      Year + Quarter +
-                      (1|Gear),
+                      Year + Quarter,
                     control = glmmTMBControl(optCtrl = list(iter.max = 100000000, eval.max = 100000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -95,8 +94,7 @@ saveRDS(PC1_2way, "PC1_2way.rds")
 
 # null model
 print("pc2 null model")
-PC2_null <- glmmTMB(PC2_cwm ~  1 +
-                      (1|Gear),
+PC2_null <- glmmTMB(PC2_cwm ~  1,
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -128,8 +126,7 @@ PC2_2way <- glmmTMB(PC2_cwm ~
                       
                       DepthNew*fp +
                       
-                      Year + Quarter +
-                      (1|Gear),
+                      Year + Quarter,
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -139,8 +136,7 @@ saveRDS(PC2_2way, "PC2_2way.rds")
 
 # null model
 print("pc3 null model")
-PC3_null <- glmmTMB(PC3_cwm ~  1 +
-                      (1|Gear),
+PC3_null <- glmmTMB(PC3_cwm ~  1,
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
@@ -173,8 +169,7 @@ PC3_2way <- glmmTMB(PC3_cwm ~
                       
                       DepthNew*fp +
                       
-                      Year + Quarter +
-                      (1|Gear),
+                      Year + Quarter,
                     control = glmmTMBControl(optCtrl = list(iter.max = 10000000, eval.max = 10000000),
                                              profile = FALSE, collect = FALSE),
                     data = cwm)
