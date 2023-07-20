@@ -45,7 +45,10 @@ nc files (easily rasterised)
 WAY better than copernicus for my purposes
 
 ## Depth
-- obtained in script
+- use NOAA website to get bathy map
+papoue <- getNOAA.bathy(lon1 = -16, lon2 = 13,
+                         lat1 = 36, lat2 = 62, resolution = 1)
+saveRDS(papoue, "papoue_bathy_map.rds")
 
 ## trait data
 - beukhof_fish_traits.csv from Beukhof et al., (2019) https://doi.pangaea.de/10.1594/PANGAEA.900866 
