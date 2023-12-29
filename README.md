@@ -33,6 +33,9 @@ Plotting: 16 & 17
 # DATA NEEDED:
 
 ## DATRAS DOWNLOAD 04/2022
+*** DATRAS cleaning and handling scripts 1-9 are available for reference, but we recommend you skip the DATRAS download and use existing file "NE_atlantic_per_species_march_2023.rds", running workflow from script 13, until more robust and easily reproducible data cleaning and handling scripts are available *** 
+
+store the following in folder "covars" 
 
 ## Fishing pressure
 - OSPAR spatial data layers of fishing intensity/pressure 2009 - 2020 https://ices-library.figshare.com/articles/dataset/Data_for_OSPAR_request_on_the_production_of_spatial_data_layers_of_fishing_intensity_pressure/18601508

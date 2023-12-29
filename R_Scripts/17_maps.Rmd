@@ -1,0 +1,143 @@
+---
+title: "maps"
+author: "Caroline McKeon"
+date: "2023-06-29"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sjPlot)
+library(sp)
+library(sf)
+library(rnaturalearth)
+library(raster)
+library(viridis)
+library(fasterize)
+library(marmap)
+# blank theme
+set_theme(
+  base = theme_classic(),
+  axis.title.size = 2,
+  axis.textsize = 1.2,
+  legend.size = 2,
+  legend.title.size = 2,
+  geom.label.size = 3,
+  plot.margin = margin(3, 5, 1, 5, "pt")
+)
+pal <- colorRampPalette(c('#0C276C', '#3B9088', '#EEFF00', '#ffffff'))
+
+knitr::opts_chunk$set(fig.width=30, fig.height=20) 
+```
+
+
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+Europe <- world[which(world$continent == "Europe"),]
+
+ee <- Europe$geometry
+ee = st_as_sf(ee)
+ee <- st_transform(ee,"+proj=laea +lat_0=53 +lon_0=9 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ")
+```
+
+
+```{r, fig.width= 20, fig.height=20}
+sp_co <- readRDS("~/Library/CloudStorage/OneDrive-Personal/PhD/Fishies/fishies/2022_moriarty_kelly_mckeon_updates/Data_sp_co.rds")
+s <- st_as_sf(sp_co, coords = c(1,2), crs = 4326)
+sx <- st_transform(s, crs = crs(ee))
+
+par(bg = "transparent", mar = c(0,0,0,0))
+plot(ee, col='light gray', border='gray')
+plot(sx, add = T, cex = 0.1)
+plot(ee, col='light gray', border='gray', add =T)
+```
+## looking at plotting reprojected version instead 
+
+read in map data
+```{r}
+setwd("..")
+## sst
+tmp_raster <- stack("covars/sst_aquamodis_seasonal_2008_2021_NEA/AQUA_MODIS.20080321_20080620.L3m.SNSP.SST.x_sst.nc", varname="sst")
+tmp_raster <- brick(tmp_raster, varname="sst")
+tmp_raster <- crop(tmp_raster, extent(dput(c(min(sp_co$x)-2, max(sp_co$x)+2, min(sp_co$y)-2, max(sp_co$y)+2))))
+
+## reproject to laea - skip this if you want to keep as a square
+tmp_raster_laea <- projectRaster(tmp_raster, crs = crs(ee))
+
+## fishing pressure
+fp <- read.dbf("covars/fp_ICES_2009_2020/shapefiles/total-2020.dbf")
+  f <- fp[, c("lon","lat", "kWH_upp")]
+  f <- rasterFromXYZ(f, crs = tmp_raster@crs)
+  f <- projectRaster(f, tmp_raster_laea) 
+## depth
+depth <- readRDS("./Regional Boundaries Maps and Data/papoue_bathy_map.rds")
+depth <- as.raster(depth)
+e <- depth
+depth <- projectRaster(depth, tmp_raster_laea) 
+land <- depth
+land <- calc(land, fun=function(x){ x[x <= 0] <- NA; return(x)} )
+land <- calc(land, fun=function(x){ x[x > 0] <- 1; return(x)} )
+depth <- calc(depth, fun=function(x){ x[x > 0] <- NA; return(x)} )
+
+## aggregating resolutions ---------
+t50 <- aggregate(tmp_raster_laea, 50)
+fp50 <- aggregate(f, 50)
+d50 <- aggregate(depth, 50)
+
+x <- as.data.frame(t50, xy = T)
+x <- unique(round(x, 0))
+ag <- unique(round(sp_co, 0))
+x <- merge(ag, x, by = c("x", "y"))
+```
+
+```{r fig.width= 4, fig.height= 11}
+par(mfrow =c(3,1), bty = "n", yaxt="n", xaxt="n", mar = c(1,1,1,1), bg = "transparent")
+
+plot(land, col = "grey", #add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+points(sp_co$x, sp_co$y, cex = 0.5)
+plot(land, col = "grey", add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+
+plot(land, col = "grey", #add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+points(x$x, x$y, cex = 4, pch  = 0)
+plot(land, col = "grey", add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+
+plot(land, col = "grey", #add =T, 
+     ext=extent(tmp_raster),xaxs="i",yaxs="i")
+points(-15, 55.5, cex = 0.2, pch  = 0, col = "black",  lwd = 0.7)
+points(-15, 55.5, cex = 4, pch  = 0, col = "black",  lwd = 2)
+points(-15, 54, cex = 4*(218/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 52.5, cex = 4*(197/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 51, cex = 4*(183/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 49.5, cex = 4*(244/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 48, cex = 4*(143/250), pch  = 0, col = "orange",  lwd = 2)
+points(-15, 46.5, cex = 4*(156/250), pch  = 0, col = "red",  lwd = 2)
+
+```
+
+```{r}
+pal <- colorRampPalette(viridis_pal(option = "D", direction = -1)(5))
+
+```
+
+```{r fig.width= 8, fig.height= 11}
+par(mfrow = c(3,2), bty = "n", yaxt="n", xaxt="n", mar = c(3,3,3,3))
+plot(tmp_raster_laea, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i",  legend=FALSE, ext=extent(e))
+plot(t50, xaxs="i",yaxs="i", col = pal(50), ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, ext=extent(e))
+plot(-depth, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i",  legend=FALSE, ext=extent(e))
+plot(-d50, xaxs="i",yaxs="i", col = pal(50), ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, ext=extent(e))
+plot(f, xaxs="i",yaxs="i", col = pal(50), legend=FALSE, ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, ext=extent(e))
+plot(fp50, xaxs="i",yaxs="i", col = pal(50), ext=extent(e))
+plot(land, col = "grey", add =T, xaxs="i",yaxs="i", legend=FALSE, ext=extent(e))
+```
